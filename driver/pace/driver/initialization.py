@@ -189,7 +189,11 @@ class TropicalCycloneConfig(Initializer):
             quantity_factory=quantity_factory,
         )
 
-        print("delp: ", dycore_state.delp.data[:, :, -2].min(), dycore_state.pt.data[:, :, -2].max())
+        print(
+            "delp: ",
+            dycore_state.delp.data[:, :, -2].min(),
+            dycore_state.pt.data[:, :, -2].max(),
+        )
 
         return DriverState(
             dycore_state=dycore_state,

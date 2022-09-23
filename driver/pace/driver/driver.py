@@ -97,7 +97,6 @@ class DriverConfig:
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
-
     days: int = 0
     hours: int = 0
     minutes: int = 0
@@ -293,7 +292,6 @@ class Driver:
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
 
-
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
@@ -355,7 +353,11 @@ class Driver:
             metadata=self.state.dycore_state.ps.metadata,
         )
         if config.diagnostics_config.output_initial_state:
-            print("delz min, max", self.state.dycore_state.delz.data.min(), self.state.dycore_state.delz.data.max())
+            print(
+                "delz min, max",
+                self.state.dycore_state.delz.data.min(),
+                self.state.dycore_state.delz.data.max(),
+            )
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time

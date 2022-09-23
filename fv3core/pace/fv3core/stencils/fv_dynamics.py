@@ -407,14 +407,14 @@ class DynamicalCore:
         else:
             if __debug__:
                 log_on_rank_0("Adjust pt")
-            
+
             self._pt_adjust_stencil(
                 state.pkz,
                 self._dp1,
                 state.q_con,
                 state.pt,
             )
-        
+
         breakpoint()
 
     def __call__(self, *args, **kwargs):
@@ -497,13 +497,12 @@ class DynamicalCore:
                         is_root_rank=self.comm_rank == 0,
                         da_min=da_min,
                     )
-        
+
         breakpoint()
         self.wrapup(
             state,
             is_root_rank=self.comm_rank == 0,
         )
-
 
     def _dyn(
         self,
