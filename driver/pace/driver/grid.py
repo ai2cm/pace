@@ -90,8 +90,8 @@ class GeneratedConfig(GridInitializer):
     """
 
     stretch_factor: Optional[float] = 1.0
-    lon_target: Optional[float] = 350.
-    lat_target: Optional[float] = -90.
+    lon_target: Optional[float] = 350.0
+    lat_target: Optional[float] = -90.0
     ks: int = 0
     vertical_grid_from_restart: Optional[bool] = False
 
@@ -101,9 +101,11 @@ class GeneratedConfig(GridInitializer):
     #                 "Stretch_mode is true, but no stretch_factor is provided."
     #             )
     #         if not self.lon_target:
-    #             raise ValueError("Stretch_grid is true, but no lon_target is provided.")
+    #             raise ValueError("Stretch_grid is true,
+    #               but no lon_target is provided.")
     #         if not self.lat_target:
-    #             raise ValueError("Stretch_grid is true, but no lat_target is provided.")
+    #             raise ValueError("Stretch_grid is true,
+    #               but no lat_target is provided.")
 
     def get_grid(
         self,
@@ -115,7 +117,9 @@ class GeneratedConfig(GridInitializer):
             quantity_factory=quantity_factory, communicator=communicator
         )
         if self.stretch_factor != 1:  # do horizontal grid transformation
-            _transform_horizontal_grid(metric_terms, self.stretch_factor, self.lon_target, self.lat_target)
+            _transform_horizontal_grid(
+                metric_terms, self.stretch_factor, self.lon_target, self.lat_target
+            )
 
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
@@ -124,7 +128,6 @@ class GeneratedConfig(GridInitializer):
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
         driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
-
 
         return damping_coefficients, driver_grid_data, grid_data
 
@@ -177,7 +180,7 @@ class SerialboxConfig(GridInitializer):
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
 
-        #if self.serialized_grid:
+        # if self.serialized_grid:
         logger.info("Using serialized grid data")
         grid = self._get_serialized_grid(communicator, backend)
         grid_data = grid.grid_data
@@ -202,7 +205,12 @@ class SerialboxConfig(GridInitializer):
         return damping_coefficients, driver_grid_data, grid_data
 
 
-def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float, lon_target: float, lat_target: float):
+def _transform_horizontal_grid(
+    metric_terms: MetricTerms,
+    stretch_factor: float,
+    lon_target: float,
+    lat_target: float,
+):
     """
     Uses the Schmidt transform to locally refine the horizontal grid.
 
@@ -231,7 +239,9 @@ def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float,
     metric_terms._init_agrid()
 
 
-def _replace_vertical_grid(ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp/") -> GridData:
+def _replace_vertical_grid(
+    ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp/"
+) -> GridData:
     """
     Replaces the vertical grid generators from metric terms (ak and bk) with
     their fortran restart values (in fv_core.res.nc).
@@ -240,7 +250,7 @@ def _replace_vertical_grid(ks, metric_terms: MetricTerms, restart_path: str = "r
     Args:
         metric_terms
         restart_tmp: the directory where the restart data is stored
-    
+
     Returns:
         updated metric terms
     """

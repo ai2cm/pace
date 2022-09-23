@@ -2,15 +2,16 @@ import abc
 import dataclasses
 import logging
 import os
+from dataclasses import fields
 from datetime import datetime
 from typing import ClassVar, Union
-import xarray as xr
-from dataclasses import fields
 
 import f90nml
-import pace.dsl.gt4py_utils as gt_utils
+import xarray as xr
+
 import pace.driver
 import pace.dsl
+import pace.dsl.gt4py_utils as gt_utils
 import pace.fv3core.initialization.baroclinic as baroclinic_init
 import pace.physics
 import pace.stencils
@@ -18,15 +19,18 @@ import pace.util
 import pace.util.grid
 from pace import fv3core
 from pace.dsl.dace.orchestration import DaceConfig
+from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.stencil_config import CompilationConfig
 from pace.fv3core.testing import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid
+from pace.util._properties import RestartProperties
+from pace.util.constants import X_DIM, Y_DIM, Z_DIM
 from pace.util.namelist import Namelist
-from pace.dsl.gt4py_utils import is_gpu_backend
 
 from .registry import Registry
-from .state import DriverState, TendencyState# , _restart_driver_state
+from .state import DriverState, TendencyState  # , _restart_driver_state
+
 
 try:
     import cupy as cp
@@ -124,7 +128,7 @@ class BaroclinicConfig(Initializer):
         #     quantity_factory=quantity_factory, communicator=communicator
         # )
         dycore_state = baroclinic_init.init_baroclinic_state(
-            #metric_terms,
+            # metric_terms,
             grid_data=grid_data,
             adiabatic=False,
             hydrostatic=False,
@@ -191,16 +195,18 @@ class FortranRestartConfig(Initializer):
         if "gs://" in self.path:
             # this works for the TC case
             # which is the only one that currently lives in the public bucket
-            new_path = '/'.join(self.path.split(os.path.sep)[-1:]) # last dirs
+            new_path = "/".join(self.path.split(os.path.sep)[-1:])  # last dirs
             new_path = "restart_tmp"
             if os.path.isdir(new_path):
                 fls = os.listdir(new_path)
                 if len(fls) == 0:
-                    os.system("gsutil cp -r %s/* %s" % (self.path, new_path)) # copy data
+                    os.system(
+                        "gsutil cp -r %s/* %s" % (self.path, new_path)
+                    )  # copy data
             else:
-                os.makedirs(new_path, exist_ok=True) # create new dir
-                os.system("gsutil cp -r %s/* %s" % (self.path, new_path)) # copy data
-            self.path = new_path + os.path.sep # replace path with local path
+                os.makedirs(new_path, exist_ok=True)  # create new dir
+                os.system("gsutil cp -r %s/* %s" % (self.path, new_path))  # copy data
+            self.path = new_path + os.path.sep  # replace path with local path
 
     @property
     def start_time(self) -> datetime:
@@ -244,8 +250,6 @@ class FortranRestartConfig(Initializer):
         # serialized test data
 
         return state
-
-
 
 
 @InitializerSelector.register("serialbox")
@@ -405,7 +409,9 @@ def _restart_driver_state(
 
     is_fortran_restart = False
     restart_files = os.listdir(path)
-    is_fortran_restart = any(fname.endswith("fv_core.res.nc") for fname in restart_files)
+    is_fortran_restart = any(
+        fname.endswith("fv_core.res.nc") for fname in restart_files
+    )
 
     if is_fortran_restart:
         _overwrite_state_from_fortran_restart(
@@ -485,10 +491,15 @@ def _overwrite_state_from_fortran_restart(
         path: path to restart files
         communicator:
         state: an empty state
-        is_gpu_backend: 
+        is_gpu_backend:
     """
 
-    state_dict = pace.util.open_restart(path, communicator, tracer_properties=extra_restart_properties, fortran_dict=fortran_restart_to_pace_dict)
+    state_dict = pace.util.open_restart(
+        path,
+        communicator,
+        tracer_properties=extra_restart_properties,
+        fortran_dict=fortran_restart_to_pace_dict,
+    )
 
     _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
 
@@ -528,9 +539,9 @@ def _dict_state_to_driver_state(
 def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     """
     Fortran restart data don't have information on pressure interface values
-    and their logs. 
-    This function takes the delp data (that is present in restart files), and 
-    top level pressure to calculate pressure at interfaces and their log, 
+    and their logs.
+    This function takes the delp data (that is present in restart files), and
+    top level pressure to calculate pressure at interfaces and their log,
     and updates the driver state with values.
     """
 
@@ -547,37 +558,32 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     state.dycore_state.pe = pe
     state.dycore_state.peln = peln
 
-
+    return None
 
 
 fortran_restart_to_pace_dict = {
-    "pt": "T", # air temperature
-    "delp": "delp", # pressure thickness of atmospheric layer
-    "phis": "phis", # surface geopotential
-    "w": "W", # vertical wind
-    "u": "u", # x_wind
-    "v": "v", # y_wind
-    "qvapor": "sphum", # specific humidity
-    "qliquid": "liq_wat", # liquid water mixing ratio
-    "qice": "ice_wat", # cloud ice mixing ratio
-    "qrain": "rainwat", # rain mixing ratio
-    "qsnow": "snowwat", # snow mixing ratio
-    "qgraupel": "graupel", # graupel mixing ratio
-    "qo3mr": "o3mr", # ozone mixing ratio
-    #"qsgs_tke": "sgs_tke", # turbulent kinetic energy
-    "qcld": "cld_amt", # cloud fraction
-    "delz": "DZ", # vertical thickness of atmospheric layer
+    "pt": "T",  # air temperature
+    "delp": "delp",  # pressure thickness of atmospheric layer
+    "phis": "phis",  # surface geopotential
+    "w": "W",  # vertical wind
+    "u": "u",  # x_wind
+    "v": "v",  # y_wind
+    "qvapor": "sphum",  # specific humidity
+    "qliquid": "liq_wat",  # liquid water mixing ratio
+    "qice": "ice_wat",  # cloud ice mixing ratio
+    "qrain": "rainwat",  # rain mixing ratio
+    "qsnow": "snowwat",  # snow mixing ratio
+    "qgraupel": "graupel",  # graupel mixing ratio
+    "qo3mr": "o3mr",  # ozone mixing ratio
+    # "qsgs_tke": "sgs_tke", # turbulent kinetic energy
+    "qcld": "cld_amt",  # cloud fraction
+    "delz": "DZ",  # vertical thickness of atmospheric layer
 }
-    # not sure why qsgs breaks this... maybe it doesn't exist?
+# not sure why qsgs breaks this... maybe it doesn't exist?
 
 # put tracer properties here for now, but there's probably a better place for them.
 # maybe a file name _tracer_properties.py since _properties.py is already taken?
-from pace.util._properties import RestartProperties
-from pace.util.constants import (
-    X_DIM,
-    Y_DIM,
-    Z_DIM,
-)
+
 
 extra_restart_properties: RestartProperties = {
     "specific humidity": {

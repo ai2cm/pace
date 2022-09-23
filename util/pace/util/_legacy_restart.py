@@ -145,7 +145,9 @@ def prepend_label(filename, label=None):
         return filename
 
 
-def load_partial_state_from_restart_file(file, restart_properties, fortran_dict, only_names=None):
+def load_partial_state_from_restart_file(
+    file, restart_properties, fortran_dict, only_names=None
+):
 
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
     state = _apply_restart_metadata(ds.data_vars, restart_properties)

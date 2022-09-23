@@ -1,19 +1,11 @@
 import dataclasses
-import os
-from dataclasses import fields
-from typing import Union
 
-import numpy as np
-import xarray as xr
-
-import pace.dsl.gt4py_utils as gt_utils
 import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
 from pace.driver.grid import GeneratedConfig
-from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util.initialization import fortran_restart_to_pace_dict
+from pace.util.initialization import _restart_driver_state
 
 
 try:
@@ -151,5 +143,3 @@ class DriverState:
             dim="Time", axis=0
         ).to_netcdf(os.path.join(path, f"fv_tracer.res.tile{rank + 1}.nc"))
         """
-
-
