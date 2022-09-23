@@ -134,6 +134,7 @@ class TropicalCycloneConfig(Initializer):
     """
     Configuration for tropical cyclone initialization.
     """
+
     # TODO
     # this can be cleaned up after grid config is separated
 

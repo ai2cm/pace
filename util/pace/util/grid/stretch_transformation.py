@@ -24,7 +24,7 @@ def direct_transform(
     Args:
         lon (in) in radians
         lat (in) in radians
-        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution 
+        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution
             on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
@@ -42,7 +42,7 @@ def direct_transform(
         lat_data = lat
     else:
         raise Exception("Input data type not supported.")
-    
+
     STRETCH_GRID_ROTATION_LON_OFFSET_DEG = 190
     # this is added to all longitude values to match the SHiELD TC case
     # 180 is to flip the orientation around the center tile (6)

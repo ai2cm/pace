@@ -415,7 +415,6 @@ class DynamicalCore:
                 state.pt,
             )
 
-
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
 
