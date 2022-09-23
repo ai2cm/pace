@@ -1,10 +1,10 @@
 import os
 from typing import BinaryIO, Generator, Iterable
 
-from pace.util.initialization import (
-    extra_restart_properties,
-    fortran_restart_to_pace_dict,
-)
+# from pace.util.initialization import (
+#     extra_restart_properties,
+#     fortran_restart_to_pace_dict,
+# )
 
 from . import _xarray as xr
 from . import constants, filesystem, io
@@ -28,6 +28,7 @@ def open_restart(
     only_names: Iterable[str] = None,
     to_state: dict = None,
     tracer_properties: RestartProperties = None,
+    fortran_dict: dict = None,
 ):
     """Load restart files output by the Fortran model into a state dictionary.
 
@@ -45,11 +46,8 @@ def open_restart(
 
     if tracer_properties is None:
         restart_properties = RESTART_PROPERTIES
-        restart_properties.update(extra_restart_properties)  # add microphysics
-        # original restart properties don't have that stuff
     else:
         restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
-        restart_properties.update(extra_restart_properties)
 
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
@@ -58,7 +56,7 @@ def open_restart(
         for file in restart_files(dirname, tile_index, label):
             state.update(
                 load_partial_state_from_restart_file(
-                    file, restart_properties, only_names=only_names
+                    file, restart_properties, fortran_dict, only_names=only_names
                 )
             )
 
@@ -152,10 +150,11 @@ def prepend_label(filename, label=None):
         return filename
 
 
-def load_partial_state_from_restart_file(file, restart_properties, only_names=None):
+def load_partial_state_from_restart_file(file, restart_properties, fortran_dict, only_names=None):
+
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
     state = _apply_restart_metadata(ds.data_vars, restart_properties)
-    state = map_keys(state, fortran_restart_to_pace_dict)
+    state = map_keys(state, fortran_dict)
 
     if only_names is None:
         only_names = state.keys()
