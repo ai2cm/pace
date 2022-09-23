@@ -10,11 +10,7 @@ from pace.util.grid.gnomonic import (
     lon_lat_midpoint,
 )
 
-from .baroclinic import (
-    empty_numpy_dycore_state,
-    initialize_kappa_pressures,
-    local_compute_size,
-)
+from .baroclinic import empty_numpy_dycore_state, initialize_kappa_pressures
 
 
 nhalo = fv3util.N_HALO_DEFAULT
@@ -22,6 +18,7 @@ nhalo = fv3util.N_HALO_DEFAULT
 
 def init_tc_state(
     grid_data: GridData,
+    quantity_factory: fv3util.QuantityFactory,
     hydrostatic: bool,
     comm: fv3util.CubedSphereCommunicator,
 ) -> DycoreState:
@@ -35,7 +32,6 @@ def init_tc_state(
 
     sample_quantity = grid_data.lat
     shape = (*sample_quantity.data.shape[:2], grid_data.ak.data.shape[0])
-    #nx, ny, nz = local_compute_size(shape)
     numpy_state = empty_numpy_dycore_state(shape)
 
     tc_properties = {
@@ -118,10 +114,10 @@ def init_tc_state(
     numpy_state.va[:] = va
     # numpy_state.vc[:] =
     numpy_state.w[:] = w
-
+    breakpoint()
     state = DycoreState.init_from_numpy_arrays(
         numpy_state.__dict__,
-        sizer=grid_data.quantity_factory.sizer,
+        sizer=quantity_factory.sizer,
         backend=sample_quantity.metadata.gt4py_backend,
     )
 
@@ -478,7 +474,15 @@ def _initialize_qvapor_temperature(grid_data, pe, ps, tc_properties, calc, shape
         * np.exp(-((height / tc_properties["zq2"]) ** tc_properties["exppz"]))
     )
 
-    p2 = grid_data.agrid.data
+    p2 = np.transpose(
+        np.stack(
+            [
+                grid_data._horizontal_data.lon_agrid.data,
+                grid_data._horizontal_data.lat_agrid.data,
+            ]
+        ),
+        [1, 2, 0],
+    )
     r = great_circle_distance_lon_lat(
         calc["p0"][0], p2[:, :, 0], calc["p0"][1], p2[:, :, 1], constants.RADIUS, np
     )
@@ -496,22 +500,32 @@ def _initialize_vortex_ps_phis(grid_data, shape, tc_properties, calc):
 
     phis = np.zeros(shape[:2])
     ps = np.zeros(shape[:2])
-    ps = _calculate_vortex_surface_pressure_with_radius(
-        calc["p0"], grid_data.agrid.data, tc_properties
+    # breakpoint()
+    grid = np.transpose(
+        np.stack(
+            [
+                grid_data._horizontal_data.lon_agrid.data,
+                grid_data._horizontal_data.lat_agrid.data,
+            ]
+        ),
+        [1, 2, 0],
     )
+    ps = _calculate_vortex_surface_pressure_with_radius(calc["p0"], grid, tc_properties)
 
-    ps_vc = np.zeros(shape[:2])
-    p_grid = 0.5 * (
-        grid_data.grid.data[:, :-1, :] + grid_data.grid.data[:, 1:, :]
+    grid = np.transpose(
+        np.stack(
+            [grid_data._horizontal_data.lon.data, grid_data._horizontal_data.lat.data]
+        ),
+        [1, 2, 0],
     )
+    ps_vc = np.zeros(shape[:2])
+    p_grid = 0.5 * (grid[:, :-1, :] + grid[:, 1:, :])
     ps_vc[:, :-1] = _calculate_vortex_surface_pressure_with_radius(
         p0, p_grid, tc_properties
     )
 
     ps_uc = np.zeros(shape[:2])
-    p_grid = 0.5 * (
-        grid_data.grid.data[:-1, :, :] + grid_data.grid.data[1:, :, :]
-    )
+    p_grid = 0.5 * (grid[:-1, :, :] + grid[1:, :, :])
     ps_uc[:-1, :] = _calculate_vortex_surface_pressure_with_radius(
         p0, p_grid, tc_properties
     )
@@ -526,8 +540,15 @@ def _initialize_wind_dgrid(
 ):
     # u-wind
     ud = np.zeros(shape)
-    p1 = grid_data.grid.data[:-1, :, :]
-    p2 = grid_data.grid.data[1:, :, :]
+
+    grid = np.transpose(
+        np.stack(
+            [grid_data._horizontal_data.lon.data, grid_data._horizontal_data.lat.data]
+        ),
+        [1, 2, 0],
+    )
+    p1 = grid[:-1, :, :]
+    p2 = grid[1:, :, :]
     muv = _find_midpoint_unit_vectors(p1, p2)
     dist = _calculate_distance_from_tc_center(pe_u, ps_u, muv, calc, tc_properties)
 
@@ -544,8 +565,8 @@ def _initialize_wind_dgrid(
 
     # v-wind
     vd = np.zeros(shape)
-    p1 = grid_data.grid.data[:, :-1, :]
-    p2 = grid_data.grid.data[:, 1:, :]
+    p1 = grid[:, :-1, :]
+    p2 = grid[:, 1:, :]
     muv = _find_midpoint_unit_vectors(p1, p2)
     dist = _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties)
 
@@ -566,23 +587,22 @@ def _interpolate_winds_dgrid_agrid(grid_data, ud, vd, tc_properties, shape):
 
     ua = np.zeros(shape)
     va = np.zeros(shape)
-
     if tc_properties["vort"] is True:
         ua[:, :-1, :] = (
             0.5
             * (
-                ud[:, :-1, :] * grid_data.dx.data[:, :-1, None]
-                + ud[:, 1:, :] * grid_data.dx.data[:, 1:, None]
+                ud[:, :-1, :] * grid_data._horizontal_data.dx.data[:, :-1, None]
+                + ud[:, 1:, :] * grid_data._horizontal_data.dx.data[:, 1:, None]
             )
             / grid_data.dxa.data[:, :-1, None]
         )
         va[:-1, :, :] = (
             0.5
             * (
-                vd[:-1, :, :] * grid_data.dy.data[:-1, :, None]
-                + vd[1:, :, :] * grid_data.dy.data[1:, :, None]
+                vd[:-1, :, :] * grid_data._horizontal_data.dy.data[:-1, :, None]
+                + vd[1:, :, :] * grid_data._horizontal_data.dy.data[1:, :, None]
             )
-            / metric_terms.dya.data[:-1, :, None]
+            / grid_data._horizontal_data.dya.data[:-1, :, None]
         )
     else:
         pass

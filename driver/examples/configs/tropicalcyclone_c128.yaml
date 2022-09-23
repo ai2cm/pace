@@ -12,6 +12,13 @@ initialization:
 performance_config:
   performance_mode: true
   experiment_name: c128_tropical
+grid_config:
+  config:
+    stretch_factor: 3.0
+    lon_target: 172.5
+    lat_target: 17.5
+    ks: 0
+  type: generated
 nx_tile: 128
 nz: 79
 dt_atmos: 60

@@ -162,42 +162,14 @@ class TropicalCycloneConfig(Initializer):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
 
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=quantity_factory, communicator=communicator
-        )
-
-        metric_terms._ak.data[:] = tc_init._define_ak()
-        metric_terms._bk.data[:] = tc_init._define_bk()
-
-        gridconfig = {
-            "stretch_factor": 3.0,
-            "lon_target": 172.5,
-            "lat_target": 17.5,
-        }
-
-        # grid transformation to locally increase resolution
-        grid = metric_terms.grid
-        lon_transform, lat_transform = pace.util.grid.direct_transform(
-            lon=grid.data[:, :, 0],
-            lat=grid.data[:, :, 1],
-            stretch_factor=gridconfig["stretch_factor"],
-            lon_target=gridconfig["lon_target"],
-            lat_target=gridconfig["lat_target"],
-        )
-        grid.data[:, :, 0] = lon_transform
-        grid.data[:, :, 1] = lat_transform
-        metric_terms._grid.data[:] = grid.data
-        metric_terms._init_agrid()
-
-        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
-        driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-            metric_terms
-        )
         dycore_state = tc_init.init_tc_state(
-            metric_terms,
+            grid_data=grid_data,
+            quantity_factory=quantity_factory,
             hydrostatic=False,
             comm=communicator,
         )
@@ -220,7 +192,7 @@ class TropicalCycloneConfig(Initializer):
             physics_state=physics_state,
             tendency_state=tendency_state,
             grid_data=grid_data,
-            damping_coefficients=damping_coeffient,
+            damping_coefficients=damping_coefficients,
             driver_grid_data=driver_grid_data,
         )
 
