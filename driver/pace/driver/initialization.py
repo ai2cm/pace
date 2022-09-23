@@ -124,6 +124,7 @@ class BaroclinicConfig(Initializer):
         dycore_state = baroclinic_init.init_baroclinic_state(
             # metric_terms,
             grid_data=grid_data,
+            quantity_factory=quantity_factory,
             adiabatic=False,
             hydrostatic=False,
             moist_phys=True,

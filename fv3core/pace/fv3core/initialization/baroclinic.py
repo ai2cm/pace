@@ -436,6 +436,7 @@ def empty_numpy_dycore_state(shape):
 def init_baroclinic_state(
     # metric_terms: MetricTerms,
     grid_data: GridData,
+    quantity_factory: fv3util.QuantityFactory,
     adiabatic: bool,
     hydrostatic: bool,
     moist_phys: bool,
@@ -543,7 +544,7 @@ def init_baroclinic_state(
     )
     state = DycoreState.init_from_numpy_arrays(
         numpy_state.__dict__,
-        sizer=grid_data.quantity_factory.sizer,
+        sizer=quantity_factory.sizer,
         # sizer=metric_terms.quantity_factory.sizer,
         backend=sample_quantity.metadata.gt4py_backend,
     )
