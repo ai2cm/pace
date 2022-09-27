@@ -1,5 +1,6 @@
 import dataclasses
 import os
+from datetime import timedelta
 from typing import List, Tuple
 
 import dacite
@@ -137,6 +138,7 @@ def test_fv_dynamics(
         phis=state.phis,
         state=state,
         checkpointer=validation,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
     )
     with validation.trial():
         dycore.step_dynamics(state)
@@ -162,6 +164,7 @@ def _calibrate_thresholds(
         phis=state.phis,
         state=state,
         checkpointer=calibration,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
     )
     for i in range(n_trials):
         print(f"running calibration trial {i}")

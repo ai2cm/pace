@@ -79,6 +79,4 @@ class TranslateDriver(TranslateFVDynamics):
         self.dycore = driver.dycore
 
         outputs = self.outputs_from_state(driver.state.dycore_state)
-        for name, value in outputs.items():
-            outputs[name] = self.subset_output(name, value)
         return outputs
