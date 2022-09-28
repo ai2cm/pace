@@ -362,6 +362,27 @@ jobs:
             cd driver
             MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
 
+  test_driver_orch_cpu:
+    docker:
+      - image: cimg/python:3.8
+    resource_class: xlarge
+    working_directory: ~/repo
+    environment:
+      - FV3_DACEMODE: BuildAndRun
+    steps:
+      - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+      - setup_environment_mpi
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            cd driver
+            mpirun -n 6 --mca btl_vader_single_copy_mechanism none \
+              python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c12_orch_cpu.yaml
+
   test_main:
     docker:
       - image: cimg/python:3.8
@@ -520,6 +541,10 @@ workflows:
             tags:
               only: /^v.*/
       - test_driver:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_driver_orch_cpu:
           filters:
             tags:
               only: /^v.*/
