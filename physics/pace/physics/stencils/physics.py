@@ -1,3 +1,4 @@
+import typing
 from typing import List
 
 import gt4py.gtscript as gtscript
@@ -5,6 +6,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interv
 from typing_extensions import Literal
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
@@ -175,7 +177,12 @@ class Physics:
         grid_data: GridData,
         namelist: PhysicsConfig,
         active_packages: List[Literal[PHYSICS_PACKAGES]],
+        checkpointer: typing.Optional[pace.util.Checkpointer] = None,
     ):
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -247,7 +254,26 @@ class Physics:
         self._p00 = 1.0e5
 
     def __call__(self, physics_state: PhysicsState, timestep: float):
-
+        if self._call_checkpointer:
+            self._checkpointer(
+                "GFSPhysicsDriver-In",
+                qvapor=physics_state.qvapor,
+                qliquid=physics_state.qliquid,
+                qrain=physics_state.qrain,
+                qsnow=physics_state.qsnow,
+                qice=physics_state.qice,
+                qgraupel=physics_state.qgraupel,
+                qo3mr=physics_state.qo3mr,
+                qsgs_tke=physics_state.qsgs_tke,
+                qcld=physics_state.qcld,
+                pt=physics_state.pt,
+                delp=physics_state.delp,
+                delz=physics_state.delz,
+                ua=physics_state.ua,
+                va=physics_state.va,
+                w=physics_state.w,
+                omga=physics_state.omga,
+            )
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,

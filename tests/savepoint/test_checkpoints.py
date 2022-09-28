@@ -11,8 +11,10 @@ import yaml
 import pace.dsl
 import pace.util
 from pace import fv3core
+from pace.driver.state import TendencyState
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
+from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.stencils.testing.grid import Grid
 from pace.util.checkpointer.thresholds import SavepointThresholds
@@ -109,7 +111,7 @@ def test_fv_dynamics(
             damping_coefficients=grid.damping_coefficients,
             dycore_config=dycore_config,
             n_trials=10,
-            factor=10.0,
+            factor=12.0,
         )
         print(f"calibrated thresholds: {thresholds}")
         if communicator.rank == 0:
@@ -142,6 +144,93 @@ def test_fv_dynamics(
         dycore.step_dynamics(state)
 
 
+def test_driver(
+    backend: str,
+    data_path: str,
+    calibrate_thresholds: bool,
+    threshold_path: str,
+):
+    print("start test call")
+    namelist = pace.util.Namelist.from_f90nml(
+        f90nml.read(os.path.join(data_path, "input.nml"))
+    )
+    threshold_filename = os.path.join(threshold_path, "driver.yaml")
+    communicator = pace.util.CubedSphereCommunicator(
+        comm=pace.util.MPIComm(),
+        partitioner=pace.util.CubedSpherePartitioner(
+            tile=pace.util.TilePartitioner(layout=namelist.layout)
+        ),
+    )
+    sizer = pace.util.SubtileGridSizer.from_tile_params(
+        nx_tile=namelist.npx - 1,
+        ny_tile=namelist.npy - 1,
+        nz=namelist.npz,
+        n_halo=3,
+        tile_partitioner=communicator.partitioner.tile,
+        tile_rank=communicator.rank,
+        extra_dim_lengths={},
+        layout=namelist.layout,
+    )
+    stencil_factory = pace.dsl.StencilFactory(
+        config=pace.dsl.StencilConfig(
+            compilation_config=pace.dsl.CompilationConfig(
+                backend=backend,
+                communicator=communicator,
+                rebuild=False,
+            )
+        ),
+        grid_indexing=pace.dsl.GridIndexing.from_sizer_and_communicator(
+            sizer=sizer,
+            cube=communicator,
+        ),
+    )
+    quantity_factory = pace.util.QuantityFactory.from_backend(sizer, backend=backend)
+    grid = get_grid(
+        data_path=data_path,
+        rank=communicator.rank,
+        layout=namelist.layout,
+        backend=backend,
+    )
+    driver_grid_data = grid.driver_grid_data
+    translate = TranslateFVDynamics(
+        grid=grid, namelist=namelist, stencil_factory=stencil_factory
+    )
+    ds = xr.open_dataset(os.path.join(data_path, "Driver-In.nc")).sel(
+        savepoint=0, rank=communicator.rank
+    )
+    dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
+    physics_config = pace.physics.PhysicsConfig.from_namelist(namelist)
+    initializer = StateInitializer(
+        ds,
+        translate,
+    )
+    if calibrate_thresholds:
+        thresholds = _calibrate_thresholds(
+            initializer=initializer,
+            communicator=communicator,
+            stencil_factory=stencil_factory,
+            damping_coefficients=grid.damping_coefficients,
+            dycore_config=dycore_config,
+            n_trials=10,
+            factor=12.0,
+            physics_config=physics_config,
+            quantity_factory=quantity_factory,
+            driver_grid_data=driver_grid_data,
+        )
+        print(f"calibrated thresholds: {thresholds}")
+        if communicator.rank == 0:
+            with open(threshold_filename, "w") as f:
+                yaml.safe_dump(dataclasses.asdict(thresholds), f)
+        communicator.comm.barrier()
+    with open(threshold_filename, "r") as f:
+        data = yaml.safe_load(f)
+        thresholds = dacite.from_dict(
+            data_class=pace.util.SavepointThresholds,
+            data=data,
+            config=dacite.Config(strict=True),
+        )
+
+
 def _calibrate_thresholds(
     initializer: StateInitializer,
     communicator: pace.util.CubedSphereCommunicator,
@@ -150,6 +239,9 @@ def _calibrate_thresholds(
     dycore_config: fv3core.DynamicalCoreConfig,
     n_trials: int,
     factor: float,
+    physics_config: pace.physics.PhysicsConfig = None,
+    quantity_factory: pace.util.QuantityFactory = None,
+    driver_grid_data: pace.util.grid.DriverGridData = None,
 ):
     calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
     for i in range(n_trials):
@@ -169,8 +261,58 @@ def _calibrate_thresholds(
             checkpointer=calibration,
             timestep=timedelta(seconds=dycore_config.dt_atmos),
         )
+        if physics_config is not None:
+            physics = pace.physics.Physics(
+                stencil_factory=stencil_factory,
+                grid_data=grid_data,
+                namelist=physics_config,
+                active_packages=["microphysics"],
+                checkpointer=calibration,
+            )
+            dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                stencil_factory=stencil_factory,
+                dycore_config=dycore_config,
+                do_dry_convective_adjust=dycore_config.do_dry_convective_adjustment,
+                dycore_only=False,
+            )
+            tendency_state = TendencyState.init_zeros(
+                quantity_factory=quantity_factory,
+            )
+            end_of_step_update = update_atmos_state.UpdateAtmosphereState(
+                stencil_factory=stencil_factory,
+                grid_data=grid_data,
+                namelist=physics_config,
+                comm=communicator,
+                grid_info=driver_grid_data,
+                state=trial_state,
+                quantity_factory=quantity_factory,
+                dycore_only=False,
+                apply_tendencies=True,
+                tendency_state=tendency_state,
+                checkpointer=calibration,
+            )
+            trial_physics_state = pace.physics.PhysicsState.init_zeros(
+                quantity_factory=quantity_factory,
+                active_packages=["microphysics"],
+            )
         with calibration.trial():
             dycore.step_dynamics(trial_state)
+            if physics_config is not None:
+                dycore_to_physics(
+                    dycore_state=trial_state,
+                    physics_state=trial_physics_state,
+                    tendency_state=tendency_state,
+                    timestep=float(physics_config.dt_atmos),
+                )
+                physics(trial_physics_state, timestep=float(physics_config.dt_atmos))
+                end_of_step_update(
+                    dycore_state=trial_state,
+                    phy_state=trial_physics_state,
+                    u_dt=tendency_state.u_dt.storage,
+                    v_dt=tendency_state.v_dt.storage,
+                    pt_dt=tendency_state.pt_dt.storage,
+                    dt=float(physics_config.dt_atmos),
+                )
     all_thresholds = communicator.comm.allgather(calibration.thresholds)
     thresholds = merge_thresholds(all_thresholds)
     set_manual_thresholds(thresholds)

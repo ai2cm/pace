@@ -1,3 +1,4 @@
+import typing
 from typing import Optional
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
@@ -247,7 +248,12 @@ class UpdateAtmosphereState:
         dycore_only: bool,
         apply_tendencies: bool,
         tendency_state,
+        checkpointer: typing.Optional[pace.util.Checkpointer] = None,
     ):
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -287,6 +293,7 @@ class UpdateAtmosphereState:
             state,
             tendency_state.u_dt,
             tendency_state.v_dt,
+            checkpointer=checkpointer,
         )
         self._dycore_only = dycore_only
         # apply_tendencies when we have run physics or fv_subgridz
