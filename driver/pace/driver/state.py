@@ -146,6 +146,29 @@ class DriverState:
         """
 
 
+def _overwrite_state_from_restart(
+    path: str,
+    rank: int,
+    state: fv3core.DycoreState,
+    restart_file_prefix: str,
+):
+    """
+    Args:
+        path: path to restart files
+        rank: current rank number
+        state: an empty state
+        restart_file_prefix: file prefix name to read
+        is_gpu_backend:
+    """
+    ds = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+
+    for _field in fields(type(state)):
+        if "units" in _field.metadata.keys():
+            state.__dict__[_field.name].data[:] = gt_utils.asarray(
+                ds[_field.name].data[:], to_type=state.__dict__[_field.name].np.ndarray
+            )
+
+
 def _restart_driver_state(
     path: str,
     rank: int,
@@ -194,26 +217,3 @@ def _restart_driver_state(
         damping_coefficients=damping_coefficients,
         driver_grid_data=driver_grid_data,
     )
-
-
-def _overwrite_state_from_restart(
-    path: str,
-    rank: int,
-    state: fv3core.DycoreState,
-    restart_file_prefix: str,
-):
-    """
-    Args:
-        path: path to restart files
-        rank: current rank number
-        state: an empty state
-        restart_file_prefix: file prefix name to read
-        is_gpu_backend:
-    """
-    ds = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
-
-    for _field in fields(type(state)):
-        if "units" in _field.metadata.keys():
-            state.__dict__[_field.name].data[:] = gt_utils.asarray(
-                ds[_field.name].data[:], to_type=state.__dict__[_field.name].np.ndarray
-            )

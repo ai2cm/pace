@@ -27,12 +27,6 @@ from .registry import Registry
 from .state import DriverState, TendencyState, _restart_driver_state
 
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -119,13 +113,7 @@ class BaroclinicConfig(Initializer):
         driver_grid_data: pace.util.grid.DriverGridData,
         grid_data: pace.util.grid.GridData,
     ) -> DriverState:
-        # Ajda
-        # do I need to keep metric terms here?
-        # metric_terms = pace.util.grid.MetricTerms(
-        #     quantity_factory=quantity_factory, communicator=communicator
-        # )
         dycore_state = baroclinic_init.init_baroclinic_state(
-            # metric_terms,
             grid_data=grid_data,
             quantity_factory=quantity_factory,
             adiabatic=False,
@@ -357,8 +345,6 @@ class PredefinedStateConfig(Initializer):
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
     start_time: datetime = datetime(2016, 8, 1)
-    # Ajda
-    # not sure what to do here ... Keep arguments?
 
     def get_driver_state(
         self,
@@ -379,6 +365,9 @@ class PredefinedStateConfig(Initializer):
         )
 
 
+# TODO: refactor fv3core so that pe and peln are internal temporaries
+# of the dynamical core, computed automatically, so that this helper
+# can be eliminated from initialization
 def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     """
     Fortran restart data don't have information on pressure interface values

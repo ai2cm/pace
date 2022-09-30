@@ -1,6 +1,5 @@
 import functools
 import warnings
-from pickle import NONE
 
 from pace import util
 from pace.dsl.gt4py_utils import asarray
@@ -126,7 +125,7 @@ class MetricTerms:
         self._dx_center = None
         self._dy_center = None
         self._ak = None
-        self._bk = NONE
+        self._bk = None
         self._ptop = None
         self._ec1 = None
         self._ec2 = None

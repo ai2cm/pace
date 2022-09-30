@@ -3,11 +3,6 @@ from typing import Tuple, Union
 
 import numpy as np
 
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
 from pace.util import Quantity
 
 

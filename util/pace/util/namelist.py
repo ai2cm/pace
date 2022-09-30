@@ -451,7 +451,6 @@ class Namelist:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
-    # stretch_grid: bool = NamelistDefaults.stretch_grid
 
     @classmethod
     def from_f90nml(cls, namelist: f90nml.Namelist):
