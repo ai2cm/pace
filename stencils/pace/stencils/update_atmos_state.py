@@ -159,15 +159,10 @@ class DycoreToPhysics:
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["dycore_state", "physics_state", "tendency_state"],
         )
-
-        self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
+        self._copy_dycore_to_physics = stencil_factory.from_origin_domain(
             copy_dycore_to_physics,
-            compute_dims=[
-                pace.util.X_INTERFACE_DIM,
-                pace.util.Y_INTERFACE_DIM,
-                pace.util.Z_INTERFACE_DIM,
-            ],
-            compute_halos=(0, 0),
+            origin=stencil_factory.grid_indexing.origin_full(),
+            domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._do_dry_convective_adjustment = do_dry_convective_adjust
         self._dycore_only = dycore_only
@@ -369,19 +364,19 @@ class UpdateAtmosphereState:
                     u=dycore_state.u,
                     v=dycore_state.v,
                 )
-                self._checkpointer(
-                    "Driver-Out",
-                    qvapor=dycore_state.qvapor,
-                    qliquid=dycore_state.qliquid,
-                    qrain=dycore_state.qrain,
-                    qsnow=dycore_state.qsnow,
-                    qice=dycore_state.qice,
-                    qgraupel=dycore_state.qgraupel,
-                    pt=dycore_state.pt,
-                    ua=dycore_state.ua,
-                    va=dycore_state.va,
-                    u=dycore_state.u,
-                    v=dycore_state.v,
-                    delz=dycore_state.delz,
-                    delp=dycore_state.delp,
-                )
+                # self._checkpointer(
+                #     "Driver-Out",
+                #     qvapor=dycore_state.qvapor,
+                #     qliquid=dycore_state.qliquid,
+                #     qrain=dycore_state.qrain,
+                #     qsnow=dycore_state.qsnow,
+                #     qice=dycore_state.qice,
+                #     qgraupel=dycore_state.qgraupel,
+                #     pt=dycore_state.pt,
+                #     ua=dycore_state.ua,
+                #     va=dycore_state.va,
+                #     u=dycore_state.u,
+                #     v=dycore_state.v,
+                #     delz=dycore_state.delz,
+                #     delp=dycore_state.delp,
+                # )

@@ -1,6 +1,5 @@
 from typing import Dict, Mapping, Optional, Sequence, Tuple
 
-from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -24,6 +23,7 @@ import pace.fv3core.stencils.updatedzd as updatedzd
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
+from dace.frontend.python.interface import nounroll as dace_nounroll
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
@@ -682,6 +682,11 @@ class AcousticDynamics:
 
     def _checkpoint_csw(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
+            if tag == "In":
+                # need this to compare with Fortran
+                self._ut[:] = 0.0
+                self._vt[:] = 0.0
+                self._divgd.data[:] = 0.0
             self.checkpointer(
                 f"C_SW-{tag}",
                 delpd=state.delp,
@@ -700,6 +705,8 @@ class AcousticDynamics:
 
     def _checkpoint_dsw_in(self, state: DycoreState):
         if self.call_checkpointer:
+            self._xfx[:] = 0.0
+            self._yfx[:] = 0.0
             self.checkpointer(
                 "D_SW-In",
                 ucd=state.uc,
@@ -713,8 +720,8 @@ class AcousticDynamics:
                 ptd=state.pt,
                 uad=state.ua,
                 vad=state.va,
-                zhd=self._zh,
-                divgdd=self._divgd,
+                # zhd=self._zh,
+                # divgdd=self._divgd,
                 xfxd=self._xfx,
                 yfxd=self._yfx,
                 mfxd=state.mfxd,

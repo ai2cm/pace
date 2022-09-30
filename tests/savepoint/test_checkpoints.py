@@ -195,7 +195,7 @@ def test_driver(
     translate = TranslateFVDynamics(
         grid=grid, namelist=namelist, stencil_factory=stencil_factory
     )
-    ds = xr.open_dataset(os.path.join(data_path, "Driver-In.nc")).sel(
+    ds = xr.open_dataset(os.path.join(data_path, "FVDynamics-In.nc")).sel(
         savepoint=0, rank=communicator.rank
     )
     dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
@@ -229,6 +229,72 @@ def test_driver(
             data=data,
             config=dacite.Config(strict=True),
         )
+    validation = pace.util.ValidationCheckpointer(
+        savepoint_data_path=data_path, thresholds=thresholds, rank=communicator.rank
+    )
+    state, grid_data = initializer.new_state()
+    dycore = fv3core.DynamicalCore(
+        comm=communicator,
+        grid_data=grid_data,
+        stencil_factory=stencil_factory,
+        damping_coefficients=grid.damping_coefficients,
+        config=dycore_config,
+        phis=state.phis,
+        state=state,
+        checkpointer=validation,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
+    )
+    physics = pace.physics.Physics(
+        stencil_factory=stencil_factory,
+        grid_data=grid_data,
+        namelist=physics_config,
+        active_packages=["microphysics"],
+        checkpointer=validation,
+    )
+    dycore_to_physics = update_atmos_state.DycoreToPhysics(
+        stencil_factory=stencil_factory,
+        dycore_config=dycore_config,
+        do_dry_convective_adjust=dycore_config.do_dry_convective_adjustment,
+        dycore_only=False,
+    )
+    tendency_state = TendencyState.init_zeros(
+        quantity_factory=quantity_factory,
+    )
+    end_of_step_update = update_atmos_state.UpdateAtmosphereState(
+        stencil_factory=stencil_factory,
+        grid_data=grid_data,
+        namelist=physics_config,
+        comm=communicator,
+        grid_info=driver_grid_data,
+        state=state,
+        quantity_factory=quantity_factory,
+        dycore_only=False,
+        apply_tendencies=True,
+        tendency_state=tendency_state,
+        checkpointer=validation,
+    )
+    physics_state = pace.physics.PhysicsState.init_zeros(
+        quantity_factory=quantity_factory,
+        active_packages=["microphysics"],
+    )
+    with validation.trial():
+        for i in range(2):
+            dycore.step_dynamics(state)
+            dycore_to_physics(
+                dycore_state=state,
+                physics_state=physics_state,
+                tendency_state=tendency_state,
+                timestep=float(physics_config.dt_atmos),
+            )
+            physics(physics_state, timestep=float(physics_config.dt_atmos))
+            end_of_step_update(
+                dycore_state=state,
+                phy_state=physics_state,
+                u_dt=tendency_state.u_dt.storage,
+                v_dt=tendency_state.v_dt.storage,
+                pt_dt=tendency_state.pt_dt.storage,
+                dt=float(physics_config.dt_atmos),
+            )
 
 
 def _calibrate_thresholds(
@@ -296,23 +362,26 @@ def _calibrate_thresholds(
                 active_packages=["microphysics"],
             )
         with calibration.trial():
-            dycore.step_dynamics(trial_state)
-            if physics_config is not None:
-                dycore_to_physics(
-                    dycore_state=trial_state,
-                    physics_state=trial_physics_state,
-                    tendency_state=tendency_state,
-                    timestep=float(physics_config.dt_atmos),
-                )
-                physics(trial_physics_state, timestep=float(physics_config.dt_atmos))
-                end_of_step_update(
-                    dycore_state=trial_state,
-                    phy_state=trial_physics_state,
-                    u_dt=tendency_state.u_dt.storage,
-                    v_dt=tendency_state.v_dt.storage,
-                    pt_dt=tendency_state.pt_dt.storage,
-                    dt=float(physics_config.dt_atmos),
-                )
+            for i in range(2):
+                dycore.step_dynamics(trial_state)
+                if physics_config is not None:
+                    dycore_to_physics(
+                        dycore_state=trial_state,
+                        physics_state=trial_physics_state,
+                        tendency_state=tendency_state,
+                        timestep=float(physics_config.dt_atmos),
+                    )
+                    physics(
+                        trial_physics_state, timestep=float(physics_config.dt_atmos)
+                    )
+                    end_of_step_update(
+                        dycore_state=trial_state,
+                        phy_state=trial_physics_state,
+                        u_dt=tendency_state.u_dt.storage,
+                        v_dt=tendency_state.v_dt.storage,
+                        pt_dt=tendency_state.pt_dt.storage,
+                        dt=float(physics_config.dt_atmos),
+                    )
     all_thresholds = communicator.comm.allgather(calibration.thresholds)
     thresholds = merge_thresholds(all_thresholds)
     set_manual_thresholds(thresholds)
@@ -321,7 +390,7 @@ def _calibrate_thresholds(
 
 def set_manual_thresholds(thresholds: SavepointThresholds):
     # all thresholds on the input data are 0 because no computation has happened yet
-    for entry in thresholds.savepoints["FVDynamics-In"]:
+    for entry in thresholds.savepoints["FVDynamics-In"][0:1]:
         for name in entry:
             entry[name] = pace.util.Threshold(relative=0.0, absolute=0.0)
 

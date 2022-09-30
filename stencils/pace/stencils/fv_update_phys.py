@@ -13,6 +13,7 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM
 from pace.util.grid import DriverGridData, GridData
 
 
@@ -174,11 +175,13 @@ class ApplyPhysicsToDycore:
                 qrain=state.qrain,
                 qsnow=state.qsnow,
                 qgraupel=state.qgraupel,
-                peln=state.peln,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data,
                 delp=state.delp,
                 pt=state.pt,
                 ps=state.ps,
-                pe=state.pe,
+                pe=state.pe.transpose([X_DIM, Z_INTERFACE_DIM, Y_DIM]),
                 pk=state.pk,
             )
         self._moist_cv(

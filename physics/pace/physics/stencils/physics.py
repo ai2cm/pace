@@ -43,6 +43,9 @@ def atmos_phys_driver_statein(
 ):
     from __externals__ import nwat, pk0inv, pktop, ptop
 
+    with computation(BACKWARD), interval(...):
+        phii = 0.0
+
     with computation(BACKWARD), interval(0, -1):
         phii = phii[0, 0, 1] - delz * constants.GRAV
 
