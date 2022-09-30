@@ -27,7 +27,7 @@ from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
-from .grid import GridInitializerSelector
+from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
@@ -81,11 +81,15 @@ class DriverConfig:
 
     stencil_config: pace.dsl.StencilConfig
     initialization: InitializerSelector
-    grid_config: GridInitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
+    grid_config: GridInitializerSelector = dataclasses.field(
+        default_factory=lambda: GridInitializerSelector(
+            type="generated", config=GeneratedGridConfig()
+        )
+    )
     diagnostics_config: diagnostics.DiagnosticsConfig = dataclasses.field(
         default_factory=diagnostics.DiagnosticsConfig
     )
@@ -184,7 +188,10 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
-        kwargs["grid_config"] = GridInitializerSelector.from_dict(kwargs["grid_config"])
+        if "grid_config" in kwargs:
+            kwargs["grid_config"] = GridInitializerSelector.from_dict(
+                kwargs["grid_config"]
+            )
 
         if (
             isinstance(kwargs["stencil_config"], dict)

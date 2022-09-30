@@ -3,15 +3,12 @@ import unittest.mock
 
 import gt4py
 import numpy as np
-import pytest
 import xarray as xr
 
 import pace.dsl
-from pace.driver import CreatesComm, Driver, DriverConfig
+from pace.driver import CreatesComm, DriverConfig
 from pace.driver.initialization import BaroclinicConfig
 from pace.util.null_comm import NullComm
-
-from .test_driver import get_driver_config, mocked_components
 
 
 class NullCommConfig(CreatesComm):
@@ -72,9 +69,18 @@ def test_restart_save_to_disk():
             sizer=sizer, backend=backend
         )
 
+        (
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
+        ) = pace.driver.GeneratedGridConfig().get_grid(quantity_factory, communicator)
         init = BaroclinicConfig()
         driver_state = init.get_driver_state(
-            quantity_factory=quantity_factory, communicator=communicator
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
+            grid_data=grid_data,
         )
         driver_state.save_state(mpi_comm)
 
@@ -114,22 +120,3 @@ def test_restart_save_to_disk():
                     )
     finally:
         shutil.rmtree("RESTART")
-
-
-@pytest.mark.parametrize(
-    "steps,intermediate_restart",
-    [
-        pytest.param(5, [2, 3, 4], id="five_steps_three_intermediate_restart"),
-        pytest.param(5, [1], id="five_steps_one_intermediate_restart"),
-        pytest.param(5, [], id="five_steps_no_intermediate_restart"),
-    ],
-)
-def test_intermediate_restart(steps: int, intermediate_restart: list):
-    config = get_driver_config(
-        dt_atmos=200, seconds=200 * steps, intermediate_restart=intermediate_restart
-    )
-    with mocked_components() as mock:
-        driver = Driver(config=config)
-        driver.step_all()
-    assert driver.restart.save_state_as_restart.call_count == len(intermediate_restart)
-    assert driver.restart.write_restart_config.call_count == len(intermediate_restart)

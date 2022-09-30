@@ -1,5 +1,6 @@
 import functools
 import warnings
+from pickle import NONE
 
 from pace import util
 from pace.dsl.gt4py_utils import asarray
@@ -125,8 +126,7 @@ class MetricTerms:
         self._dx_center = None
         self._dy_center = None
         self._ak = None
-        self._bk = None
-        self._ks = None
+        self._bk = NONE
         self._ptop = None
         self._ec1 = None
         self._ec2 = None
@@ -352,7 +352,6 @@ class MetricTerms:
         """
         if self._ak is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,
@@ -367,30 +366,11 @@ class MetricTerms:
         """
         if self._bk is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,
             ) = self._set_hybrid_pressure_coefficients()
         return self._bk
-
-    # TODO: can ks and ptop just be derived from ak and bk instead of being returned
-    # as part of _set_hybrid_pressure_coefficients?
-    @property
-    def ks(self) -> util.Quantity:
-        """
-        the number of pure-pressure layers at the top of the model
-        also the level where model transitions from pure pressure to
-        hybrid pressure levels
-        """
-        if self._ks is None:
-            (
-                self._ks,
-                self._ptop,
-                self._ak,
-                self._bk,
-            ) = self._set_hybrid_pressure_coefficients()
-        return self._ks
 
     @property
     def ptop(self) -> util.Quantity:
@@ -399,7 +379,6 @@ class MetricTerms:
         """
         if self._ptop is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,

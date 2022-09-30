@@ -1,11 +1,9 @@
 import dataclasses
 import pathlib
-from typing import Any, Optional
 
 import xarray as xr
 
-from pace.dsl.gt4py_utils import split_cartesian_into_storages
-from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
+import pace.util
 from pace.util.filesystem import get_fs
 
 from .generation import MetricTerms
@@ -17,20 +15,20 @@ class DampingCoefficients:
     Terms used to compute damping coefficients.
     """
 
-    divg_u: FloatFieldIJ
-    divg_v: FloatFieldIJ
-    del6_u: FloatFieldIJ
-    del6_v: FloatFieldIJ
+    divg_u: pace.util.Quantity
+    divg_v: pace.util.Quantity
+    del6_u: pace.util.Quantity
+    del6_v: pace.util.Quantity
     da_min: float
     da_min_c: float
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
         return cls(
-            divg_u=metric_terms.divg_u.storage,
-            divg_v=metric_terms.divg_v.storage,
-            del6_u=metric_terms.del6_u.storage,
-            del6_v=metric_terms.del6_v.storage,
+            divg_u=metric_terms.divg_u,
+            divg_v=metric_terms.divg_v,
+            del6_u=metric_terms.del6_u,
+            del6_v=metric_terms.del6_v,
             da_min=metric_terms.da_min,
             da_min_c=metric_terms.da_min_c,
         )
@@ -42,68 +40,76 @@ class HorizontalGridData:
     Terms defining the horizontal grid.
     """
 
-    lon: FloatFieldIJ
-    lat: FloatFieldIJ
-    lon_agrid: FloatFieldIJ
-    lat_agrid: FloatFieldIJ
-    area: FloatFieldIJ
-    area_64: FloatFieldIJ
-    rarea: FloatFieldIJ
+    lon: pace.util.Quantity
+    lat: pace.util.Quantity
+    lon_agrid: pace.util.Quantity
+    lat_agrid: pace.util.Quantity
+    area: pace.util.Quantity
+    area_64: pace.util.Quantity
+    rarea: pace.util.Quantity
     # TODO: refactor this to "area_c" and invert where used
-    rarea_c: FloatFieldIJ
-    dx: FloatFieldIJ
-    dy: FloatFieldIJ
-    dxc: FloatFieldIJ
-    dyc: FloatFieldIJ
-    dxa: FloatFieldIJ
-    dya: FloatFieldIJ
+    rarea_c: pace.util.Quantity
+    dx: pace.util.Quantity
+    dy: pace.util.Quantity
+    dxc: pace.util.Quantity
+    dyc: pace.util.Quantity
+    dxa: pace.util.Quantity
+    dya: pace.util.Quantity
     # TODO: refactor usages to invert "normal" versions instead
-    rdx: FloatFieldIJ
-    rdy: FloatFieldIJ
-    rdxc: FloatFieldIJ
-    rdyc: FloatFieldIJ
-    rdxa: FloatFieldIJ
-    rdya: FloatFieldIJ
-    a11: FloatFieldIJ
-    a12: FloatFieldIJ
-    a21: FloatFieldIJ
-    a22: FloatFieldIJ
-    edge_w: FloatFieldIJ
-    edge_e: FloatFieldIJ
-    edge_s: FloatFieldI
-    edge_n: FloatFieldI
+    rdx: pace.util.Quantity
+    rdy: pace.util.Quantity
+    rdxc: pace.util.Quantity
+    rdyc: pace.util.Quantity
+    rdxa: pace.util.Quantity
+    rdya: pace.util.Quantity
+    ee1: pace.util.Quantity
+    ee2: pace.util.Quantity
+    es1: pace.util.Quantity
+    ew2: pace.util.Quantity
+    a11: pace.util.Quantity
+    a12: pace.util.Quantity
+    a21: pace.util.Quantity
+    a22: pace.util.Quantity
+    edge_w: pace.util.Quantity
+    edge_e: pace.util.Quantity
+    edge_s: pace.util.Quantity
+    edge_n: pace.util.Quantity
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData":
         return cls(
-            lon=metric_terms.lon.storage,
-            lat=metric_terms.lat.storage,
-            lon_agrid=metric_terms.lon_agrid.storage,
-            lat_agrid=metric_terms.lat_agrid.storage,
-            area=metric_terms.area.storage,
-            area_64=metric_terms.area.storage,
-            rarea=metric_terms.rarea.storage,
-            rarea_c=metric_terms.rarea_c.storage,
-            dx=metric_terms.dx.storage,
-            dy=metric_terms.dy.storage,
-            dxc=metric_terms.dxc.storage,
-            dyc=metric_terms.dyc.storage,
-            dxa=metric_terms.dxa.storage,
-            dya=metric_terms.dya.storage,
-            rdx=metric_terms.rdx.storage,
-            rdy=metric_terms.rdy.storage,
-            rdxc=metric_terms.rdxc.storage,
-            rdyc=metric_terms.rdyc.storage,
-            rdxa=metric_terms.rdxa.storage,
-            rdya=metric_terms.rdya.storage,
-            a11=metric_terms.a11.storage,
-            a12=metric_terms.a12.storage,
-            a21=metric_terms.a21.storage,
-            a22=metric_terms.a22.storage,
-            edge_w=metric_terms.edge_w.storage,
-            edge_e=metric_terms.edge_e.storage,
-            edge_s=metric_terms.edge_s.storage,
-            edge_n=metric_terms.edge_n.storage,
+            lon=metric_terms.lon,
+            lat=metric_terms.lat,
+            lon_agrid=metric_terms.lon_agrid,
+            lat_agrid=metric_terms.lat_agrid,
+            area=metric_terms.area,
+            area_64=metric_terms.area,
+            rarea=metric_terms.rarea,
+            rarea_c=metric_terms.rarea_c,
+            dx=metric_terms.dx,
+            dy=metric_terms.dy,
+            dxc=metric_terms.dxc,
+            dyc=metric_terms.dyc,
+            dxa=metric_terms.dxa,
+            dya=metric_terms.dya,
+            rdx=metric_terms.rdx,
+            rdy=metric_terms.rdy,
+            rdxc=metric_terms.rdxc,
+            rdyc=metric_terms.rdyc,
+            rdxa=metric_terms.rdxa,
+            rdya=metric_terms.rdya,
+            ee1=metric_terms.ee1,
+            ee2=metric_terms.ee2,
+            es1=metric_terms.es1,
+            ew2=metric_terms.ew2,
+            a11=metric_terms.a11,
+            a12=metric_terms.a12,
+            a21=metric_terms.a21,
+            a22=metric_terms.a22,
+            edge_w=metric_terms.edge_w,
+            edge_e=metric_terms.edge_e,
+            edge_s=metric_terms.edge_s,
+            edge_n=metric_terms.edge_n,
         )
 
 
@@ -116,8 +122,8 @@ class VerticalGridData:
     """
 
     # TODO: make these non-optional, make FloatFieldK a true type and use it
-    ak: Optional[Any] = None
-    bk: Optional[Any] = None
+    ak: pace.util.Quantity
+    bk: pace.util.Quantity
     """
     reference pressure (Pa) used to define pressure at vertical interfaces,
     where p = ak + bk * p_ref
@@ -126,8 +132,8 @@ class VerticalGridData:
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
         return cls(
-            ak=metric_terms.ak.storage,
-            bk=metric_terms.bk.storage,
+            ak=metric_terms.ak,
+            bk=metric_terms.bk,
         )
 
     @classmethod
@@ -157,9 +163,9 @@ class VerticalGridData:
         """
         top of atmosphere pressure (Pa)
         """
-        if self.bk[0] != 0:
+        if self.bk.view[0] != 0:
             raise ValueError("ptop is not well-defined when top-of-atmosphere bk != 0")
-        return self.ak[0]
+        return self.ak.view[0]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -169,32 +175,32 @@ class ContravariantGridData:
     contravariant components.
     """
 
-    cosa: FloatFieldIJ
-    cosa_u: FloatFieldIJ
-    cosa_v: FloatFieldIJ
-    cosa_s: FloatFieldIJ
-    sina_u: FloatFieldIJ
-    sina_v: FloatFieldIJ
-    rsina: FloatFieldIJ
-    rsin_u: FloatFieldIJ
-    rsin_v: FloatFieldIJ
-    rsin2: FloatFieldIJ
+    cosa: pace.util.Quantity
+    cosa_u: pace.util.Quantity
+    cosa_v: pace.util.Quantity
+    cosa_s: pace.util.Quantity
+    sina_u: pace.util.Quantity
+    sina_v: pace.util.Quantity
+    rsina: pace.util.Quantity
+    rsin_u: pace.util.Quantity
+    rsin_v: pace.util.Quantity
+    rsin2: pace.util.Quantity
 
     @classmethod
     def new_from_metric_terms(
         cls, metric_terms: MetricTerms
     ) -> "ContravariantGridData":
         return cls(
-            cosa=metric_terms.cosa.storage,
-            cosa_u=metric_terms.cosa_u.storage,
-            cosa_v=metric_terms.cosa_v.storage,
-            cosa_s=metric_terms.cosa_s.storage,
-            sina_u=metric_terms.sina_u.storage,
-            sina_v=metric_terms.sina_v.storage,
-            rsina=metric_terms.rsina.storage,
-            rsin_u=metric_terms.rsin_u.storage,
-            rsin_v=metric_terms.rsin_v.storage,
-            rsin2=metric_terms.rsin2.storage,
+            cosa=metric_terms.cosa,
+            cosa_u=metric_terms.cosa_u,
+            cosa_v=metric_terms.cosa_v,
+            cosa_s=metric_terms.cosa_s,
+            sina_u=metric_terms.sina_u,
+            sina_v=metric_terms.sina_v,
+            rsina=metric_terms.rsina,
+            rsin_u=metric_terms.rsin_u,
+            rsin_v=metric_terms.rsin_v,
+            rsin2=metric_terms.rsin2,
         )
 
 
@@ -206,26 +212,26 @@ class AngleGridData:
     Corresponds in the fortran code to sin_sg and cos_sg.
     """
 
-    sin_sg1: FloatFieldIJ
-    sin_sg2: FloatFieldIJ
-    sin_sg3: FloatFieldIJ
-    sin_sg4: FloatFieldIJ
-    cos_sg1: FloatFieldIJ
-    cos_sg2: FloatFieldIJ
-    cos_sg3: FloatFieldIJ
-    cos_sg4: FloatFieldIJ
+    sin_sg1: pace.util.Quantity
+    sin_sg2: pace.util.Quantity
+    sin_sg3: pace.util.Quantity
+    sin_sg4: pace.util.Quantity
+    cos_sg1: pace.util.Quantity
+    cos_sg2: pace.util.Quantity
+    cos_sg3: pace.util.Quantity
+    cos_sg4: pace.util.Quantity
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "AngleGridData":
         return cls(
-            sin_sg1=metric_terms.sin_sg1.storage,
-            sin_sg2=metric_terms.sin_sg2.storage,
-            sin_sg3=metric_terms.sin_sg3.storage,
-            sin_sg4=metric_terms.sin_sg4.storage,
-            cos_sg1=metric_terms.cos_sg1.storage,
-            cos_sg2=metric_terms.cos_sg2.storage,
-            cos_sg3=metric_terms.cos_sg3.storage,
-            cos_sg4=metric_terms.cos_sg4.storage,
+            sin_sg1=metric_terms.sin_sg1,
+            sin_sg2=metric_terms.sin_sg2,
+            sin_sg3=metric_terms.sin_sg3,
+            sin_sg4=metric_terms.sin_sg4,
+            cos_sg1=metric_terms.cos_sg1,
+            cos_sg2=metric_terms.cos_sg2,
+            cos_sg3=metric_terms.cos_sg3,
+            cos_sg4=metric_terms.cos_sg4,
         )
 
 
@@ -351,6 +357,22 @@ class GridData:
     def rdya(self):
         """1 / dya"""
         return self._horizontal_data.rdya
+
+    @property
+    def ee1(self) -> pace.util.Quantity:
+        return self._horizontal_data.ee1
+
+    @property
+    def ee2(self) -> pace.util.Quantity:
+        return self._horizontal_data.ee2
+
+    @property
+    def es1(self) -> pace.util.Quantity:
+        return self._horizontal_data.es1
+
+    @property
+    def ew2(self) -> pace.util.Quantity:
+        return self._horizontal_data.ew2
 
     @property
     def a11(self):
@@ -526,53 +548,53 @@ class DriverGridData:
       ew2_3: z-component of grid local unit vector in y-direction at cell edge
     """
 
-    vlon1: FloatFieldIJ
-    vlon2: FloatFieldIJ
-    vlon3: FloatFieldIJ
-    vlat1: FloatFieldIJ
-    vlat2: FloatFieldIJ
-    vlat3: FloatFieldIJ
-    edge_vect_w: FloatFieldI
-    edge_vect_e: FloatFieldI
-    edge_vect_s: FloatFieldIJ
-    edge_vect_n: FloatFieldIJ
-    es1_1: FloatFieldIJ
-    es1_2: FloatFieldIJ
-    es1_3: FloatFieldIJ
-    ew2_1: FloatFieldIJ
-    ew2_2: FloatFieldIJ
-    ew2_3: FloatFieldIJ
+    vlon1: pace.util.Quantity
+    vlon2: pace.util.Quantity
+    vlon3: pace.util.Quantity
+    vlat1: pace.util.Quantity
+    vlat2: pace.util.Quantity
+    vlat3: pace.util.Quantity
+    edge_vect_w: pace.util.Quantity
+    edge_vect_e: pace.util.Quantity
+    edge_vect_s: pace.util.Quantity
+    edge_vect_n: pace.util.Quantity
+    es1_1: pace.util.Quantity
+    es1_2: pace.util.Quantity
+    es1_3: pace.util.Quantity
+    ew2_1: pace.util.Quantity
+    ew2_2: pace.util.Quantity
+    ew2_3: pace.util.Quantity
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "DriverGridData":
         return cls.new_from_grid_variables(
-            vlon=metric_terms.vlon.storage,
-            vlat=metric_terms.vlon.storage,
-            edge_vect_n=metric_terms.edge_vect_n.storage,
-            edge_vect_s=metric_terms.edge_vect_s.storage,
-            edge_vect_e=metric_terms.edge_vect_e_2d.storage,
-            edge_vect_w=metric_terms.edge_vect_w_2d.storage,
-            es1=metric_terms.es1.storage,
-            ew2=metric_terms.ew2.storage,
+            vlon=metric_terms.vlon,
+            vlat=metric_terms.vlon,
+            edge_vect_n=metric_terms.edge_vect_n,
+            edge_vect_s=metric_terms.edge_vect_s,
+            edge_vect_e=metric_terms.edge_vect_e_2d,
+            edge_vect_w=metric_terms.edge_vect_w_2d,
+            es1=metric_terms.es1,
+            ew2=metric_terms.ew2,
         )
 
     @classmethod
     def new_from_grid_variables(
         cls,
-        vlon: FloatField,
-        vlat: FloatField,
-        edge_vect_n: FloatFieldI,
-        edge_vect_s: FloatFieldI,
-        edge_vect_e: FloatFieldIJ,
-        edge_vect_w: FloatFieldIJ,
-        es1: FloatField,
-        ew2: FloatField,
+        vlon: pace.util.Quantity,
+        vlat: pace.util.Quantity,
+        edge_vect_n: pace.util.Quantity,
+        edge_vect_s: pace.util.Quantity,
+        edge_vect_e: pace.util.Quantity,
+        edge_vect_w: pace.util.Quantity,
+        es1: pace.util.Quantity,
+        ew2: pace.util.Quantity,
     ) -> "DriverGridData":
 
-        vlon1, vlon2, vlon3 = split_cartesian_into_storages(vlon)
-        vlat1, vlat2, vlat3 = split_cartesian_into_storages(vlat)
-        es1_1, es1_2, es1_3 = split_cartesian_into_storages(es1)
-        ew2_1, ew2_2, ew2_3 = split_cartesian_into_storages(ew2)
+        vlon1, vlon2, vlon3 = split_quantity_along_last_dim(vlon)
+        vlat1, vlat2, vlat3 = split_quantity_along_last_dim(vlat)
+        es1_1, es1_2, es1_3 = split_quantity_along_last_dim(es1)
+        ew2_1, ew2_2, ew2_3 = split_quantity_along_last_dim(ew2)
 
         return cls(
             vlon1=vlon1,
@@ -592,3 +614,27 @@ class DriverGridData:
             edge_vect_s=edge_vect_s,
             edge_vect_n=edge_vect_n,
         )
+
+
+def split_quantity_along_last_dim(quantity):
+    """Split a quantity along the last dimension into a list of quantities.
+
+    Args:
+        quantity: Quantity to split.
+
+    Returns:
+        List of quantities.
+    """
+    return_list = []
+    for i in range(quantity.data.shape[-1]):
+        return_list.append(
+            pace.util.Quantity(
+                data=quantity.data[..., i],
+                dims=quantity.dims[:-1],
+                units=quantity.units,
+                origin=quantity.origin[:-1],
+                extent=quantity.extent[:-1],
+                gt4py_backend=quantity.gt4py_backend,
+            )
+        )
+    return return_list
