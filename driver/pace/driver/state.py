@@ -1,9 +1,6 @@
 import dataclasses
-import os
 from dataclasses import fields
-from typing import Union
 
-import numpy as np
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -11,16 +8,7 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
-from pace.driver.grid import GeneratedConfig
-from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util._properties import RestartProperties
-from pace.util.constants import X_DIM, Y_DIM, Z_DIM
-
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
+from pace.driver.grid import GeneratedGridConfig
 
 
 @dataclasses.dataclass()
@@ -98,7 +86,11 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
 
-        damping_coefficients, driver_grid_data, grid_data = GeneratedConfig.get_grid(
+        (
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
+        ) = GeneratedGridConfig.get_grid(
             quantity_factory=quantity_factory,
             communicator=communicator,
         )
@@ -163,30 +155,25 @@ def _restart_driver_state(
     driver_grid_data: pace.util.grid.DriverGridData,
     grid_data: pace.util.grid.GridData,
 ):
-
-    dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-    backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
+    fs = pace.util.get_fs(path)
 
     is_fortran_restart = False
-    restart_files = os.listdir(path)
+    restart_files = fs.ls(path)
     is_fortran_restart = any(
         fname.endswith("fv_core.res.nc") for fname in restart_files
     )
 
     if is_fortran_restart:
-        _overwrite_state_from_fortran_restart(
-            path,
-            communicator,
-            dycore_state,
-            backend_uses_gpu,
+        dycore_state = fv3core.DycoreState.from_fortran_restart(
+            quantity_factory=quantity_factory, communicator=communicator, path=path
         )
     else:
+        dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
         _overwrite_state_from_restart(
             path,
             rank,
             dycore_state,
             "restart_dycore_state",
-            backend_uses_gpu,
         )
 
     active_packages = ["microphysics"]
@@ -212,9 +199,8 @@ def _restart_driver_state(
 def _overwrite_state_from_restart(
     path: str,
     rank: int,
-    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
+    state: fv3core.DycoreState,
     restart_file_prefix: str,
-    is_gpu_backend: bool,
 ):
     """
     Args:
@@ -224,155 +210,10 @@ def _overwrite_state_from_restart(
         restart_file_prefix: file prefix name to read
         is_gpu_backend:
     """
-    df = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+    ds = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+
     for _field in fields(type(state)):
         if "units" in _field.metadata.keys():
-            if is_gpu_backend:
-                if "physics" in restart_file_prefix:
-                    state.__dict__[_field.name][:] = gt_utils.asarray(
-                        df[_field.name].data[:], to_type=cp.ndarray
-                    )
-                else:
-                    state.__dict__[_field.name].data[:] = gt_utils.asarray(
-                        df[_field.name].data[:], to_type=cp.ndarray
-                    )
-            else:
-                state.__dict__[_field.name].data[:] = df[_field.name].data[:]
-
-
-def _overwrite_state_from_fortran_restart(
-    path: str,
-    communicator: pace.util.CubedSphereCommunicator,
-    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
-    is_gpu_backend: bool,
-):
-    """
-    Args:
-        path: path to restart files
-        communicator:
-        state: an empty state
-        is_gpu_backend:
-    """
-
-    state_dict = pace.util.open_restart(
-        path,
-        communicator,
-        tracer_properties=extra_restart_properties,
-        fortran_dict=fortran_restart_to_pace_dict,
-    )
-
-    _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
-
-
-def _dict_state_to_driver_state(
-    fortran_state: dict,
-    driver_state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
-    is_gpu_backend: bool,
-):
-    """
-    Takes a dict of state quantities with their Fortran names and a driver state
-    and populates the driver state with quantities from the dict.
-    Args:
-        fortran_state
-        driver_state
-        is_gpu_backend
-    """
-
-    # breakpoint()
-    for field in fortran_restart_to_pace_dict.values():
-        # breakpoint()
-        driver_state.__dict__[field].view[:] = np.transpose(fortran_state[field].data)
-        # breakpoint()
-
-        if is_gpu_backend:
-            # driver_state.__dict__[field].view[:] = gt_utils.asarray(
-            #     np.transpose(fortran_state[field].data), to_type=cp.ndarray,
-            # )
-            # Ajda
-            # not sure if this will work?? Internet told me cupy has transpose
-            driver_state.__dict__[field].view[:] = cp.transpose(
-                fortran_state[field].data
+            state.__dict__[_field.name].data[:] = gt_utils.asarray(
+                ds[_field.name].data[:], to_type=state.__dict__[_field.name].np.ndarray
             )
-        else:
-            driver_state.__dict__[field].view[:] = np.transpose(
-                fortran_state[field].data
-            )
-        # breakpoint()
-
-
-fortran_restart_to_pace_dict = {
-    "pt": "T",  # air temperature
-    "delp": "delp",  # pressure thickness of atmospheric layer
-    "phis": "phis",  # surface geopotential
-    "w": "W",  # vertical wind
-    "u": "u",  # x_wind
-    "v": "v",  # y_wind
-    "qvapor": "sphum",  # specific humidity
-    "qliquid": "liq_wat",  # liquid water mixing ratio
-    "qice": "ice_wat",  # cloud ice mixing ratio
-    "qrain": "rainwat",  # rain mixing ratio
-    "qsnow": "snowwat",  # snow mixing ratio
-    "qgraupel": "graupel",  # graupel mixing ratio
-    "qo3mr": "o3mr",  # ozone mixing ratio
-    # "qsgs_tke": "sgs_tke", # turbulent kinetic energy
-    "qcld": "cld_amt",  # cloud fraction
-    "delz": "DZ",  # vertical thickness of atmospheric layer
-}
-# pace : fortran_restart
-fortran_restart_to_pace_dict = dict(
-    (v, k) for k, v in fortran_restart_to_pace_dict.items()
-)
-
-# not sure why qsgs breaks this... maybe it doesn't exist?
-
-
-# put tracer properties here for now, but there's probably a better place for them.
-# maybe a file name _tracer_properties.py since _properties.py is already taken?
-
-extra_restart_properties: RestartProperties = {
-    "specific humidity": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "sphum",
-        "units": "g/kg",
-    },
-    "liquid water mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "liq_wat",
-        "units": "g/kg",
-    },
-    "cloud ice mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "ice_wat",
-        "units": "g/kg",
-    },
-    "rain mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "rainwat",
-        "units": "g/kg",
-    },
-    "snow mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "snowwat",
-        "units": "g/kg",
-    },
-    "graupel mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "graupel",
-        "units": "g/kg",
-    },
-    "ozone mixing ratio": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "o3mr",
-        "units": "g/kg",
-    },
-    "turublent kinetic energy": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "sgs_tke",
-        "units": "g/kg",
-    },
-    "cloud fraction": {
-        "dims": [Z_DIM, Y_DIM, X_DIM],
-        "restart_name": "cld_amt",
-        "units": "g/kg",
-    },
-}

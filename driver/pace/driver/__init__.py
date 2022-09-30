@@ -7,7 +7,7 @@ from .comm import (
 )
 from .diagnostics import Diagnostics, DiagnosticsConfig
 from .driver import Driver, DriverConfig
-from .grid import GeneratedConfig, SerialboxConfig
+from .grid import GeneratedGridConfig, SerialboxGridConfig
 from .initialization import BaroclinicConfig, PredefinedStateConfig, RestartConfig
 from .performance import PerformanceConfig
 from .registry import Registry

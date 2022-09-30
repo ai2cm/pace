@@ -13,8 +13,6 @@ import pytest
 
 import pace.util
 import pace.util._legacy_restart
-from pace.driver.state import extra_restart_properties
-from pace.driver.state import fortran_restart_to_pace_dict as fortran_dict
 from pace.util.testing import DummyComm
 
 
@@ -30,7 +28,7 @@ def layout(request):
 
 
 @requires_xarray
-def get_c12_restart_state_list(layout, only_names, tracer_properties, fortran_dict):
+def get_c12_restart_state_list(layout, only_names, tracer_properties):
     total_ranks = 6 * layout[0] * layout[1]
     shared_buffer = {}
     communicator_list = []
@@ -48,7 +46,6 @@ def get_c12_restart_state_list(layout, only_names, tracer_properties, fortran_di
                 communicator,
                 only_names=only_names,
                 tracer_properties=tracer_properties,
-                fortran_dict=fortran_dict,
             )
         )
     return state_list
@@ -58,22 +55,18 @@ def get_c12_restart_state_list(layout, only_names, tracer_properties, fortran_di
 @pytest.mark.cpu_only
 @requires_xarray
 def test_open_c12_restart(layout):
-    tracer_properties = extra_restart_properties
+    tracer_properties = {}
     only_names = None
     c12_restart_state_list = get_c12_restart_state_list(
-        layout, only_names, tracer_properties, fortran_dict
+        layout, only_names, tracer_properties
     )
-    # breakpoint()
     # C12 has 12 gridcells along each tile side, we divide this across processors
     ny = 12 / layout[0]
     nx = 12 / layout[1]
     for state in c12_restart_state_list:
         assert "time" in state.keys()
-        # Ajda
-        # fails on this but not sure why it's in there
-        # assert len(state.keys()) == 63
+        assert len(state.keys()) == 63
         for name, value in state.items():
-            print(name)
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
             else:
@@ -94,33 +87,33 @@ def test_open_c12_restart(layout):
     "tracer_properties",
     [
         {
-            "qvapor": {
+            "specific_humidity": {
                 "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
                 "units": "kg/kg",
                 "restart_name": "sphum",
             },
         },
-        # {
-        #     "specific_humidity_by_another_name": {
-        #         "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
-        #         "units": "kg/kg",
-        #         "restart_name": "sphum",
-        #     },
-        # },
-        # {
-        #     "qvapor": {
-        #         "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
-        #         "units": "kg/kg",
-        #         "restart_name": "sphum",
-        #     },
-        # },
         {
-            "qvapor": {
+            "specific_humidity_by_another_name": {
                 "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
                 "units": "kg/kg",
                 "restart_name": "sphum",
             },
-            "qsnow": {
+        },
+        {
+            "specific_humidity": {
+                "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+        },
+        {
+            "specific_humidity": {
+                "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+            "snow_water_mixing_ratio": {
                 "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
                 "units": "kg/kg",
                 "restart_name": "snowwat",
@@ -133,7 +126,7 @@ def test_open_c12_restart(layout):
 def test_open_c12_restart_tracer_properties(layout, tracer_properties):
     only_names = None
     c12_restart_state_list = get_c12_restart_state_list(
-        layout, only_names, tracer_properties, fortran_dict
+        layout, only_names, tracer_properties
     )
     for state in c12_restart_state_list:
         for name, properties in tracer_properties.items():
@@ -165,14 +158,10 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
             os.path.join(DATA_DIRECTORY, "c12_restart"),
             communicator,
             to_state=state_list[-1],
-            tracer_properties=extra_restart_properties,
-            fortran_dict=fortran_dict,
         )
     for state in state_list:
         assert "time" in state.keys()
-        # Ajda
-        # fails on this but not sure why it's in there
-        # assert len(state.keys()) == 63
+        assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
@@ -209,10 +198,7 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
     for communicator in communicator_list:
         state_list.append(
             pace.util.open_restart(
-                os.path.join(DATA_DIRECTORY, "c12_restart"),
-                communicator,
-                tracer_properties=extra_restart_properties,
-                fortran_dict=fortran_dict,
+                os.path.join(DATA_DIRECTORY, "c12_restart"), communicator
             )
         )
     for state in state_list:
@@ -221,18 +207,12 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
                 value.view[:] = np.nan
     for state, communicator in zip(state_list, communicator_list):
         pace.util.open_restart(
-            os.path.join(DATA_DIRECTORY, "c12_restart"),
-            communicator,
-            to_state=state,
-            tracer_properties=extra_restart_properties,
-            fortran_dict=fortran_dict,
+            os.path.join(DATA_DIRECTORY, "c12_restart"), communicator, to_state=state
         )
 
     for state in state_list:
         assert "time" in state.keys()
-        # Ajda
-        # fails on this but not sure why it's in there
-        # assert len(state.keys()) == 63
+        assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
@@ -412,18 +392,14 @@ def test_read_state_non_scalar_time():
 
 @pytest.mark.parametrize(
     "only_names",
-    # [["time", "air_temperature"], ["air_temperature"]],
-    [["time", "pt"], ["pt"]],
+    [["time", "air_temperature"], ["air_temperature"]],
     ids=lambda x: f"{x}",
 )
 @requires_xarray
 def test_open_c12_restart_only_names(layout, only_names):
     tracer_properties = {}
     c12_restart_state_list = get_c12_restart_state_list(
-        layout,
-        only_names,
-        tracer_properties,
-        fortran_dict,
+        layout, only_names, tracer_properties
     )
     for state in c12_restart_state_list:
         assert set(only_names) == set(state.keys())

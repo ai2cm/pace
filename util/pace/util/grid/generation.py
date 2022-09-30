@@ -1711,16 +1711,14 @@ class MetricTerms:
         return area_cgrid
 
     def _set_hybrid_pressure_coefficients(self):
-        ks = self.quantity_factory.zeros([], "")
         ptop = self.quantity_factory.zeros([], "mb")
         ak = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "mb")
         bk = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "")
         pressure_coefficients = set_hybrid_pressure_coefficients(self._npz)
-        ks = pressure_coefficients.ks
         ptop = pressure_coefficients.ptop
         ak.data[:] = asarray(pressure_coefficients.ak, type(ak.data))
         bk.data[:] = asarray(pressure_coefficients.bk, type(bk.data))
-        return ks, ptop, ak, bk
+        return ptop, ak, bk
 
     def _calculate_center_vectors(self):
         ec1 = self.quantity_factory.zeros(

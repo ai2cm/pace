@@ -1,8 +1,12 @@
 import dataclasses
+import pathlib
 from typing import Any, Optional
+
+import xarray as xr
 
 from pace.dsl.gt4py_utils import split_cartesian_into_storages
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
+from pace.util.filesystem import get_fs
 
 from .generation import MetricTerms
 
@@ -112,15 +116,11 @@ class VerticalGridData:
     """
 
     # TODO: make these non-optional, make FloatFieldK a true type and use it
-    ks: int
     ak: Optional[Any] = None
     bk: Optional[Any] = None
     """
     reference pressure (Pa) used to define pressure at vertical interfaces,
     where p = ak + bk * p_ref
-    ptop is the top of the atmosphere and ks is the lowest index (highest layer) for
-    which rayleigh friction
-
     """
 
     @classmethod
@@ -128,14 +128,38 @@ class VerticalGridData:
         return cls(
             ak=metric_terms.ak.storage,
             bk=metric_terms.bk.storage,
-            ks=metric_terms.ks,
         )
 
-    # @property
-    # def ptop(cls, metric_terms: MetricTerms) -> float:
-    #     assert metric_terms.bk[0] == 0
-    #     ptop = metric_terms.ak[0]
-    #     return ptop
+    @classmethod
+    def from_restart(cls, restart_path: str):
+        fs = get_fs(restart_path)
+        restart_files = fs.ls(restart_path)
+        data_file = restart_files[
+            [fname.endswith("fv_core.res.nc") for fname in restart_files].index(True)
+        ]
+
+        ak_bk_data_file = pathlib.Path(restart_path) / data_file
+        if not fs.isfile(ak_bk_data_file):
+            raise ValueError(
+                """vertical_grid_from_restart is true,
+                but no fv_core.res.nc in restart data file."""
+            )
+
+        with fs.open(ak_bk_data_file, "rb") as f:
+            ds = xr.open_dataset(f).isel(Time=0).drop_vars("Time")
+            ak = ds["ak"].values
+            bk = ds["bk"].values
+
+        return cls(ak=ak, bk=bk)
+
+    @property
+    def ptop(self) -> float:
+        """
+        top of atmosphere pressure (Pa)
+        """
+        if self.bk[0] != 0:
+            raise ValueError("ptop is not well-defined when top-of-atmosphere bk != 0")
+        return self.ak[0]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -398,19 +422,9 @@ class GridData:
         self._vertical_data.bk = value
 
     @property
-    def ks(self):
-        return self._vertical_data.ks
-
-    @ks.setter
-    def ks(self, value):
-        self._vertical_data.ks = value
-
-    # Ajda
-    # how do I get the vertical data from metric terms ptop in here?
-    @property
     def ptop(self):
         """pressure at top of atmosphere (Pa)"""
-        return self._vertical_data.ak[0]
+        return self._vertical_data.ptop
 
     @ptop.setter
     def ptop(self, value):

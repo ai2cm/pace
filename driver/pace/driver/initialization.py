@@ -4,7 +4,7 @@ import logging
 import os
 import pathlib
 from datetime import datetime
-from typing import ClassVar
+from typing import Callable, ClassVar, Type, TypeVar
 
 import f90nml
 
@@ -54,6 +54,9 @@ class Initializer(abc.ABC):
         ...
 
 
+IT = TypeVar("IT", bound=Type[Initializer])
+
+
 @dataclasses.dataclass
 class InitializerSelector(Initializer):
     """
@@ -70,7 +73,7 @@ class InitializerSelector(Initializer):
     registry: ClassVar[Registry] = Registry()
 
     @classmethod
-    def register(cls, type_name):
+    def register(cls, type_name) -> Callable[[IT], IT]:
         return cls.registry.register(type_name)
 
     @property
@@ -185,23 +188,6 @@ class FortranRestartConfig(Initializer):
     """
 
     path: str = "."
-
-    def __post_init__(self):
-        if "gs://" in self.path:
-            # this works for the TC case
-            # which is the only one that currently lives in the public bucket
-            new_path = "/".join(self.path.split(os.path.sep)[-1:])  # last dirs
-            new_path = "restart_tmp"
-            if os.path.isdir(new_path):
-                fls = os.listdir(new_path)
-                if len(fls) == 0:
-                    os.system(
-                        "gsutil cp -r %s/* %s" % (self.path, new_path)
-                    )  # copy data
-            else:
-                os.makedirs(new_path, exist_ok=True)  # create new dir
-                os.system("gsutil cp -r %s/* %s" % (self.path, new_path))  # copy data
-            self.path = new_path + os.path.sep  # replace path with local path
 
     @property
     def start_time(self) -> datetime:
