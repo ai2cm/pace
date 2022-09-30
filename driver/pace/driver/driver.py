@@ -375,7 +375,6 @@ class Driver:
         )
         self.diagnostics.store_grid(
             grid_data=self.state.grid_data,
-            metadata=self.state.dycore_state.ps.metadata,
         )
         if config.diagnostics_config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
