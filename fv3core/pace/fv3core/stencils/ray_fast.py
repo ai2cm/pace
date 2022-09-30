@@ -175,7 +175,6 @@ class RayleighDamping:
         pfull: FloatFieldK,
         dt: float,
         ptop: float,
-        ks: int,
     ):
         rf_cutoff_nudge = self._rf_cutoff + min(100.0, 10.0 * ptop)
 
@@ -188,5 +187,4 @@ class RayleighDamping:
             dt,
             ptop,
             rf_cutoff_nudge,
-            ks,
         )
