@@ -572,8 +572,8 @@ class DriverGridData:
             vlat=metric_terms.vlon,
             edge_vect_n=metric_terms.edge_vect_n,
             edge_vect_s=metric_terms.edge_vect_s,
-            edge_vect_e=metric_terms.edge_vect_e_2d,
-            edge_vect_w=metric_terms.edge_vect_w_2d,
+            edge_vect_e=metric_terms.edge_vect_e,
+            edge_vect_w=metric_terms.edge_vect_w,
             es1=metric_terms.es1,
             ew2=metric_terms.ew2,
         )
