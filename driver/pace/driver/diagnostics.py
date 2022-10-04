@@ -177,7 +177,7 @@ def _compute_column_integral(
     if len(q_in.shape) < 3:
         assert ShapeError(f"{name} does not have vertical levels.")
     column_integral = pace.util.Quantity(
-        sum(
+        q_in.np.sum(
             q_in.data[:, :, k] * delp.data[:, :, k]
             for k in range(q_in.metadata.extent[2])
         ),
