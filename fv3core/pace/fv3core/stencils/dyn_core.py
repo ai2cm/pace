@@ -1,5 +1,6 @@
 from typing import Dict, Mapping, Optional, Sequence, Tuple
 
+from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -23,7 +24,6 @@ import pace.fv3core.stencils.updatedzd as updatedzd
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
-from dace.frontend.python.interface import nounroll as dace_nounroll
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
