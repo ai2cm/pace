@@ -191,3 +191,16 @@ class ParallelPhysicsTranslate2Py(ParallelTranslate2Py):
     def __init__(self, rank_grids, namelist, stencil_factory):
         physics_namelist = PhysicsConfig.from_namelist(namelist)
         super().__init__(rank_grids, physics_namelist, stencil_factory)
+
+
+def reshape_pace_variable_to_fortran_format(data, grid_indexing):
+    cn2 = grid_indexing.domain[0] * grid_indexing.domain[1]
+    return np.reshape(
+        data[
+            grid_indexing.isc : grid_indexing.iec + 1,
+            grid_indexing.jsc : grid_indexing.jec + 1,
+            0 : grid_indexing.domain[2],
+        ].data,
+        (cn2, grid_indexing.domain[2]),
+        order="F",
+    )[:, ::-1]

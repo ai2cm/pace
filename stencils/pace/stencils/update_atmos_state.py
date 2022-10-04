@@ -11,7 +11,9 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
 from pace.util.grid import DriverGridData, GridData
-
+from pace.stencils.testing.translate_physics import (
+    reshape_pace_variable_to_fortran_format,
+)
 
 # TODO: when this file is not importable from physics or fv3core, import
 #       PhysicsState and DycoreState and use them to type hint below
@@ -257,7 +259,7 @@ class UpdateAtmosphereState:
                 "phy_state",
             ],
         )
-
+        self.grid_indexing = stencil_factory.grid_indexing
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         origin = grid_indexing.origin_compute()
@@ -315,6 +317,19 @@ class UpdateAtmosphereState:
             self._fill_GFS_delp(
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
+            if self._call_checkpointer:
+                self._checkpointer(
+                    "PhysUpdateTracers-In",
+                    u_dt=u_dt,
+                    v_dt=v_dt,
+                    t_dt=pt_dt,
+                    pt_t1=reshape_pace_variable_to_fortran_format(
+                        phy_state.physics_updated_pt, self.grid_indexing
+                    ),
+                    pt_t0=reshape_pace_variable_to_fortran_format(
+                        phy_state.pt, self.grid_indexing
+                    ),
+                )
             self._prepare_tendencies_and_update_tracers(
                 u_dt,
                 v_dt,
@@ -341,6 +356,13 @@ class UpdateAtmosphereState:
                 dycore_state.delp,
                 self._rdt,
             )
+            if self._call_checkpointer:
+                self._checkpointer(
+                    "PhysUpdateTracers-Out",
+                    u_dt=u_dt,
+                    v_dt=v_dt,
+                    t_dt=pt_dt,
+                )
         if self._apply_tendencies:
             self._apply_physics_to_dycore(
                 dycore_state,
