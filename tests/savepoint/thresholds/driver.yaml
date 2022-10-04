@@ -1,88 +1,171 @@
 savepoints:
+  AtmosPhysDriverStatein-In:
+  - pt:
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
+  - pt:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+  AtmosPhysDriverStatein-Out:
+  - IPD_tgrs:
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
+  - IPD_tgrs:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
   C_SW-In:
   - delpd:
       absolute: 2.7284841053187847e-12
-      relative: 2.664392791389508e-15
+      relative: 2.6632276486803376e-15
     divgdd:
       absolute: 0.0
       relative: 0.0
     ptd:
       absolute: 4.263256414560601e-13
-      relative: 2.3048355003642202e-14
+      relative: 2.4024873582185304e-14
     uad:
-      absolute: 192.0
-      relative: 2.6645228139724058e-15
+      absolute: 0.0
+      relative: 0.0
     ucd:
-      absolute: 4.263256414560601e-14
-      relative: 2.664479239525582e-15
+      absolute: 0.0
+      relative: 0.0
     ud:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.664505672560514e-15
     utd:
       absolute: 0.0
       relative: 0.0
     vad:
-      absolute: 192.0
-      relative: 2.6645146823245013e-15
+      absolute: 0.0
+      relative: 0.0
     vcd:
-      absolute: 4.263256414560601e-14
-      relative: 2.664530705451025e-15
+      absolute: 0.0
+      relative: 0.0
     vd:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.6645309432189408e-15
     vtd:
       absolute: 0.0
       relative: 0.0
     wd:
-      absolute: 8.326672684688674e-17
-      relative: 2.664506596135002e-15
+      absolute: 0.0
+      relative: 0.0
+  - delpd:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
+    divgdd:
+      absolute: 0.0
+      relative: 0.0
+    ptd:
+      absolute: 6.544098596350523e-12
+      relative: 5.97574138843221e-13
+    uad:
+      absolute: 384.0
+      relative: 1.924686893998195e-09
+    ucd:
+      absolute: 6.288303211476887e-13
+      relative: 2.9122418623312017e-07
+    ud:
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
+    utd:
+      absolute: 0.0
+      relative: 0.0
+    vad:
+      absolute: 384.0
+      relative: 1.10022939861047e-07
+    vcd:
+      absolute: 6.288303211476887e-13
+      relative: 3.6043670523852133e-07
+    vd:
+      absolute: 1.0444978215673473e-12
+      relative: 7.154781261256709e-08
+    vtd:
+      absolute: 0.0
+      relative: 0.0
+    wd:
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
   C_SW-Out:
   - delpd:
       absolute: 2.7284841053187847e-12
-      relative: 2.664392791389508e-15
+      relative: 2.6632276486803376e-15
     divgdd:
-      absolute: 4.777265822514254e-19
-      relative: 3.925412056700377e-09
+      absolute: 4.942437247228842e-19
+      relative: 5.152618796428155e-08
     ptd:
       absolute: 4.263256414560601e-13
-      relative: 2.3048355003642202e-14
+      relative: 2.4024873582185304e-14
     uad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 2.8634008989163294e-11
     ucd:
-      absolute: 1.7053025658242404e-13
-      relative: 5.929879004969384e-11
+      absolute: 3.410605131648481e-13
+      relative: 2.813991384236331e-10
     ud:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.664505672560514e-15
     utd:
-      absolute: 2.002716064453125e-05
-      relative: 3.7052523913230544e-11
+      absolute: 2.86102294921875e-05
+      relative: 2.26433843291111e-10
     vad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 8.422447914909142e-11
     vcd:
-      absolute: 1.7053025658242404e-13
-      relative: 4.054757865553553e-10
+      absolute: 3.410605131648481e-13
+      relative: 1.51267761412336e-10
     vd:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.6645309432189408e-15
     vtd:
-      absolute: 2.002716064453125e-05
-      relative: 1.8398302626266127e-09
+      absolute: 2.86102294921875e-05
+      relative: 1.5363504124939987e-10
     wd:
-      absolute: 8.326672684688674e-17
-      relative: 2.664506596135002e-15
+      absolute: 0.0
+      relative: 0.0
+  - delpd:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
+    divgdd:
+      absolute: 5.409006817378153e-18
+      relative: 3.7456372136851146e-07
+    ptd:
+      absolute: 6.544098596350523e-12
+      relative: 5.97574138843221e-13
+    uad:
+      absolute: 3093.0
+      relative: 9.980260518341024e-09
+    ucd:
+      absolute: 9.698908343125368e-13
+      relative: 4.31030506277985e-08
+    ud:
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
+    utd:
+      absolute: 7.152557373046875e-05
+      relative: 3.916045067374942e-08
+    vad:
+      absolute: 3093.0
+      relative: 9.98355958190459e-09
+    vcd:
+      absolute: 9.592326932761353e-13
+      relative: 1.535682918794925e-07
+    vd:
+      absolute: 1.0444978215673473e-12
+      relative: 7.154781261256709e-08
+    vtd:
+      absolute: 7.152557373046875e-05
+      relative: 4.161008969260313e-08
+    wd:
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
   D_SW-In:
   - delpcd:
-      absolute: 2.002716064453125e-05
-      relative: 1.8398302626266127e-09
+      absolute: 2.86102294921875e-05
+      relative: 1.5363504124939987e-10
     delpd:
       absolute: 2.7284841053187847e-12
-      relative: 2.664392791389508e-15
-    divgdd:
-      absolute: 4.777265822514254e-19
-      relative: 3.925412056700377e-09
+      relative: 2.6632276486803376e-15
     mfxd:
       absolute: 0.0
       relative: 0.0
@@ -91,123 +174,167 @@ savepoints:
       relative: 0.0
     ptd:
       absolute: 4.263256414560601e-13
-      relative: 2.3048355003642202e-14
+      relative: 2.4024873582185304e-14
     uad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 2.8634008989163294e-11
     ucd:
-      absolute: 7.354117315117037e-13
-      relative: 7.45716960892069e-09
+      absolute: 6.288303211476887e-13
+      relative: 2.008118044889811e-08
     ud:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.664505672560514e-15
     vad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 8.422447914909142e-11
     vcd:
-      absolute: 7.354117315117037e-13
-      relative: 2.1527364019830838e-07
+      absolute: 6.288303211476887e-13
+      relative: 1.535682918794925e-07
     vd:
-      absolute: 4.263256414560601e-14
-      relative: 2.6645224906037465e-15
+      absolute: 8.526512829121202e-14
+      relative: 2.6645309432189408e-15
     wd:
-      absolute: 8.326672684688674e-17
-      relative: 2.664506596135002e-15
+      absolute: 0.0
+      relative: 0.0
     xfxd:
       absolute: 0.0
       relative: 0.0
     yfxd:
       absolute: 0.0
       relative: 0.0
-    zhd:
-      absolute: 1.7462298274040222e-10
-      relative: 8.274629575761722e-15
+  - delpcd:
+      absolute: 7.152557373046875e-05
+      relative: 4.161008969260313e-08
+    delpd:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
+    mfxd:
+      absolute: 0.0
+      relative: 0.0
+    mfyd:
+      absolute: 0.0
+      relative: 0.0
+    ptd:
+      absolute: 6.544098596350523e-12
+      relative: 5.97574138843221e-13
+    uad:
+      absolute: 3093.0
+      relative: 9.980260518341024e-09
+    ucd:
+      absolute: 1.262989712813578e-12
+      relative: 2.8125989221256106e-08
+    ud:
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
+    vad:
+      absolute: 3093.0
+      relative: 9.98355958190459e-09
+    vcd:
+      absolute: 1.262989712813578e-12
+      relative: 1.0487218599584194e-07
+    vd:
+      absolute: 1.0444978215673473e-12
+      relative: 7.154781261256709e-08
+    wd:
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
+    xfxd:
+      absolute: 0.0
+      relative: 0.0
+    yfxd:
+      absolute: 0.0
+      relative: 0.0
   D_SW-Out:
   - delpcd:
-      absolute: 1.71661376953125e-05
-      relative: 3.925412056700377e-09
+      absolute: 2.86102294921875e-05
+      relative: 5.152618796428155e-08
     delpd:
       absolute: 5.4569682106375694e-12
-      relative: 5.29997413501075e-15
+      relative: 5.320929041303097e-15
     divgdd:
-      absolute: 3.595654861094505e-19
-      relative: 4.5304154135537483e-08
+      absolute: 4.942437247228842e-19
+      relative: 5.152618796428155e-08
     mfxd:
-      absolute: 1628995584.0
+      absolute: 1604124672.0
       relative: 120.0
     mfyd:
-      absolute: 1628504064.0
+      absolute: 1621082112.0
       relative: 120.0
     ptd:
       absolute: 4.263256414560601e-13
-      relative: 2.4821302035387395e-14
+      relative: 2.4024873582185304e-14
     uad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 2.8634008989163294e-11
     ucd:
-      absolute: 7.354117315117037e-13
-      relative: 2.389973474778064e-07
+      absolute: 6.288303211476887e-13
+      relative: 2.9122418623312017e-07
     ud:
       absolute: 1.341104507446289e-07
-      relative: 3.788836253752432e-11
+      relative: 1.6737607801318062e-10
     vad:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 8.422447914909142e-11
     vcd:
-      absolute: 7.354117315117037e-13
-      relative: 2.389973509569915e-07
+      absolute: 6.288303211476887e-13
+      relative: 3.6043670523852133e-07
     vd:
-      absolute: 1.341104507446289e-07
-      relative: 3.718147277266473e-11
+      absolute: 1.7881393432617188e-07
+      relative: 7.469099658749364e-11
     wd:
-      absolute: 1.6653345369377348e-16
-      relative: 1.4341582375196082e-12
-    xfxd:
-      absolute: 0.0001087188720703125
-      relative: 7.457167648421754e-09
-    yfxd:
-      absolute: 0.0001087188720703125
-      relative: 2.1527364273173495e-07
-  Driver-Out:
-  - delp:
-      absolute: 1.800799509510398e-10
-      relative: 5.022117662087534e-13
-    delz:
-      absolute: 25769803776.0
-      relative: 4.420922764818589e-12
-    pt:
-      absolute: 5.368292477214709e-10
-      relative: 1.7778722690158857e-12
-    qgraupel:
-      absolute: 4.0925587986673597e-19
-      relative: 120.0
-    qice:
-      absolute: 4.124890787417885e-15
-      relative: 123.0
-    qliquid:
-      absolute: 4.268655741379579e-14
-      relative: 6.6325478948235934e-09
-    qrain:
-      absolute: 2.5347384713619685e-15
-      relative: 120.0
-    qsnow:
       absolute: 0.0
       relative: 0.0
-    qvapor:
-      absolute: 4.2455622351056377e-14
-      relative: 8.685658162172946e-12
-    u:
-      absolute: 1.538769112130467e-12
-      relative: 2.718327538654071e-09
-    ua:
-      absolute: 384.0
-      relative: 1.792767371402652e-09
-    v:
-      absolute: 1.538769112130467e-12
-      relative: 5.041619359370808e-09
-    va:
-      absolute: 384.0
-      relative: 6.743131502955869e-08
+    xfxd:
+      absolute: 0.00010514259338378906
+      relative: 2.0081181638579702e-08
+    yfxd:
+      absolute: 0.00010532140731811523
+      relative: 1.5356829033557975e-07
+  - delpcd:
+      absolute: 6.651878356933594e-05
+      relative: 3.7456372136851146e-07
+    delpd:
+      absolute: 2.6193447411060333e-10
+      relative: 5.022709085608076e-13
+    divgdd:
+      absolute: 5.409006817378153e-18
+      relative: 2.3153394949370874e-06
+    mfxd:
+      absolute: 64332103680.0
+      relative: 120.0
+    mfyd:
+      absolute: 62617780224.0
+      relative: 120.0
+    ptd:
+      absolute: 6.544098596350523e-12
+      relative: 5.97574138843221e-13
+    uad:
+      absolute: 3093.0
+      relative: 9.980260518341024e-09
+    ucd:
+      absolute: 1.262989712813578e-12
+      relative: 1.2492728689511802e-05
+    ud:
+      absolute: 7.264316082000732e-07
+      relative: 8.742370556648009e-08
+    vad:
+      absolute: 3093.0
+      relative: 9.98355958190459e-09
+    vcd:
+      absolute: 1.262989712813578e-12
+      relative: 3.6260027791287995e-06
+    vd:
+      absolute: 6.370246410369873e-07
+      relative: 1.0448120616784678e-08
+    wd:
+      absolute: 1.859949694260621e-12
+      relative: 3.944770141167069e-05
+    xfxd:
+      absolute: 0.00018596649169921875
+      relative: 2.8125989468113277e-08
+    yfxd:
+      absolute: 0.00018525123596191406
+      relative: 1.0487218572228159e-07
   FVDynamics-In:
   - delz:
       absolute: 0.0
@@ -236,157 +363,301 @@ savepoints:
     w:
       absolute: 0.0
       relative: 0.0
+  - delz:
+      absolute: 25769803776.0
+      relative: 4.425706291051527e-12
+    qvapor:
+      absolute: 3.3056890558214036e-14
+      relative: 5.41177166737603e-12
+    u:
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
+    ua:
+      absolute: 384.0
+      relative: 1.924686893998195e-09
+    uc:
+      absolute: 6.288303211476887e-13
+      relative: 2.9122418623312017e-07
+    v:
+      absolute: 1.0444978215673473e-12
+      relative: 7.154781261256709e-08
+    va:
+      absolute: 384.0
+      relative: 1.10022939861047e-07
+    vc:
+      absolute: 6.288303211476887e-13
+      relative: 3.6043670523852133e-07
+    w:
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
   FVDynamics-Out:
   - delz:
       absolute: 25769803776.0
-      relative: 4.420922764818589e-12
+      relative: 4.425706291051527e-12
     qvapor:
-      absolute: 4.2289088897362603e-14
-      relative: 8.651547729736657e-12
+      absolute: 3.289035710452026e-14
+      relative: 7.505716682286047e-11
     u:
-      absolute: 1.5384360452230794e-12
-      relative: 2.718327538654071e-09
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
     ua:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 1.924686893998194e-09
     uc:
-      absolute: 7.354117315117037e-13
-      relative: 2.389973474778064e-07
+      absolute: 6.288303211476887e-13
+      relative: 2.9122418623312017e-07
     v:
-      absolute: 1.5384360452230794e-12
-      relative: 5.041619359370809e-09
+      absolute: 1.0444978215673473e-12
+      relative: 7.151036709605271e-08
     va:
       absolute: 384.0
-      relative: 6.743131502955869e-08
+      relative: 1.1002293986118271e-07
     vc:
-      absolute: 7.354117315117037e-13
-      relative: 2.389973509569915e-07
+      absolute: 6.288303211476887e-13
+      relative: 3.6043670523852133e-07
     w:
-      absolute: 2.0960316815532565e-12
-      relative: 4.640618151764116e-06
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
+  - delz:
+      absolute: 25769803776.0
+      relative: 4.426936988419288e-12
+    qvapor:
+      absolute: 3.778227730677486e-14
+      relative: 2.8773515355509475e-11
+    u:
+      absolute: 1.4794832026154836e-12
+      relative: 3.8463387345110815e-08
+    ua:
+      absolute: 3093.0
+      relative: 3.5108474368372467e-09
+    uc:
+      absolute: 1.262989712813578e-12
+      relative: 1.2492728689511802e-05
+    v:
+      absolute: 1.4794832026154836e-12
+      relative: 3.8463387345110815e-08
+    va:
+      absolute: 3093.0
+      relative: 1.001009536835503e-07
+    vc:
+      absolute: 1.262989712813578e-12
+      relative: 3.6260027791287995e-06
+    w:
+      absolute: 2.369833496107532e-12
+      relative: 0.0001361464107479025
   FVUpdatePhys-In:
   - delp:
-      absolute: 1.800799509510398e-10
-      relative: 5.022117662087534e-13
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
     pe:
       absolute: 5.238689482212067e-10
-      relative: 6.9515212013449995e-15
+      relative: 7.0048868034443836e-15
     peln:
       absolute: 2.1316282072803006e-14
-      relative: 2.2349241361126896e-15
+      relative: 2.2542546489769687e-15
     pk:
       absolute: 2.984279490192421e-13
-      relative: 1.2799614024119294e-14
+      relative: 1.2545561792452565e-14
     ps:
       absolute: .nan
-      relative: 5.365436857202281e-15
+      relative: 5.243476108433941e-15
     pt:
-      absolute: 5.368292477214709e-10
-      relative: 1.7778722690158857e-12
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
     qgraupel:
-      absolute: 4.0925587986673597e-19
-      relative: 120.0
+      absolute: 0.0
+      relative: 0.0
     qice:
-      absolute: 4.124890787417885e-15
-      relative: 123.0
+      absolute: 4.4986438636356084e-15
+      relative: 138.0
     qliquid:
-      absolute: 4.268655741379579e-14
-      relative: 6.6325478948235934e-09
+      absolute: 3.3320351686128014e-14
+      relative: 6.967637350538825e-09
     qrain:
-      absolute: 2.5347384713619685e-15
+      absolute: 2.8374926106661258e-15
       relative: 120.0
     qsnow:
       absolute: 0.0
       relative: 0.0
     qvapor:
-      absolute: 4.2455622351056377e-14
-      relative: 8.685658162172946e-12
+      absolute: 3.3056890558214036e-14
+      relative: 5.41177166737603e-12
     t_dt:
-      absolute: 4.244309981596417e-14
-      relative: 5.047263788555737e-08
+      absolute: 3.637979403402908e-14
+      relative: 1.4767081826878412e-08
     u:
-      absolute: 1.5384360452230794e-12
-      relative: 2.718327538654071e-09
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
     u_dt:
       absolute: 3.7895612573872007e-16
       relative: 120.0
     ua:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 1.924686893998194e-09
     v:
-      absolute: 1.5384360452230794e-12
-      relative: 5.041619359370809e-09
+      absolute: 1.0444978215673473e-12
+      relative: 7.151036709605271e-08
     v_dt:
-      absolute: 4.736951571734001e-17
+      absolute: 2.368475785867001e-17
       relative: 120.0
     va:
       absolute: 384.0
-      relative: 6.743131502955869e-08
-  FVUpdatePhys-Out:
-  - pt:
-      absolute: 5.368292477214709e-10
-      relative: 1.7778722690158857e-12
+      relative: 1.1002293986118271e-07
+  - delp:
+      absolute: 2.6193447411060333e-10
+      relative: 5.043732499872104e-13
+    pe:
+      absolute: 6.984919309616089e-10
+      relative: 8.74747886746669e-15
+    peln:
+      absolute: 2.1316282072803006e-14
+      relative: 2.2749142151097106e-15
+    pk:
+      absolute: 2.984279490192421e-13
+      relative: 1.2798456145608727e-14
+    ps:
+      absolute: .nan
+      relative: 6.990040335621623e-15
+    pt:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
     qgraupel:
-      absolute: 4.0925587986673597e-19
-      relative: 120.0
+      absolute: 0.0
+      relative: 0.0
     qice:
-      absolute: 4.124890787417885e-15
-      relative: 123.0
+      absolute: 4.484916212417695e-15
+      relative: .inf
     qliquid:
-      absolute: 4.268655741379579e-14
-      relative: 6.6325478948235934e-09
+      absolute: 3.800939055685626e-14
+      relative: 1.6059488926374826e-07
     qrain:
-      absolute: 2.5347384713619685e-15
+      absolute: 2.8293610943724845e-15
       relative: 120.0
     qsnow:
       absolute: 0.0
       relative: 0.0
     qvapor:
-      absolute: 4.2455622351056377e-14
-      relative: 8.685658162172946e-12
+      absolute: 3.778227730677486e-14
+      relative: 6.869188271838486e-12
+    t_dt:
+      absolute: 1.5158244126046994e-14
+      relative: 3.2931956762020915e-08
     u:
-      absolute: 1.538769112130467e-12
-      relative: 2.718327538654071e-09
+      absolute: 1.4794832026154836e-12
+      relative: 3.8463387345110815e-08
+    u_dt:
+      absolute: 3.7895612573872007e-16
+      relative: 120.0
+    ua:
+      absolute: 3093.0
+      relative: 3.5108474368372467e-09
+    v:
+      absolute: 1.4794832026154836e-12
+      relative: 3.8463387345110815e-08
+    v_dt:
+      absolute: 2.3684758432181898e-17
+      relative: 120.0
+    va:
+      absolute: 3093.0
+      relative: 1.001009536835503e-07
+  FVUpdatePhys-Out:
+  - pt:
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
+    qgraupel:
+      absolute: 0.0
+      relative: 0.0
+    qice:
+      absolute: 4.4986438636356084e-15
+      relative: 138.0
+    qliquid:
+      absolute: 3.3320351686128014e-14
+      relative: 6.967637350538825e-09
+    qrain:
+      absolute: 2.8374926106661258e-15
+      relative: 120.0
+    qsnow:
+      absolute: 0.0
+      relative: 0.0
+    qvapor:
+      absolute: 3.3056890558214036e-14
+      relative: 5.41177166737603e-12
+    u:
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
     ua:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 1.924686893998195e-09
     v:
-      absolute: 1.538769112130467e-12
-      relative: 5.041619359370808e-09
+      absolute: 1.0444978215673473e-12
+      relative: 7.154781261256709e-08
     va:
       absolute: 384.0
-      relative: 6.743131502955869e-08
+      relative: 1.10022939861047e-07
+  - pt:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+    qgraupel:
+      absolute: 0.0
+      relative: 0.0
+    qice:
+      absolute: 4.484916212417695e-15
+      relative: .inf
+    qliquid:
+      absolute: 3.800939055685626e-14
+      relative: 1.6059488926374826e-07
+    qrain:
+      absolute: 2.8293610943724845e-15
+      relative: 120.0
+    qsnow:
+      absolute: 0.0
+      relative: 0.0
+    qvapor:
+      absolute: 3.778227730677486e-14
+      relative: 6.869188271838486e-12
+    u:
+      absolute: 1.4788170688007085e-12
+      relative: 3.846326345494972e-08
+    ua:
+      absolute: 3093.0
+      relative: 3.5108474368372467e-09
+    v:
+      absolute: 1.4788170688007085e-12
+      relative: 3.846326345494972e-08
+    va:
+      absolute: 3093.0
+      relative: 1.0012980122080339e-07
   GFSPhysicsDriver-In:
   - delp:
-      absolute: 1.7462298274040222e-10
-      relative: 5.022117662087535e-13
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
     delz:
       absolute: 25769803776.0
-      relative: 4.420922764818589e-12
+      relative: 4.425706291051527e-12
     omga:
-      absolute: 9.002975448479944e-12
-      relative: 6.166103011315274e-05
+      absolute: 9.321803745576673e-12
+      relative: 0.0001252012141681156
     pt:
-      absolute: 5.368292477214709e-10
-      relative: 1.7778722690158857e-12
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
     qcld:
-      absolute: 8.528644457328483e-11
-      relative: 4.544796922758549e-08
+      absolute: 8.192313494248538e-11
+      relative: 7.636900744509854e-07
     qgraupel:
-      absolute: 5.11554960582394e-19
-      relative: 120.0
+      absolute: 0.0
+      relative: 0.0
     qice:
-      absolute: 9.636630736957605e-15
-      relative: 120.02930402930403
+      absolute: 1.1277840081491642e-14
+      relative: 120.0
     qliquid:
-      absolute: 4.230372562669116e-14
-      relative: 6.613159352359565e-09
+      absolute: 3.284547113457936e-14
+      relative: 6.485006027709165e-09
     qo3mr:
       absolute: 0.0
       relative: 0.0
     qrain:
-      absolute: 5.234663614031576e-19
-      relative: 5.676126564496927e-05
+      absolute: 7.623296525288703e-21
+      relative: 1.9715033202384307e-05
     qsgs_tke:
       absolute: 0.0
       relative: 0.0
@@ -394,17 +665,115 @@ savepoints:
       absolute: 0.0
       relative: 0.0
     qvapor:
-      absolute: 4.2289088897362603e-14
-      relative: 8.651547729736657e-12
+      absolute: 3.289035710452026e-14
+      relative: 7.505716682286047e-11
     ua:
-      absolute: 5.238689482212067e-10
-      relative: 3.8614993901561815e-10
+      absolute: 384.0
+      relative: 1.924686893998194e-09
     va:
-      absolute: 1.3672396548258803e-12
-      relative: 6.743131502955869e-08
+      absolute: 384.0
+      relative: 1.1002293986118271e-07
     w:
-      absolute: 2.0960316815532565e-12
-      relative: 4.640618151764116e-06
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
+  - delp:
+      absolute: 2.6193447411060333e-10
+      relative: 5.043732499872104e-13
+    delz:
+      absolute: 25769803776.0
+      relative: 4.426936988419288e-12
+    omga:
+      absolute: 1.762632487883886e-11
+      relative: 0.00013614641074803746
+    pt:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+    qcld:
+      absolute: 8.595690825785596e-11
+      relative: 3.228782851361542e-07
+    qgraupel:
+      absolute: 0.0
+      relative: 0.0
+    qice:
+      absolute: 4.484916212417695e-15
+      relative: .inf
+    qliquid:
+      absolute: 3.7826553412993735e-14
+      relative: 1.7425773968564856e-07
+    qo3mr:
+      absolute: 0.0
+      relative: 0.0
+    qrain:
+      absolute: 2.8293610943724845e-15
+      relative: 120.0
+    qsgs_tke:
+      absolute: 0.0
+      relative: 0.0
+    qsnow:
+      absolute: 0.0
+      relative: 0.0
+    qvapor:
+      absolute: 3.778227730677486e-14
+      relative: 2.8773515355509475e-11
+    ua:
+      absolute: 3093.0
+      relative: 3.5108474368372467e-09
+    va:
+      absolute: 3093.0
+      relative: 1.001009536835503e-07
+    w:
+      absolute: 2.369833496107532e-12
+      relative: 0.0001361464107479025
+  PhysUpdateTracers-In:
+  - pt_t0:
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
+    pt_t1:
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
+    t_dt:
+      absolute: 0.0
+      relative: 0.0
+    u_dt:
+      absolute: 0.0
+      relative: 0.0
+    v_dt:
+      absolute: 0.0
+      relative: 0.0
+  - pt_t0:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+    pt_t1:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+    t_dt:
+      absolute: 0.0
+      relative: 0.0
+    u_dt:
+      absolute: 0.0
+      relative: 0.0
+    v_dt:
+      absolute: 0.0
+      relative: 0.0
+  PhysUpdateTracers-Out:
+  - t_dt:
+      absolute: 3.637979403402908e-14
+      relative: 1.4767081826878412e-08
+    u_dt:
+      absolute: 3.7895612573872007e-16
+      relative: 120.0
+    v_dt:
+      absolute: 2.368475785867001e-17
+      relative: 120.0
+  - t_dt:
+      absolute: 1.5158244126046994e-14
+      relative: 3.2931956762020915e-08
+    u_dt:
+      absolute: 3.7895612573872007e-16
+      relative: 120.0
+    v_dt:
+      absolute: 2.3684758432181898e-17
+      relative: 120.0
   Remapping-In:
   - ak:
       absolute: 0.0
@@ -414,25 +783,25 @@ savepoints:
       relative: 0.0
     cappa:
       absolute: 1.3322676295501878e-15
-      relative: 4.684802402122118e-15
+      relative: 4.684744757427358e-15
     delp:
       absolute: 5.4569682106375694e-12
-      relative: 5.29997413501075e-15
+      relative: 5.320929041303097e-15
     delz:
       absolute: 25769803776.0
-      relative: 4.417755979333718e-12
+      relative: 4.424309879776438e-12
     dp1:
       absolute: 8.185452315956354e-12
-      relative: 7.816113018901345e-15
+      relative: 7.981060438552416e-15
     omga:
-      absolute: 2.914335439641036e-16
-      relative: 2.69741183575927e-12
+      absolute: 0.0
+      relative: 0.0
     pe:
       absolute: 5.238689482212067e-10
-      relative: 7.012922165955118e-15
+      relative: 8.133300801432759e-15
     peln:
       absolute: 2.1316282072803006e-14
-      relative: 2.642154438487291e-15
+      relative: 2.6420226645538662e-15
     pfull:
       absolute: 0.0
       relative: 0.0
@@ -441,109 +810,247 @@ savepoints:
       relative: 0.0
     pk:
       absolute: 2.984279490192421e-13
-      relative: 1.2610043551750094e-14
+      relative: 1.2798830510581378e-14
     pkz:
-      absolute: 4.7066350816749036e-11
-      relative: 1.7659895624560728e-12
+      absolute: 4.7279513637477066e-11
+      relative: 1.7652850589111428e-12
     ps:
       absolute: .nan
-      relative: 1.7916862372061497e-15
+      relative: 1.7503446900789073e-15
     pt:
       absolute: 3.410605131648481e-13
-      relative: 2.4821302030748827e-14
+      relative: 2.4024873582185304e-14
     te_2d:
       absolute: 0.0
       relative: 0.0
     u:
-      absolute: 1.544597783009749e-12
-      relative: 2.3499241013589115e-09
+      absolute: 1.0444978215673473e-12
+      relative: 4.920683557677236e-08
     ua:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 2.8634008989163294e-11
     v:
-      absolute: 1.0764722446765518e-12
-      relative: 5.596522336615699e-09
+      absolute: 1.0125233984581428e-12
+      relative: 5.378610226381813e-08
     va:
       absolute: 384.0
-      relative: 1.792767371402652e-09
+      relative: 8.422447914909142e-11
     w:
-      absolute: 2.095906781462986e-12
-      relative: 1.320885985901664e-05
+      absolute: 1.859949694260621e-12
+      relative: 5.4023923350536e-05
+    wsd:
+      absolute: 0.0
+      relative: 0.0
+  - ak:
+      absolute: 0.0
+      relative: 0.0
+    bk:
+      absolute: 0.0
+      relative: 0.0
+    cappa:
+      absolute: 3.064215547965432e-14
+      relative: 1.0751531623036565e-13
+    delp:
+      absolute: 2.6193447411060333e-10
+      relative: 5.022709085608076e-13
+    delz:
+      absolute: 25769803776.0
+      relative: 4.4284261446010145e-12
+    dp1:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042451815692504e-13
+    omga:
+      absolute: 9.321803745576673e-12
+      relative: 6.434410522391023e-05
+    pe:
+      absolute: 6.984919309616089e-10
+      relative: 1.0616077611929113e-14
+    peln:
+      absolute: 2.1316282072803006e-14
+      relative: 2.6420212048418394e-15
+    pfull:
+      absolute: 0.0
+      relative: 0.0
+    phis:
+      absolute: 0.0
+      relative: 0.0
+    pk:
+      absolute: 2.984279490192421e-13
+      relative: 1.3065571699261469e-14
+    pkz:
+      absolute: 4.7407411329913884e-11
+      relative: 1.7669600579817248e-12
+    ps:
+      absolute: .nan
+      relative: 5.243476108433941e-15
+    pt:
+      absolute: 6.480149750132114e-12
+      relative: 5.904546306310534e-13
+    te_2d:
+      absolute: 0.0
+      relative: 0.0
+    u:
+      absolute: 1.3962164757685969e-12
+      relative: 4.7436825986745986e-08
+    ua:
+      absolute: 3093.0
+      relative: 9.980260518341024e-09
+    v:
+      absolute: 1.4788170688007085e-12
+      relative: 3.755502628095818e-08
+    va:
+      absolute: 3093.0
+      relative: 9.98355958190459e-09
+    w:
+      absolute: 2.369833496107532e-12
+      relative: 0.00013648630486358366
     wsd:
       absolute: 0.0
       relative: 0.0
   Remapping-Out:
   - cappa:
-      absolute: 3.863576125695545e-14
-      relative: 1.354653976534733e-13
+      absolute: 2.9976021664879227e-14
+      relative: 1.0517782687951213e-13
     delp:
-      absolute: 1.7462298274040222e-10
-      relative: 5.022117662087535e-13
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
     delz:
       absolute: 25769803776.0
-      relative: 4.420922764818589e-12
+      relative: 4.425706291051527e-12
     dp1:
       absolute: 8.185452315956354e-12
-      relative: 7.816113018901345e-15
+      relative: 7.981060438552416e-15
     omga:
-      absolute: 2.914335439641036e-16
-      relative: 2.69741183575927e-12
+      absolute: 0.0
+      relative: 0.0
     pe:
       absolute: 5.238689482212067e-10
-      relative: 6.9515212013449995e-15
+      relative: 7.0048868034443836e-15
     peln:
       absolute: 2.1316282072803006e-14
-      relative: 2.2349241361126896e-15
+      relative: 2.2542546489769687e-15
     pk:
       absolute: 2.984279490192421e-13
-      relative: 1.2799614024119294e-14
+      relative: 1.2545561792452565e-14
     pkz:
-      absolute: 4.7194248509185854e-11
-      relative: 1.7700916431128049e-12
+      absolute: 4.732214620162267e-11
+      relative: 1.76983385674747e-12
     pt:
-      absolute: 5.368292477214709e-10
-      relative: 1.7778722690158857e-12
+      absolute: 5.409219738794491e-10
+      relative: 1.7822151583002022e-12
     te_2d:
       absolute: 0.0
       relative: 0.0
     u:
-      absolute: 1.5384360452230794e-12
-      relative: 2.4055998841126902e-09
+      absolute: 1.0444978215673473e-12
+      relative: 4.7436825986745986e-08
     v:
-      absolute: 1.0764722446765518e-12
-      relative: 5.041619359370809e-09
+      absolute: 1.0231815394945443e-12
+      relative: 7.151036709605271e-08
     w:
-      absolute: 2.0960316815532565e-12
-      relative: 4.640618151764116e-06
+      absolute: 1.859949694260621e-12
+      relative: 5.4022591853302335e-05
+  - cappa:
+      absolute: 3.4638958368304884e-14
+      relative: 1.213988092423256e-13
+    delp:
+      absolute: 2.6193447411060333e-10
+      relative: 5.043732499872104e-13
+    delz:
+      absolute: 25769803776.0
+      relative: 4.426936988419288e-12
+    dp1:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042451815692504e-13
+    omga:
+      absolute: 9.321803745576673e-12
+      relative: 6.434410522391023e-05
+    pe:
+      absolute: 6.984919309616089e-10
+      relative: 8.74747886746669e-15
+    peln:
+      absolute: 2.1316282072803006e-14
+      relative: 2.2749142151097106e-15
+    pk:
+      absolute: 2.984279490192421e-13
+      relative: 1.2798456145608727e-14
+    pkz:
+      absolute: 4.736477876576828e-11
+      relative: 1.7694778604229885e-12
+    pt:
+      absolute: 5.361471266951412e-10
+      relative: 1.7746932988156208e-12
+    te_2d:
+      absolute: 0.0
+      relative: 0.0
+    u:
+      absolute: 1.4175327578413999e-12
+      relative: 4.7436825986745986e-08
+    v:
+      absolute: 1.4794832026154836e-12
+      relative: 3.8463387345110815e-08
+    w:
+      absolute: 2.369833496107532e-12
+      relative: 0.0001361464107479025
   Tracer2D1L-In:
   - cxd:
-      absolute: 2.3418766925686896e-16
-      relative: 7.457167570200806e-09
+      absolute: 2.2638141361497333e-16
+      relative: 2.0081178953558838e-08
     cyd:
-      absolute: 2.3418766925686896e-16
-      relative: 2.1527364253231465e-07
+      absolute: 2.2768245622195593e-16
+      relative: 1.53568292783154e-07
     dp1:
       absolute: 2.7284841053187847e-12
-      relative: 2.664392791389508e-15
+      relative: 2.6632276486803376e-15
     mfxd:
-      absolute: 1628995584.0
+      absolute: 1604124672.0
       relative: 120.0
     mfyd:
-      absolute: 1628504064.0
+      absolute: 1621082112.0
+      relative: 120.0
+  - cxd:
+      absolute: 4.683753385137379e-16
+      relative: 2.8125989101612067e-08
+    cyd:
+      absolute: 4.501607420159814e-16
+      relative: 1.0487218492835087e-07
+    dp1:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042543481610996e-13
+    mfxd:
+      absolute: 64332103680.0
+      relative: 120.0
+    mfyd:
+      absolute: 62617780224.0
       relative: 120.0
   Tracer2D1L-Out:
   - cxd:
-      absolute: 7.806255641895632e-17
-      relative: 7.45716661757556e-09
+      absolute: 7.546047120499111e-17
+      relative: 2.0081177721573792e-08
     cyd:
-      absolute: 7.806255641895632e-17
-      relative: 2.1527364135800607e-07
+      absolute: 7.611099250848241e-17
+      relative: 1.535682939641504e-07
     dp1:
       absolute: 8.185452315956354e-12
-      relative: 7.816113018901345e-15
+      relative: 7.981060438552416e-15
     mfxd:
-      absolute: 543006720.0
+      absolute: 534724608.0
       relative: 120.0
     mfyd:
-      absolute: 542834688.0
+      absolute: 540352512.0
+      relative: 120.0
+  - cxd:
+      absolute: 1.5612511283791264e-16
+      relative: 2.812598910161206e-08
+    cyd:
+      absolute: 1.496198998029996e-16
+      relative: 1.0487218492835087e-07
+    dp1:
+      absolute: 2.6193447411060333e-10
+      relative: 5.042451815692504e-13
+    mfxd:
+      absolute: 21444034560.0
+      relative: 120.0
+    mfyd:
+      absolute: 20872593408.0
       relative: 120.0
