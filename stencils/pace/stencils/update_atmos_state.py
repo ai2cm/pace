@@ -10,10 +10,11 @@ from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
-from pace.util.grid import DriverGridData, GridData
 from pace.stencils.testing.translate_physics import (
     reshape_pace_variable_to_fortran_format,
 )
+from pace.util.grid import DriverGridData, GridData
+
 
 # TODO: when this file is not importable from physics or fv3core, import
 #       PhysicsState and DycoreState and use them to type hint below

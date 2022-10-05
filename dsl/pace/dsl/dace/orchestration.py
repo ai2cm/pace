@@ -1,8 +1,9 @@
 import os
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
-import dace
 import gt4py.storage
+
+import dace
 from dace import compiletime as DaceCompiletime
 from dace.dtypes import DeviceType as DaceDeviceType
 from dace.dtypes import StorageType as DaceStorageType
@@ -10,7 +11,6 @@ from dace.frontend.python.common import SDFGConvertible
 from dace.frontend.python.parser import DaceProgram
 from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
-
 from pace.dsl.dace.build import (
     determine_compiling_ranks,
     get_sdfg_path,
