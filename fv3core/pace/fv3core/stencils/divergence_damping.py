@@ -102,7 +102,7 @@ def delpc_computation(
     Args:
         ptc (in): contravariant u-wind on d-grid * dxc
         rarea_c (in):
-        delpc (out): convergence of wind
+        delpc (out): convergence of wind on cell centers
         vort (in): contravariant v-wind on d-grid * dyc
     """
     from __externals__ import i_end, i_start, j_end, j_start
@@ -250,12 +250,15 @@ def damping_nord_highorder_stencil(
 ):
     """
     Args:
-        vort (inout):
-        ke (inout):
-        delpc (in):
-        divg_d (in):
-        d2_bg (in):
+        vort (inout): linear combination of second-order and higher-order
+            divergence damping, on output is the damping term itself
+        ke (inout): on input, is the kinetic energy, on output also includes
+            the damping term vort
+        delpc (in): divergence on cell corners
+        divg_d (in): higher-order divergence on d-grid
+        d2_bg (in): background second-order divergence damping coefficient
     """
+    # TODO: propagate variable renaming into this routine
     with computation(PARALLEL), interval(...):
         damp = damp_tmp(vort, da_min_c, d2_bg, dddmp)
         vort = damp * delpc + dd8 * divg_d
@@ -263,11 +266,25 @@ def damping_nord_highorder_stencil(
 
 
 def vc_from_divg(divg_d: FloatField, divg_u: FloatFieldIJ, vc: FloatField):
+    """
+    Args:
+        divg_d (in): divergence on d-grid
+        divg_u (in): metric term, divg_u = sina_v * dyc / dx
+        uv (out): intermediate component of hyperdiffusion defined on
+            same grid as c-grid y-wind
+    """
     with computation(PARALLEL), interval(...):
         vc = (divg_d[1, 0, 0] - divg_d) * divg_u
 
 
 def uc_from_divg(divg_d: FloatField, divg_v: FloatFieldIJ, uc: FloatField):
+    """
+    Args:
+        divg_d (in): divergence on d-grid
+        divg_v (in): metric term, divg_v = sina_u * dxc / dy
+        uc (out): intermediate component of hyperdiffusion defined on
+            same grid as c-grid x-wind
+    """
     with computation(PARALLEL), interval(...):
         uc = (divg_d[0, 1, 0] - divg_d) * divg_v
 
@@ -280,9 +297,11 @@ def redo_divg_d(
 ):
     """
     Args:
-        uc (in):
-        vc (in):
-        divg_d (out):
+        uc (in): intermediate component of hyperdiffusion defined on
+            same grid as c-grid x-wind
+        vc (in): intermediate component of hyperdiffusion defined on
+            same grid as c-grid y-wind
+        divg_d (out): updated divergence for hyperdiffusion on d-grid
         adjustment_factor (in):
     """
     from __externals__ import do_adjustment, i_end, i_start, j_end, j_start
@@ -297,20 +316,21 @@ def redo_divg_d(
             divg_d = divg_d + uc
 
     with computation(PARALLEL), interval(...):
+        # TODO: this does the wrong thing when stretched_grid is True,
+        # i.e. when do_adjustment = not stretched_grid is False
+        # compare to the Fortran and fix
         if __INLINED(do_adjustment):
+            # reference https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/sw_core.F90#L1422
             divg_d = divg_d * adjustment_factor
 
 
 def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
     """
     Args:
-        delpc (in):
-        vort (inout):
-        absdt (in):
+        delpc (in): divergence on cell corners
+        vort (inout): local eddy diffusivity
+        absdt (in): abs(dt)
     """
-    # TODO: what are these values really? are delpc and vort (as input)
-    # some kind of u and v, and is vort (as output) some kind of kinetic energy?
-    # what does this have to do with diffusion?
     with computation(PARALLEL), interval(...):
         vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
 
@@ -550,23 +570,30 @@ class DivergenceDamping:
 
         Explained in detail in section 8.3 of the FV3 documentation.
 
+        Applies both a background second-order diffusion (with strength controlled by
+        d2_bg passed on init) and a higher-order hyperdiffusion.
+
         Args:
             u (in): x-velocity on d-grid
             v (in): y-velocity on d-grid
             va (in):
             v_contra_dxc (out): wk converted from a grid to b grid and damped
             ua (in):
-            divg_d (inout):
+            divg_d (inout): finite volume divergence defined on cell corners,
+                output value is not used later in D_SW
             vc (inout):
             uc (inout):
-            delpc (out):
+            delpc (out): finite volume divergence defined on cell corners
             ke (inout): dt times the kinetic energy defined on cell corners,
                 at input time must be accurate for the input winds.
                 Gets updated to remain accurate for the output winds,
                 as described in section 8.3 of the FV3 documentation.
-            wk (in): gets converted by a2b_ord4 and put into v_contra_dxc
+            wk (in): a-grid relative vorticity computed before divergence damping
+                gets converted by a2b_ord4 and put into v_contra_dxc
             dt (in): timestep
         """
+        # TODO: is there anything we can do to APIs to make it clear that divg_d is not
+        #       really an output variable of DivergenceDamping?
         # in the original Fortran, u_contra_dyc is "ptc" and v_contra_dxc is "vort"
         # TODO: what does do_zero_order signify, why is it false/true?
         if self._do_zero_order:
@@ -664,6 +691,9 @@ class DivergenceDamping:
             self._set_value(v_contra_dxc, 0.0)
         else:
             # TODO: what is wk/v_contra_dxc here?
+            # take the cell centered relative vorticity and regrid it to cell corners
+            # for smagorinsky diffusion
+            #
             self.a2b_ord4(wk, v_contra_dxc)
             self._smagorinksy_diffusion_approx_stencil(
                 delpc,
