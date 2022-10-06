@@ -11,7 +11,23 @@ make build
 make run
 ```
 
-Once the docker container is running, you can connect to the Jupyter notebook server by copying and pasting the URLs into any browser on your machine.
+Once the docker container is running, you can connect to the Jupyter notebook server by copying and pasting the URLs into any browser on your machine. An example output is shown below:
+
+```
+Serving notebooks from local directory: /notebooks
+Jupyter Server 1.19.1 is running at:
+http://0d7f58225e26:8888/lab?token=e23ef7f3a334d97d8a74d499839b0dcfa91c879f7effa968
+or http://127.0.0.1:8888/lab?token=e23ef7f3a334d97d8a74d499839b0dcfa91c879f7effa968
+Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+    To access the server, open this file in a browser:
+        file:///root/.local/share/jupyter/runtime/jpserver-1-open.html
+    Or copy and paste one of these URLs:
+        http://0d7f58225e26:8888/lab?token=e23ef7f3a334d97d8a74d499839b0dcfa91c879f7effa968
+     or http://127.0.0.1:8888/lab?token=e23ef7f3a334d97d8a74d499839b0dcfa91c879f7effa968
+```
+
+Use the last URL `http://127.0.0.1:8888/lab?token=XXX` to connect to the Jupyter notebook server.
+
 If you would like to retain the changes made to the notebooks, you can mount the local notebooks folder into the container by running `make dev` instead of `make run`.
 
 Type `make help` to see more make targets on building and running the container.
