@@ -11,7 +11,8 @@ make build
 make run
 ```
 
-Once the docker container is running, you can connect to the Jupyter notebook server by copying and pasting the URLs into any browser on your machine. If you would like to retain the changes made to the notebooks, you can mount the local notebooks folder to the container. Instead of `make run`, do `make dev`.
+Once the docker container is running, you can connect to the Jupyter notebook server by copying and pasting the URLs into any browser on your machine.
+If you would like to retain the changes made to the notebooks, you can mount the local notebooks folder into the container by running `make dev` instead of `make run`.
 
 Type `make help` to see more make targets on building and running the container.
 
