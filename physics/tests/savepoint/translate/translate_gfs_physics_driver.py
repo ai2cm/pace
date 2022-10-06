@@ -194,6 +194,16 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.qvapor,
             physics_state.pt,
             physics_state.delp,
+            physics_state.microphysics.udt,
+            physics_state.microphysics.vdt,
+            physics_state.microphysics.pt_dt,
+            physics_state.microphysics.qv_dt,
+            physics_state.microphysics.ql_dt,
+            physics_state.microphysics.qr_dt,
+            physics_state.microphysics.qi_dt,
+            physics_state.microphysics.qs_dt,
+            physics_state.microphysics.qg_dt,
+            physics_state.microphysics.qa_dt,
         )
         microph_state = physics_state.microphysics
         physics._microphysics(microph_state, float(self.namelist.dt_atmos))
