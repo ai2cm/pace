@@ -396,3 +396,16 @@ class TranslateGrid:
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid
+
+
+def reshape_pace_variable_to_fortran_format(data, grid_indexing):
+    cn2 = grid_indexing.domain[0] * grid_indexing.domain[1]
+    return np.reshape(
+        data[
+            grid_indexing.isc : grid_indexing.iec + 1,
+            grid_indexing.jsc : grid_indexing.jec + 1,
+            0 : grid_indexing.domain[2],
+        ].data,
+        (cn2, grid_indexing.domain[2]),
+        order="F",
+    )[:, ::-1]

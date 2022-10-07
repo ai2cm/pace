@@ -10,9 +10,7 @@ from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
-from pace.stencils.testing.translate_physics import (
-    reshape_pace_variable_to_fortran_format,
-)
+from pace.stencils.testing.translate import reshape_pace_variable_to_fortran_format
 from pace.util.grid import DriverGridData, GridData
 
 
