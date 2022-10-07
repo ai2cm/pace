@@ -2,9 +2,9 @@ from typing import Optional
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core
-import fv3core.stencils.fv_subgridz as fv_subgridz
+import pace.fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
+from pace import fv3core
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
@@ -156,7 +156,7 @@ class DycoreToPhysics:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["dycore_state", "physics_state", "tendency_state"],
+            dace_compiletime_args=["dycore_state", "physics_state", "tendency_state"],
         )
 
         self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
@@ -251,7 +251,7 @@ class UpdateAtmosphereState:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=[
+            dace_compiletime_args=[
                 "dycore_state",
                 "phy_state",
             ],

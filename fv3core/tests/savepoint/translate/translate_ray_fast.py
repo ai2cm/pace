@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
-from fv3core.stencils.ray_fast import RayleighDamping
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.stencils.ray_fast import RayleighDamping
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRay_Fast(TranslateDycoreFortranData2Py):

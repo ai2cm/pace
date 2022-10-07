@@ -1,8 +1,8 @@
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
-from fv3gfs.physics import PhysicsConfig
 from pace.dsl.stencil import GridIndexing
+from pace.physics import PhysicsConfig
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 from pace.stencils.testing.translate import TranslateFortranData2Py
 
@@ -81,6 +81,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             if n_dim == 3:
                 var_reshape = np.reshape(data[:, 0, :], (cn, cn, npz))
                 rearranged = var_reshape[:, :, :]
+            elif n_dim == 2:
+                rearranged = np.reshape(data[:, :], (cn, cn))
             elif len(data.flatten()) == 1:
                 rearranged = data[0]
             else:

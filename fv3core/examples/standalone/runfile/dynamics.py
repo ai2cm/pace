@@ -2,13 +2,14 @@
 
 import copy
 import json
+import os
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import f90nml
 import numpy as np
-import serialbox
+import xarray as xr
 import yaml
 from mpi4py import MPI
 
@@ -17,13 +18,13 @@ from mpi4py import MPI
 # very strange errors on some systems (e.g. daint)
 import pace.dsl.stencil
 import pace.util as util
-from fv3core import DynamicalCore
-from fv3core._config import DynamicalCoreConfig
-from fv3core.initialization.baroclinic import init_baroclinic_state
-from fv3core.initialization.dycore_state import DycoreState
-from fv3core.testing import TranslateFVDynamics
 from pace.dsl import StencilFactory
 from pace.dsl.dace.orchestration import DaceConfig
+from pace.fv3core import DynamicalCore, DynamicalCoreConfig
+from pace.fv3core.initialization.baroclinic import init_baroclinic_state
+from pace.fv3core.initialization.dycore_state import DycoreState
+from pace.fv3core.testing import TranslateFVDynamics
+from pace.stencils.testing import dataset_to_dict
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -174,16 +175,11 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
 
 
 def read_serialized_initial_state(rank, grid, namelist, stencil_factory, data_dir):
-    # set up of helper structures
-    serializer = serialbox.Serializer(
-        serialbox.OpenModeKind.Read,
-        data_dir,
-        "Generator_rank" + str(rank),
+    ds = xr.open_dataset(os.path.join(data_dir, "Driver-In.nc")).sel(
+        savepoint=0, rank=rank
     )
-    # create a state from serialized data
-    savepoint_in = serializer.get_savepoint("Driver-In")[0]
+    input_data = dataset_to_dict(ds)
     driver_object = TranslateFVDynamics(grid, namelist, stencil_factory)
-    input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state
 
@@ -264,13 +260,7 @@ def setup_dycore(
         config=dycore_config,
         phis=state.phis,
         state=state,
-    )
-    dycore.update_state(
-        conserve_total_energy=dycore_config.consv_te,
-        do_adiabatic_init=False,
-        timestep=dycore_config.dt_atmos,
-        n_split=dycore_config.n_split,
-        state=state,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
     )
     return dycore, state, stencil_factory
 

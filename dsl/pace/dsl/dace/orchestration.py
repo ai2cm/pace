@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -22,8 +22,17 @@ from pace.dsl.dace.dace_config import (
     DaceConfig,
     DaCeOrchestration,
 )
+from pace.dsl.dace.sdfg_debug_passes import (
+    negative_delp_checker,
+    negative_qtracers_checker,
+    trace_all_outputs_at_index,
+)
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker
+from pace.dsl.dace.utils import (
+    DaCeProgress,
+    memory_static_analysis,
+    report_memory_static_analysis,
+)
 from pace.util.mpi import MPI
 
 
@@ -168,22 +177,27 @@ def _build_sdfg(
                 f"Pooled {memory_pooled} mb",
             )
 
+        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
+        # is turned on.
+        if config.get_sync_debug():
+            with DaCeProgress(config, "Tooling the SDFG for debug"):
+                # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
+                trace_all_outputs_at_index(sdfg, 0, 0, 60)
+                negative_delp_checker(sdfg)
+                negative_qtracers_checker(sdfg)
+
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
             sdfg.compile()
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
 
-        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
-        # is turned on.
-        if config.get_sync_debug():
-            with DaCeProgress(config, "Debug tooling (NaNChecker)"):
-                sdfg_nan_checker(sdfg)
-
         # Printing analysis of the compiled SDFG
         with DaCeProgress(config, "Build finished. Running memory static analysis"):
             DaCeProgress.log(
                 DaCeProgress.default_prefix(config),
-                count_memory(sdfg),
+                report_memory_static_analysis(
+                    sdfg, memory_static_analysis(sdfg), False
+                ),
             )
 
     # Compilation done, either exit or scatter/gather and run
@@ -238,7 +252,9 @@ def _call_sdfg(
     ):
         return _build_sdfg(daceprog, sdfg, config, args, kwargs)
     elif config.get_orchestrate() == DaCeOrchestration.Run:
-        return _run_sdfg(daceprog, config, args, kwargs)
+        with DaCeProgress(config, "Run"):
+            res = _run_sdfg(daceprog, config, args, kwargs)
+        return res
     else:
         raise NotImplementedError(
             f"Mode {config.get_orchestrate()} unimplemented at call time"
@@ -415,29 +431,34 @@ class _LazyComputepathMethod:
 
 
 def orchestrate(
+    *,
     obj: object,
     config: DaceConfig,
     method_to_orchestrate: str = "__call__",
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ):
     """
     Orchestrate a method of an object with DaCe.
+    The method object is patched in place, replacing the orignal Callable with
+    a wrapper that will trigger orchestration at call time.
     If the model configuration doesn't demand orchestration, this won't do anything.
 
     Args:
         obj: object which methods is to be orchestrated
         config: DaceConfig carrying model configuration
         method_to_orchestrate: string representing the name of the method
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     if config.is_dace_orchestrated():
         if hasattr(obj, method_to_orchestrate):
             func = type.__getattribute__(type(obj), method_to_orchestrate)
 
             # Flag argument as dace.constant
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
 
             # Build DaCe orchestrated wrapper
@@ -502,7 +523,7 @@ def orchestrate(
 
 def orchestrate_function(
     config: DaceConfig = None,
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
     Decorator orchestrating a method of an object with DaCe.
@@ -510,13 +531,16 @@ def orchestrate_function(
 
     Args:
         config: DaceConfig carrying model configuration
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
+
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     def _decorator(func: Callable[..., Any]):
         def _wrapper(*args, **kwargs):
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
             return _LazyComputepathFunction(func, config)
 

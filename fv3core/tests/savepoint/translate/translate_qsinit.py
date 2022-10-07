@@ -1,10 +1,10 @@
 import numpy as np
 
-import fv3core.stencils.saturation_adjustment as satadjust
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.fv3core.stencils.saturation_adjustment as satadjust
 import pace.util
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateQSInit(TranslateDycoreFortranData2Py):
@@ -29,7 +29,7 @@ class TranslateQSInit(TranslateDycoreFortranData2Py):
         self._compute_q_tables_stencil = self.stencil_factory.from_origin_domain(
             satadjust.compute_q_tables, origin=(0, 0, 0), domain=self.maxshape
         )
-        self.max_error = 1e-13
+        self.max_error = 1e-12
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

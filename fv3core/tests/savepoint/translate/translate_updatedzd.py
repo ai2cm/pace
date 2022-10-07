@@ -1,11 +1,11 @@
 import numpy as np
 
-import fv3core.stencils.updatedzd
 import pace.dsl
+import pace.fv3core.stencils.updatedzd
 import pace.util
-from fv3core.stencils import d_sw
-from fv3core.testing import TranslateDycoreFortranData2Py
-from fv3core.utils.functional_validation import get_subset_func
+from pace.fv3core.stencils import d_sw
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.utils.functional_validation import get_subset_func
 
 
 class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
@@ -58,7 +58,7 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        self.updatedzd = fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
+        self.updatedzd = pace.fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
             self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,

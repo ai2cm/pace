@@ -1,0 +1,78 @@
+CS_Profile_2d:
+  - backend: gt:gpu
+    max_error: 2.5e-9
+    near_zero: 1.5e-14
+  - backend: cuda
+    max_error: 2.5e-9
+    near_zero: 1.5e-14
+
+CS_Profile_2d-2:
+  - backend: gt:gpu
+    max_error: 3e-8
+    near_zero: 1.5e-14
+  - backend: cuda
+    max_error: 3e-8
+    near_zero: 1.5e-14
+
+Fillz:
+  - backend: gt:gpu
+    max_error: 5e-6
+
+MapN_Tracer_2d:
+  - backend: numpy
+    platform: docker
+    max_error: 9e-9 # 48_6ranks
+
+Riem_Solver3:
+  - backend: gt:gpu
+    max_error: 5e-6
+  - backend: cuda
+    max_error: 5e-6
+  - platform: metal
+    backend: numpy
+    max_error: 1e-11 # 48_6ranks
+
+Remapping:
+  - backend: gt:gpu
+    max_error: 1e-9
+    near_zero: 5e-6
+    ignore_near_zero_errors:
+      - q_con
+      - tracers
+
+UpdateDzC:
+  - backend: gt:gpu
+    max_error: 5e-10
+    near_zero: 4.5e-15
+    ignore_near_zero_errors:
+      - ws
+  - backend: cuda
+    max_error: 5e-10
+    near_zero: 4.5e-15
+    ignore_near_zero_errors:
+      - ws
+
+UpdateDzD:
+  - backend: gt:gpu
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+  - backend: cuda
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+
+Microph:
+  - backend: numpy
+    max_error: 2e-9
+  - backend: gt:cpu_ifirst
+    max_error: 1e-12
+  - backend: cuda
+    cuda_no_fma: true
+  - backend: gt:gpu
+    max_error: 2.2e-8
+    cuda_no_fma: true
+    ignore_near_zero_errors:
+      mph_ql_dt: 1e-8
+      mph_qr_dt: 1e-9
+      mph_qg_dt: 1e-18

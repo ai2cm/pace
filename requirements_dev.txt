@@ -1,12 +1,21 @@
 pytest
 pytest-subtests
+pytest-regressions
+pytest-profiling
 pytest-cov
 mpi4py
+xarray
+zarr
+netCDF4
+cftime
+fv3config>=0.9.0
 dace>=0.14
+f90nml>=1.1.0
+numpy>=1.15
 -e external/gt4py
--e pace-util
+-e util
 -e stencils
 -e dsl
--e fv3gfs-physics
+-e physics
 -e fv3core
 -e driver

@@ -12,3 +12,6 @@ from .performance import PerformanceConfig
 from .registry import Registry
 from .restart import Restart
 from .state import DriverState, TendencyState
+
+
+__version__ = "0.1.0"
