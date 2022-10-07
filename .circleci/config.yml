@@ -231,7 +231,7 @@ jobs:
   driver_savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
-      resource_class: large
+      resource_class: xlarge
     parameters:
       backend:
         description: "gt4py backend"
