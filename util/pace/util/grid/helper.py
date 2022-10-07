@@ -4,6 +4,14 @@ import pathlib
 import xarray as xr
 
 import pace.util
+
+
+# TODO: if we can remove translate tests in favor of checkpointer tests,
+# we can remove this "disallowed" import (pace.util does not depend on pace.dsl)
+try:
+    from pace.dsl.gt4py_utils import split_cartesian_into_storages
+except ImportError:
+    split_cartesian_into_storages = None
 from pace.util.filesystem import get_fs
 
 from .generation import MetricTerms
@@ -591,10 +599,16 @@ class DriverGridData:
         ew2: pace.util.Quantity,
     ) -> "DriverGridData":
 
-        vlon1, vlon2, vlon3 = split_quantity_along_last_dim(vlon)
-        vlat1, vlat2, vlat3 = split_quantity_along_last_dim(vlat)
-        es1_1, es1_2, es1_3 = split_quantity_along_last_dim(es1)
-        ew2_1, ew2_2, ew2_3 = split_quantity_along_last_dim(ew2)
+        try:
+            vlon1, vlon2, vlon3 = split_quantity_along_last_dim(vlon)
+            vlat1, vlat2, vlat3 = split_quantity_along_last_dim(vlat)
+            es1_1, es1_2, es1_3 = split_quantity_along_last_dim(es1)
+            ew2_1, ew2_2, ew2_3 = split_quantity_along_last_dim(ew2)
+        except AttributeError:
+            vlon1, vlon2, vlon3 = split_cartesian_into_storages(vlon)
+            vlat1, vlat2, vlat3 = split_cartesian_into_storages(vlat)
+            es1_1, es1_2, es1_3 = split_cartesian_into_storages(es1)
+            ew2_1, ew2_2, ew2_3 = split_cartesian_into_storages(ew2)
 
         return cls(
             vlon1=vlon1,
