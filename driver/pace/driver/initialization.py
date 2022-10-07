@@ -98,7 +98,7 @@ class InitializerSelector(Initializer):
 
 @InitializerSelector.register("baroclinic")
 @dataclasses.dataclass
-class BaroclinicConfig(Initializer):
+class BaroclinicInit(Initializer):
     """
     Configuration for baroclinic initialization.
     """
@@ -139,7 +139,7 @@ class BaroclinicConfig(Initializer):
 
 @InitializerSelector.register("restart")
 @dataclasses.dataclass
-class RestartConfig(Initializer):
+class RestartInit(Initializer):
     """
     Configuration for restart initialization.
     """
@@ -170,7 +170,7 @@ class RestartConfig(Initializer):
 
 @InitializerSelector.register("fortran_restart")
 @dataclasses.dataclass
-class FortranRestartConfig(Initializer):
+class FortranRestartInit(Initializer):
     """
     Configuration for fortran restart initialization.
     """
@@ -227,7 +227,7 @@ class FortranRestartConfig(Initializer):
 
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass
-class SerialboxConfig(Initializer):
+class SerialboxInit(Initializer):
     """
     Configuration for Serialbox initialization.
     """
@@ -329,7 +329,7 @@ class SerialboxConfig(Initializer):
 
 @InitializerSelector.register("predefined")
 @dataclasses.dataclass
-class PredefinedStateConfig(Initializer):
+class PredefinedStateInit(Initializer):
     """
     Configuration if the states are already defined.
 

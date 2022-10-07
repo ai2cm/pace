@@ -5,7 +5,7 @@ import xarray as xr
 
 import pace.driver
 import pace.util
-from pace.driver.initialization import FortranRestartConfig
+from pace.driver.initialization import FortranRestartInit
 from pace.util import (
     CubedSphereCommunicator,
     CubedSpherePartitioner,
@@ -50,7 +50,7 @@ def test_state_from_fortran_restart():
         quantity_factory, null_communicator
     )
 
-    restart_config = FortranRestartConfig(path=restart_dir)
+    restart_config = FortranRestartInit(path=restart_dir)
     driver_state = restart_config.get_driver_state(
         quantity_factory,
         local_communicator,

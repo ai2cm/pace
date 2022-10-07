@@ -84,12 +84,13 @@ def command_line(config_path: str, log_rank: Optional[int], log_level: str):
     main(driver_config=driver_config)
 
 
-def main(driver_config: DriverConfig):
+def main(driver_config: DriverConfig) -> Driver:
     driver = Driver(config=driver_config)
     try:
         driver.step_all()
     finally:
         driver.cleanup()
+    return driver
 
 
 if __name__ == "__main__":

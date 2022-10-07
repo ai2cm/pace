@@ -8,6 +8,7 @@ from pace.fv3core.initialization import init_baroclinic_state
 from pace.util.grid import MetricTerms
 from pace.util.mpi import MPIComm
 from pace.util.quantity import Quantity
+from util.pace.util.grid.helper import GridData
 
 
 def get_cube_comm(layout, comm: MPIComm):
@@ -193,8 +194,9 @@ def test_baroclinic_init_not_decomposition_dependent():
         ),
         communicator=cube_comm_3by3,
     )
+    grid_data_3by3 = GridData.new_from_metric_terms(metric_terms_3by3)
     state_3by3 = init_baroclinic_state(
-        metric_terms=metric_terms_3by3,
+        grid_data=grid_data_3by3,
         adiabatic=False,
         hydrostatic=False,
         moist_phys=True,
@@ -214,8 +216,9 @@ def test_baroclinic_init_not_decomposition_dependent():
             ),
             communicator=cube_comm_1by1,
         )
+        grid_data_1by1 = GridData.new_from_metric_terms(metric_terms_1by1)
         state_1by1 = init_baroclinic_state(
-            metric_terms=metric_terms_1by1,
+            grid_data=grid_data_1by1,
             adiabatic=False,
             hydrostatic=False,
             moist_phys=True,
