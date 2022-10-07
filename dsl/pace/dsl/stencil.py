@@ -16,13 +16,13 @@ from typing import (
     cast,
 )
 
+import dace
 import gt4py
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import dace
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.dace.orchestration import SDFGConvertible

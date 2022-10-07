@@ -2,13 +2,13 @@ import logging
 from datetime import timedelta
 from typing import Dict, Mapping, Optional
 
+from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
 import pace.util
 import pace.util.constants as constants
-from dace.frontend.python.interface import nounroll as dace_no_unroll
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
