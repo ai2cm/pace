@@ -32,7 +32,7 @@ def configure_logging(log_rank: Optional[int], log_level: str):
             forced to 'all' if running without MPI
         log_level: log level to use
     """
-    level = log_levels[log_level]
+    level = log_levels[log_level.lower()]
     if MPI is None:
         logging.basicConfig(
             level=level,

@@ -8,7 +8,6 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
-from pace.driver.grid import GeneratedGridConfig
 
 
 @dataclasses.dataclass()
@@ -64,9 +63,16 @@ class DriverState:
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
 
+    # TODO: the driver_config argument here isn't type hinted from
+    # import due to a circular dependency. This can be fixed by refactoring
     @classmethod
     def load_state_from_restart(
-        cls, restart_path: str, driver_config, fortran_data: bool = False
+        cls,
+        restart_path: str,
+        driver_config: "pace.driver.DriverConfig",
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> "DriverState":
         comm = driver_config.comm_config.get_comm()
         communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -86,14 +92,6 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
 
-        (
-            damping_coefficients,
-            driver_grid_data,
-            grid_data,
-        ) = GeneratedGridConfig.get_grid(
-            quantity_factory=quantity_factory,
-            communicator=communicator,
-        )
         state = _restart_driver_state(
             restart_path,
             communicator.rank,
