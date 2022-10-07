@@ -302,49 +302,22 @@ def get_mock_quantity():
     return unittest.mock.MagicMock(spec=pace.util.Quantity)
 
 
-def test_convert_quantities_to_storage_no_args():
-    args = []
+def test_convert_quantities_to_storage_no_kwargs():
     kwargs = {}
-    _convert_quantities_to_storage(args, kwargs)
-    assert len(args) == 0
-    assert len(kwargs) == 0
-
-
-def test_convert_quantities_to_storage_one_arg_quantity():
-    quantity = get_mock_quantity()
-    args = [quantity]
-    kwargs = {}
-    _convert_quantities_to_storage(args, kwargs)
-    assert len(args) == 1
-    assert args[0] == quantity.storage
+    kwargs = _convert_quantities_to_storage(kwargs)
     assert len(kwargs) == 0
 
 
 def test_convert_quantities_to_storage_one_kwarg_quantity():
     quantity = get_mock_quantity()
-    args = []
     kwargs = {"val": quantity}
-    _convert_quantities_to_storage(args, kwargs)
-    assert len(args) == 0
+    kwargs = _convert_quantities_to_storage(kwargs)
     assert len(kwargs) == 1
     assert kwargs["val"] == quantity.storage
 
 
-def test_convert_quantities_to_storage_one_arg_nonquantity():
-    non_quantity = unittest.mock.MagicMock(spec=tuple)
-    args = [non_quantity]
-    kwargs = {}
-    _convert_quantities_to_storage(args, kwargs)
-    assert len(args) == 1
-    assert args[0] == non_quantity
-    assert len(kwargs) == 0
-
-
 def test_convert_quantities_to_storage_one_kwarg_non_quantity():
-    non_quantity = unittest.mock.MagicMock(spec=tuple)
-    args = []
-    kwargs = {"val": non_quantity}
-    _convert_quantities_to_storage(args, kwargs)
-    assert len(args) == 0
+    kwargs = {"val": 5.0}
+    kwargs = _convert_quantities_to_storage(kwargs)
     assert len(kwargs) == 1
-    assert kwargs["val"] == non_quantity
+    assert kwargs["val"] == 5.0
