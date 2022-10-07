@@ -173,7 +173,7 @@ class VerticalGridData:
         """
         if self.bk.view[0] != 0:
             raise ValueError("ptop is not well-defined when top-of-atmosphere bk != 0")
-        return self.ak.view[0]
+        return float(self.ak.view[0])
 
 
 @dataclasses.dataclass(frozen=True)
