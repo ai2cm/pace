@@ -11,13 +11,12 @@ import dacite
 
 import pace.driver
 import pace.dsl
+import pace.fv3core
 import pace.physics
 import pace.stencils
 import pace.util
 import pace.util.grid
-from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.comparison import StencilComparison
-from pace import fv3core
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -160,8 +159,8 @@ class DriverConfig:
     comm_config: CreatesCommSelector = dataclasses.field(
         default_factory=CreatesCommSelector
     )
-    dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
-        default_factory=fv3core.DynamicalCoreConfig
+    dycore_config: pace.fv3core.DynamicalCoreConfig = dataclasses.field(
+        default_factory=pace.fv3core.DynamicalCoreConfig
     )
     physics_config: pace.physics.PhysicsConfig = dataclasses.field(
         default_factory=pace.physics.PhysicsConfig
@@ -222,7 +221,7 @@ class DriverConfig:
                     )
 
             kwargs["dycore_config"] = dacite.from_dict(
-                data_class=fv3core.DynamicalCoreConfig,
+                data_class=pace.fv3core.DynamicalCoreConfig,
                 data=kwargs.get("dycore_config", {}),
                 config=dacite.Config(strict=True),
             )
@@ -387,7 +386,7 @@ class Driver:
             )
             self._start_time = self.config.initialization.start_time
             logger.debug("initialized state")
-            self.dycore = fv3core.DynamicalCore(
+            self.dycore = pace.fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
                 stencil_factory=self.stencil_factory,
