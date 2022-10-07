@@ -188,15 +188,17 @@ def test_baroclinic_init_not_decomposition_dependent():
     comm_3by3 = MPIComm()
     global_rank = comm_3by3.Get_rank()
     cube_comm_3by3 = get_cube_comm(layout=(3, 3), comm=comm_3by3)
+    quantity_factory_3by3 = get_quantity_factory(
+        layout=(3, 3), nx_tile=nx_tile, ny_tile=ny_tile, nz=nz
+    )
     metric_terms_3by3 = MetricTerms(
-        quantity_factory=get_quantity_factory(
-            layout=(3, 3), nx_tile=nx_tile, ny_tile=ny_tile, nz=nz
-        ),
+        quantity_factory=quantity_factory_3by3,
         communicator=cube_comm_3by3,
     )
     grid_data_3by3 = GridData.new_from_metric_terms(metric_terms_3by3)
     state_3by3 = init_baroclinic_state(
         grid_data=grid_data_3by3,
+        quantity_factory=quantity_factory_3by3,
         adiabatic=False,
         hydrostatic=False,
         moist_phys=True,
@@ -210,15 +212,17 @@ def test_baroclinic_init_not_decomposition_dependent():
     comm_1by1 = comm_3by3.Split(color=int(compute_1by1), key=global_rank)
     if compute_1by1:
         cube_comm_1by1 = get_cube_comm(layout=(1, 1), comm=comm_1by1)
+        quantity_factory_1by1 = get_quantity_factory(
+            layout=(1, 1), nx_tile=nx_tile, ny_tile=ny_tile, nz=nz
+        )
         metric_terms_1by1 = MetricTerms(
-            quantity_factory=get_quantity_factory(
-                layout=(1, 1), nx_tile=nx_tile, ny_tile=ny_tile, nz=nz
-            ),
+            quantity_factory=quantity_factory_1by1,
             communicator=cube_comm_1by1,
         )
         grid_data_1by1 = GridData.new_from_metric_terms(metric_terms_1by1)
         state_1by1 = init_baroclinic_state(
             grid_data=grid_data_1by1,
+            quantity_factory=quantity_factory_1by1,
             adiabatic=False,
             hydrostatic=False,
             moist_phys=True,
