@@ -4,6 +4,7 @@ from typing import Literal, Tuple
 
 import pytest
 
+import pace.driver
 import pace.dsl
 from pace.driver import CreatesComm, DriverConfig
 from pace.driver.report import (
@@ -27,7 +28,6 @@ def get_driver_config(
     frequency: int = 1,
     output_initial_state=False,
     start_time_type: Literal["timedelta", "datetime"] = "timedelta",
-    intermediate_restart: list = [],
 ) -> DriverConfig:
     initialization_config = unittest.mock.MagicMock()
     if start_time_type == "timedelta":
@@ -51,7 +51,6 @@ def get_driver_config(
         diagnostics_config=unittest.mock.MagicMock(
             output_frequency=frequency, output_initial_state=output_initial_state
         ),
-        intermediate_restart=intermediate_restart,
         dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
