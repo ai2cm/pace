@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 
 import dace
 from dace.transformation.helpers import get_parent_map
+
 from pace.dsl.dace.dace_config import DaceConfig
 
 
@@ -46,7 +47,6 @@ def sdfg_nan_checker(sdfg: dace.SDFG):
     import copy
 
     import sympy as sp
-
     from dace import data as dt
     from dace import symbolic
     from dace.sdfg import graph as gr

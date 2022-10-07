@@ -1,9 +1,8 @@
 import os
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
-import gt4py.storage
-
 import dace
+import gt4py.storage
 from dace import compiletime as DaceCompiletime
 from dace.dtypes import DeviceType as DaceDeviceType
 from dace.dtypes import StorageType as DaceStorageType
@@ -11,6 +10,7 @@ from dace.frontend.python.common import SDFGConvertible
 from dace.frontend.python.parser import DaceProgram
 from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
+
 from pace.dsl.dace.build import (
     determine_compiling_ranks,
     get_sdfg_path,
@@ -22,12 +22,16 @@ from pace.dsl.dace.dace_config import (
     DaceConfig,
     DaCeOrchestration,
 )
+from pace.dsl.dace.sdfg_debug_passes import (
+    negative_delp_checker,
+    negative_qtracers_checker,
+    trace_all_outputs_at_index,
+)
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import (
     DaCeProgress,
     memory_static_analysis,
     report_memory_static_analysis,
-    sdfg_nan_checker,
 )
 from pace.util.mpi import MPI
 
@@ -173,16 +177,19 @@ def _build_sdfg(
                 f"Pooled {memory_pooled} mb",
             )
 
+        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
+        # is turned on.
+        if config.get_sync_debug():
+            with DaCeProgress(config, "Tooling the SDFG for debug"):
+                # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
+                trace_all_outputs_at_index(sdfg, 0, 0, 60)
+                negative_delp_checker(sdfg)
+                negative_qtracers_checker(sdfg)
+
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
             sdfg.compile()
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
-
-        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
-        # is turned on.
-        if config.get_sync_debug():
-            with DaCeProgress(config, "Debug tooling (NaNChecker)"):
-                sdfg_nan_checker(sdfg)
 
         # Printing analysis of the compiled SDFG
         with DaCeProgress(config, "Build finished. Running memory static analysis"):
@@ -245,7 +252,9 @@ def _call_sdfg(
     ):
         return _build_sdfg(daceprog, sdfg, config, args, kwargs)
     elif config.get_orchestrate() == DaCeOrchestration.Run:
-        return _run_sdfg(daceprog, config, args, kwargs)
+        with DaCeProgress(config, "Run"):
+            res = _run_sdfg(daceprog, config, args, kwargs)
+        return res
     else:
         raise NotImplementedError(
             f"Mode {config.get_orchestrate()} unimplemented at call time"

@@ -385,19 +385,3 @@ class UpdateAtmosphereState:
                     u=dycore_state.u,
                     v=dycore_state.v,
                 )
-                # self._checkpointer(
-                #     "Driver-Out",
-                #     qvapor=dycore_state.qvapor,
-                #     qliquid=dycore_state.qliquid,
-                #     qrain=dycore_state.qrain,
-                #     qsnow=dycore_state.qsnow,
-                #     qice=dycore_state.qice,
-                #     qgraupel=dycore_state.qgraupel,
-                #     pt=dycore_state.pt,
-                #     ua=dycore_state.ua,
-                #     va=dycore_state.va,
-                #     u=dycore_state.u,
-                #     v=dycore_state.v,
-                #     delz=dycore_state.delz,
-                #     delp=dycore_state.delp,
-                # )
