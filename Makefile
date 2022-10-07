@@ -27,10 +27,10 @@ CONTAINER_CMD?=docker
 SAVEPOINT_SETUP=pip3 list && python3 -m gt4py.gt_src_manager install
 
 VOLUMES ?=
+BUILD_FLAGS ?=
 
 ### Testing variables
 
-FV3=fv3core
 RUN_FLAGS ?=--rm
 ifeq ("$(CONTAINER_CMD)","")
 	PACE_PATH?=$(ROOT_DIR)
@@ -56,7 +56,7 @@ else
 	VOLUMES += -v $(EXPERIMENT_DATA):$(EXPERIMENT_DATA_RUN)
 endif
 ifeq ($(CONTAINER_CMD),docker)
-	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
+	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) --env GT_CACHE_ROOT=/pace/.gt_cache $(PACE_IMAGE)
 else
 	CONTAINER_FLAGS=
 endif
@@ -84,6 +84,7 @@ endif
 
 _force_build:
 	DOCKER_BUILDKIT=1 docker build \
+		$(BUILD_FLAGS) \
 		-f $(CWD)/Dockerfile \
 		-t $(PACE_IMAGE) \
 		.

@@ -16,15 +16,21 @@ GFSPhysicsDriver:
     cuda_no_fma: true
   - backend: gt:gpu
     cuda_no_fma: true
+  - backend: dace:gpu
+    cuda_no_fma: true
+    ignore_near_zero_errors:
+      IPD_rain: 1e-12
+      IPD_qice: 1e-12
+      IPD_qgraupel: 1e-12
 
 # On GPU u/v wind tendencies seems to diverge in computation from numpy/fortran
 # equivalent due to the use of fused multiply-add in the update stencil.
 # For validation we deactivate it (for validation only!)
 Microph:
   - backend: numpy
-    max_error: 1e-10
+    max_error: 2e-10
   - backend: gt:cpu_ifirst
-    max_error: 1e-12
+    max_error: 6e-11
   - backend: cuda
     cuda_no_fma: true
   - backend: gt:gpu
@@ -34,3 +40,12 @@ Microph:
       mph_ql_dt: 1e-8
       mph_qr_dt: 1e-9
       mph_qg_dt: 1e-18
+  - backend: dace:gpu
+    max_error: 2.2e-8
+    cuda_no_fma: true
+    ignore_near_zero_errors:
+      mph_ql_dt: 1e-8
+      mph_qr_dt: 1e-9
+      mph_qg_dt: 1e-18
+      mph_udt: 1e-8
+      mph_vdt: 1e-8
