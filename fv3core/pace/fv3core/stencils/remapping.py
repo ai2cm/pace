@@ -591,7 +591,6 @@ class LagrangianToEulerian:
                 omga=omga,
                 ak=ak,
                 bk=bk,
-                pfull=pfull,
                 dp1=dp1,
             )
         # TODO: remove unused arguments (and commented code that references them)
