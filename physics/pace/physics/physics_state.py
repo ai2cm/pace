@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass, field, fields
-from typing import List, Optional
+from typing import Any, List, Mapping, Optional
 
 import xarray as xr
 
@@ -327,6 +327,30 @@ class PhysicsState:
             **initial_storages,
             quantity_factory=quantity_factory,
             active_packages=active_packages,
+        )
+
+    @classmethod
+    def init_from_storages(
+        cls,
+        storages: Mapping[str, Any],
+        sizer: pace.util.GridSizer,
+        quantity_factory: pace.util.QuantityFactory,
+        active_packages: List[str],
+    ):
+        inputs = {}
+        for _field in fields(cls):
+            if "dims" in _field.metadata.keys():
+                dims = _field.metadata["dims"]
+                quantity = pace.util.Quantity(
+                    storages[_field.name],
+                    dims,
+                    _field.metadata["units"],
+                    origin=sizer.get_origin(dims),
+                    extent=sizer.get_extent(dims),
+                )
+                inputs[_field.name] = quantity
+        return cls(
+            **inputs, quantity_factory=quantity_factory, active_packages=active_packages
         )
 
     @property
