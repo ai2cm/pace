@@ -291,7 +291,7 @@ class PhysicsState:
                 [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
                 "unknown",
                 dtype=float,
-            ).data
+            )
             self.microphysics: Optional[MicrophysicsState] = MicrophysicsState(
                 pt=self.pt,
                 qvapor=self.qvapor,
@@ -309,7 +309,7 @@ class PhysicsState:
                 delprsi=self.delprsi,
                 wmp=self.wmp,
                 dz=self.dz,
-                tendency_storage=tendency,
+                tendency=tendency,
                 land=self.land,
             )
         else:
