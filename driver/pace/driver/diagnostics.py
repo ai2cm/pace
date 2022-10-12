@@ -172,6 +172,7 @@ def _compute_column_integral(
         q_in: tracer mixing ratio
         delp: pressure thickness of atmospheric layer
     """
+    assert len(q_in.dims) > 2
     if q_in.dims[2] != pace.util.Z_DIM:
         raise NotImplementedError(
             "this function assumes the z-dimension is the third dimension"
