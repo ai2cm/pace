@@ -4,8 +4,6 @@ import warnings
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
-from sympy import ShapeError
-
 import pace.driver
 import pace.dsl
 import pace.stencils
@@ -174,13 +172,14 @@ def _compute_column_integral(
         q_in: tracer mixing ratio
         delp: pressure thickness of atmospheric layer
     """
-    if len(q_in.shape) < 3:
-        assert ShapeError(f"{name} does not have vertical levels.")
+    assert len(q_in.dims) > 2
+    if q_in.dims[2] != pace.util.Z_DIM:
+        raise NotImplementedError(
+            "this function assumes the z-dimension is the third dimension"
+        )
+    k_slice = slice(q_in.origin[2], q_in.origin[2] + q_in.extent[2])
     column_integral = pace.util.Quantity(
-        sum(
-            q_in.data[:, :, k] * delp.data[:, :, k]
-            for k in range(q_in.metadata.extent[2])
-        ),
+        q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
         dims=("x", "y"),
         origin=q_in.metadata.origin[0:2],
         extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),
