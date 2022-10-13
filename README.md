@@ -17,33 +17,33 @@ Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by 
 Pace requires gcc > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend. You will also need the headers of the boost libraries in your `$PATH` (boost itself does not need to be installed).
 
 ```shell
-cd /BOOST/LOCATION
+cd BOOST/ROOT
 wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
 tar -xzf boost_1_79_0.tar.gz
 mkdir -p boost_1_79_0/include
 mv boost_1_79_0/boost boost_1_79_0/include/
-export BOOST_ROOT=BOOST/LOCATION/boost_1_79_0
+export BOOST_ROOT=BOOST/ROOT/boost_1_79_0
 ```
 
 When cloning Pace you will need to update the repository's submodules as well:
 ```shell
-$ git clone --recursive https://github.com/ai2cm/pace.git
+git clone --recursive https://github.com/ai2cm/pace.git
 ```
 or if you have already cloned the repository:
 ```
-$ git submodule update --init --recursive
+git submodule update --init --recursive
 ```
 
 We recommend creating a python `venv` or conda environment specifically for Pace.
 
 ```shell
-$ python3 -m venv venv_name
-$ source venv_name/bin/activate
+python3 -m venv venv_name
+source venv_name/bin/activate
 ```
 
 Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
 ```shell
-$ pip3 install -r requirements_dev.txt -c constraints.txt
+pip3 install -r requirements_dev.txt -c constraints.txt
 ```
 
 Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
