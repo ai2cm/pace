@@ -62,75 +62,25 @@ Shell scripts to install Pace on specific machines such as Gaea can be found in 
 
 You can now run and develop Pace directly. After downloading the test data the Pace tests can be run with pytest using the same test arguments as inside the container.
 
+## Running an example test case
 
-## Downloading test data
-
-The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data.
-
-First, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
+### Bare-metal
+With the environment activated, you can run an example baroclinic test case with the following command:
 ```shell
-gcloud auth login
-gcloud auth configure-docker
+mpirun -n 6 python3 -m pace.driver.run driver/examples/configs/baroclinic_c12.yaml
+
+# or with oversubscribe if you do not have at least 6 cores
+mpirun -n 6 --oversubscribe python3 -m pace.driver.run driver/examples/configs/baroclinic_c12.yaml
 ```
 
-Next, you can download the test data for the dynamical core and the physics tests.
-
-```shell
-cd fv3core
-make get_test_data
-cd ../physics
-make get_test_data
-cd ..
-```
-
-If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket. You will need a valid in stallation of the `lftp` command.
-
-## Running the tests (manually)
-
-There are two ways to run the tests, manually by explicitly invoking `pytest` or autmatically using make targets. The former can be used both inside the Docker container as well as for a bare-metal installation and will be described here.
-
-First enter the container and navigate to the pace directory:
-
+### Inside docker
 ```shell
 make dev
-cd /pace
+mpirun --mca btl_vader_single_copy_mechanism none -n 6 python3 -m pace.driver.run /pace/driver/examples/configs/baroclinic_c12.yaml
 ```
 
-Note that by entering the container with the `make dev` command, volumes for code and test data will be mounted into the container and modifications inside the container will be retained.
+After the run completes, you will see an output direcotry `output.zarr`. An example to visualize the output is provided in `driver/examples/plot_output.py`. See the [driver example](driver/examples/README.md) section for more details.
 
-There are two sets of tests. The "sequential tests" test components which do not require MPI-parallelism. The "parallel tests" can only within an MPI environment.
+## Running translate tests
 
-To run the sequential and parallel tests for the dynmical core (fv3core), you can execute the following commands (these take a bit of time):
-
-```shell
-pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore ./fv3core/tests
-```
-
-Note that you must have already downloaded the test data according to the instructions above. The precise path needed for `--data_path` may be different, particularly the version directory.
-
-Similarly, you can run the sequential and parallel tests for the physical parameterizations (physics). Currently, only the microphysics is integrated into pace and will be tested.
-
-```shell
-pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
-```
-
-Finally, to test the pace infrastructure utilities (util), you can run the following commands:
-
-```shell
-cd util
-make test
-make test_mpi
-```
-
-## Running the tests automatically using Docker
-
-To automatize testing, a set of convenience commands is available that build the Docker image, run the container and execute the tests (dynamical core and physics only). This is mainly useful for CI/CD workflows.
-
-```shell
-DEV=y make savepoint_tests
-DEV=y make savepoint_tests_mpi
-DEV=y make physics_savepoint_tests
-DEV=y make physics_savepoint_tests_mpi
-```
+See the [translate tests README](stencils/pace/stencils/testing/README.md) for more information.
