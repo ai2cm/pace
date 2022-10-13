@@ -1,3 +1,9 @@
+[![CircleCI][circleci-shield]][circleci-url]
+[![Contributors][contributors-shield]][contributors-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![Apache License][license-shield]][license-url]
+
 # Pace
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
@@ -84,3 +90,14 @@ After the run completes, you will see an output direcotry `output.zarr`. An exam
 ## Running translate tests
 
 See the [translate tests README](stencils/pace/stencils/testing/README.md) for more information.
+
+[circleci-shield]: https://dl.circleci.com/status-badge/img/gh/ai2cm/pace/tree/main.svg?style=svg
+[circleci-url]: https://dl.circleci.com/status-badge/redirect/gh/ai2cm/pace/tree/main
+[contributors-shield]: https://img.shields.io/github/contributors/ai2cm/pace.svg
+[contributors-url]: https://github.com/ai2cm/pace/graphs/contributors
+[stars-shield]: https://img.shields.io/github/stars/ai2cm/pace.svg
+[stars-url]: https://github.com/ai2cm/pace/stargazers
+[issues-shield]: https://img.shields.io/github/issues/ai2cm/pace.svg
+[issues-url]: https://github.com/ai2cm/pace/issues
+[license-shield]: https://img.shields.io/github/license/ai2cm/pace.svg
+[license-url]: https://github.com/ai2cm/pace/blob/main/LICENSE
