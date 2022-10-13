@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass, field, fields
-from typing import Any, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 import xarray as xr
 
@@ -336,8 +336,8 @@ class PhysicsState:
         sizer: pace.util.GridSizer,
         quantity_factory: pace.util.QuantityFactory,
         active_packages: List[str],
-    ):
-        inputs = {}
+    ) -> "PhysicsState":
+        inputs: Dict[str, pace.util.Quantity] = {}
         for _field in fields(cls):
             if "dims" in _field.metadata.keys():
                 dims = _field.metadata["dims"]
