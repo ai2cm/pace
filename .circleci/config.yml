@@ -405,7 +405,7 @@ jobs:
       - checkout
       - make_savepoints:
           backend: numpy
-          experiment: c12_54ranks_baroclinic_dycore_microphysics
+          experiment: c12_6ranks_standard
           target: test_main
           num_ranks: 1
 
