@@ -97,6 +97,7 @@ commands:
         description: "make target to run"
         type: enum
         enum:
+          - "test_main"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
           - "physics_savepoint_tests"
