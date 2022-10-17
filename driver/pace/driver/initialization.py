@@ -141,7 +141,7 @@ class BaroclinicInit(Initializer):
 @dataclasses.dataclass
 class RestartInit(Initializer):
     """
-    Configuration for restart initialization.
+    Configuration for pace restart initialization.
     """
 
     path: str = "."
