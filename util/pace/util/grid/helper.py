@@ -1,5 +1,4 @@
 import dataclasses
-import functools
 import pathlib
 
 import xarray as xr
@@ -605,7 +604,7 @@ class DriverGridData:
             vlat1, vlat2, vlat3 = split_quantity_along_last_dim(vlat)
             es1_1, es1_2, es1_3 = split_quantity_along_last_dim(es1)
             ew2_1, ew2_2, ew2_3 = split_quantity_along_last_dim(ew2)
-        except AttributeError:
+        except (AttributeError, TypeError):
             vlon1, vlon2, vlon3 = split_cartesian_into_storages(vlon)
             vlat1, vlat2, vlat3 = split_cartesian_into_storages(vlat)
             es1_1, es1_2, es1_3 = split_cartesian_into_storages(es1)
@@ -631,10 +630,6 @@ class DriverGridData:
         )
 
 
-# TODO: this function is only overloaded because savepoint tests still create storages
-# instead of quantities in some places. Remove this singledispatch and only support
-# Quantity once savepoint tests are updated.
-@functools.singledispatch
 def split_quantity_along_last_dim(quantity):
     """Split a quantity along the last dimension into a list of quantities.
 
@@ -644,16 +639,6 @@ def split_quantity_along_last_dim(quantity):
     Returns:
         List of quantities.
     """
-    # this "default" version is intended for gt4py storages, which are not
-    # a well-defined type
-    return_list = []
-    for i in range(quantity.data.shape[-1]):
-        return_list.append(quantity[..., i])
-    return return_list
-
-
-@split_quantity_along_last_dim.register
-def _(quantity: pace.util.Quantity):
     return_list = []
     for i in range(quantity.data.shape[-1]):
         return_list.append(
