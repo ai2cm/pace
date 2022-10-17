@@ -180,7 +180,7 @@ def _compute_column_integral(
     k_slice = slice(q_in.origin[2], q_in.origin[2] + q_in.extent[2])
     column_integral = pace.util.Quantity(
         q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
-        dims=("x", "y"),
+        dims=tuple(q_in.dims[:2]) + tuple(q_in.dims[3:]),
         origin=q_in.metadata.origin[0:2],
         extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),
         units="kg/m**2",
