@@ -12,6 +12,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, s
 
 import pace.dsl.gt4py_utils as utils
 import pace.physics.functions.microphysics_funcs as functions
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
@@ -1844,24 +1845,24 @@ class MicrophysicsState:
 
     def __init__(
         self,
-        pt: FloatField,
-        qvapor: FloatField,
-        qliquid: FloatField,
-        qrain: FloatField,
-        qice: FloatField,
-        qsnow: FloatField,
-        qgraupel: FloatField,
-        qcld: FloatField,
-        ua: FloatField,
-        va: FloatField,
-        delp: FloatField,
-        delz: FloatField,
-        omga: FloatField,
-        delprsi: FloatField,
-        wmp: FloatField,
-        dz: FloatField,
-        tendency_storage: FloatField,
-        land: FloatField,
+        pt: pace.util.Quantity,
+        qvapor: pace.util.Quantity,
+        qliquid: pace.util.Quantity,
+        qrain: pace.util.Quantity,
+        qice: pace.util.Quantity,
+        qsnow: pace.util.Quantity,
+        qgraupel: pace.util.Quantity,
+        qcld: pace.util.Quantity,
+        ua: pace.util.Quantity,
+        va: pace.util.Quantity,
+        delp: pace.util.Quantity,
+        delz: pace.util.Quantity,
+        omga: pace.util.Quantity,
+        delprsi: pace.util.Quantity,
+        wmp: pace.util.Quantity,
+        dz: pace.util.Quantity,
+        tendency: pace.util.Quantity,
+        land: pace.util.Quantity,
     ):
         self.pt = pt
         self.qvapor = qvapor
@@ -1876,16 +1877,16 @@ class MicrophysicsState:
         self.delp = delp
         self.delz = delz
         self.omga = omga
-        self.qv_dt = copy.deepcopy(tendency_storage)
-        self.ql_dt = copy.deepcopy(tendency_storage)
-        self.qr_dt = copy.deepcopy(tendency_storage)
-        self.qi_dt = copy.deepcopy(tendency_storage)
-        self.qs_dt = copy.deepcopy(tendency_storage)
-        self.qg_dt = copy.deepcopy(tendency_storage)
-        self.qa_dt = copy.deepcopy(tendency_storage)
-        self.udt = copy.deepcopy(tendency_storage)
-        self.vdt = copy.deepcopy(tendency_storage)
-        self.pt_dt = copy.deepcopy(tendency_storage)
+        self.qv_dt = copy.deepcopy(tendency)
+        self.ql_dt = copy.deepcopy(tendency)
+        self.qr_dt = copy.deepcopy(tendency)
+        self.qi_dt = copy.deepcopy(tendency)
+        self.qs_dt = copy.deepcopy(tendency)
+        self.qg_dt = copy.deepcopy(tendency)
+        self.qa_dt = copy.deepcopy(tendency)
+        self.udt = copy.deepcopy(tendency)
+        self.vdt = copy.deepcopy(tendency)
+        self.pt_dt = copy.deepcopy(tendency)
         self.delprsi = delprsi
         self.wmp = wmp
         self.dz = dz

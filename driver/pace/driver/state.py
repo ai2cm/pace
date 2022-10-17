@@ -156,7 +156,6 @@ def _overwrite_state_from_restart(
         rank: current rank number
         state: an empty state
         restart_file_prefix: file prefix name to read
-        is_gpu_backend:
     """
     ds = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
 
