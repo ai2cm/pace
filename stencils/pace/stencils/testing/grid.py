@@ -483,38 +483,6 @@ class Grid:
         if self._grid_data is not None:
             return self._grid_data
         horizontal = HorizontalGridData(
-            # lon=self.bgrid1,
-            # lat=self.bgrid2,
-            # lon_agrid=self.agrid1,
-            # lat_agrid=self.agrid2,
-            # area=self.area,
-            # area_64=self.area_64,
-            # rarea=self.rarea,
-            # rarea_c=self.rarea_c,
-            # dx=self.dx,
-            # dy=self.dy,
-            # dxc=self.dxc,
-            # dyc=self.dyc,
-            # dxa=self.dxa,
-            # dya=self.dya,
-            # rdx=self.rdx,
-            # rdy=self.rdy,
-            # rdxc=self.rdxc,
-            # rdyc=self.rdyc,
-            # rdxa=self.rdxa,
-            # rdya=self.rdya,
-            # ee1=self.ee1,
-            # ee2=self.ee2,
-            # es1=self.es1,
-            # ew2=self.ew2,
-            # a11=self.a11,
-            # a12=self.a12,
-            # a21=self.a21,
-            # a22=self.a22,
-            # edge_w=self.edge_w,
-            # edge_e=self.edge_e,
-            # edge_s=self.edge_s,
-            # edge_n=self.edge_n,
             lon=self.quantity_factory.from_array(
                 data=self.bgrid1,
                 dims=GridDefinitions.lon.dims,
@@ -677,8 +645,6 @@ class Grid:
             ),
         )
         vertical = VerticalGridData(
-            # ak=self.ak,
-            # bk=self.bk
             ak=self.quantity_factory.from_array(
                 data=self.ak,
                 dims=GridDefinitions.ak.dims,
@@ -691,16 +657,6 @@ class Grid:
             ),
         )
         contravariant = ContravariantGridData(
-            # self.cosa,
-            # self.cosa_u,
-            # self.cosa_v,
-            # self.cosa_s,
-            # self.sina_u,
-            # self.sina_v,
-            # self.rsina,
-            # self.rsin_u,
-            # self.rsin_v,
-            # self.rsin2,
             cosa=self.quantity_factory.from_array(
                 data=self.cosa,
                 dims=GridDefinitions.cosa.dims,
@@ -753,14 +709,6 @@ class Grid:
             ),
         )
         angle = AngleGridData(
-            # self.sin_sg1,
-            # self.sin_sg2,
-            # self.sin_sg3,
-            # self.sin_sg4,
-            # self.cos_sg1,
-            # self.cos_sg2,
-            # self.cos_sg3,
-            # self.cos_sg4,
             sin_sg1=self.quantity_factory.from_array(
                 data=self.sin_sg1,
                 dims=GridDefinitions.sin_sg1.dims,

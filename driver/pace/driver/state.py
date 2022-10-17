@@ -177,7 +177,6 @@ def _restart_driver_state(
 ):
     fs = pace.util.get_fs(path)
 
-    is_fortran_restart = False
     restart_files = fs.ls(path)
     is_fortran_restart = any(
         fname.endswith("fv_core.res.nc") for fname in restart_files

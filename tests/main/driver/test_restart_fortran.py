@@ -16,6 +16,7 @@ from pace.util import (
 
 
 DIR = os.path.dirname(os.path.abspath(__file__))
+PACE_DIR = os.path.join(DIR, "../../../")
 
 
 def test_state_from_fortran_restart():
@@ -40,7 +41,7 @@ def test_state_from_fortran_restart():
     )
 
     quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend="numpy")
-    restart_dir = os.path.join(DIR, "../../../util/tests/data/c12_restart")
+    restart_dir = os.path.join(PACE_DIR, "util/tests/data/c12_restart")
 
     (
         damping_coefficients,

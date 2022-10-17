@@ -185,7 +185,6 @@ class FortranRestartInit(Initializer):
         coupler_file = restart_files[
             [fname.endswith("coupler.res") for fname in restart_files].index(True)
         ]
-        # coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0]
         restart_doc = pathlib.Path(self.path) / coupler_file
         fl = open(restart_doc, "r")
         contents = fl.readlines()
@@ -368,7 +367,7 @@ class PredefinedStateInit(Initializer):
 # TODO: refactor fv3core so that pe and peln are internal temporaries
 # of the dynamical core, computed automatically, so that this helper
 # can be eliminated from initialization
-def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
+def _update_fortran_restart_pe_peln(state: DriverState) -> None:
     """
     Fortran restart data don't have information on pressure interface values
     and their logs.
@@ -389,5 +388,3 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
 
     state.dycore_state.pe = pe
     state.dycore_state.peln = peln
-
-    return None

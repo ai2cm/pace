@@ -81,7 +81,7 @@ class GridInitializerSelector(GridInitializer):
 @dataclasses.dataclass
 class GeneratedGridConfig(GridInitializer):
     """
-    Configuration for baroclinic initialization.
+    Configuration for a cubed-sphere grid computed from configuration.
 
     Attributes:
         stretch_factor: refinement amount
@@ -133,7 +133,7 @@ class GeneratedGridConfig(GridInitializer):
 @dataclasses.dataclass
 class SerialboxGridConfig(GridInitializer):
     """
-    Configuration for Serialbox initialization.
+    Configuration for grid initialized from Serialbox data.
     """
 
     path: str
