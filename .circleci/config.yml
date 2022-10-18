@@ -460,6 +460,13 @@ jobs:
 workflows:
   version: 2
   tagged-build:
+    triggers:
+      - schedule:
+          cron: "15 3 * * 0"
+          filters:
+            branches:
+              only:
+                - main
     jobs:
       - lint:
           filters:
