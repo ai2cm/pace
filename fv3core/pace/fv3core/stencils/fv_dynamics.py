@@ -183,16 +183,30 @@ class DynamicalCore:
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_remapping_in",
-            dace_compiletime_args=["state", "cappa", "te0_2d", "wsd", "dp1"],
+            dace_compiletime_args=[
+                "state",
+            ],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_remapping_out",
-            dace_compiletime_args=["state", "cappa", "te0_2d", "dp1"],
+            dace_compiletime_args=["state"],
         )
 
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_tracer_advection_in",
+            dace_compiletime_args=["state"],
+        )
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_tracer_advection_out",
+            dace_compiletime_args=["state"],
+        )
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
         self.call_checkpointer = checkpointer is not None
@@ -253,7 +267,6 @@ class DynamicalCore:
             self.grid_data,
             comm,
             self.tracers,
-            checkpointer=checkpointer,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -376,10 +389,6 @@ class DynamicalCore:
     def _checkpoint_remapping_in(
         self,
         state: DycoreState,
-        cappa: Quantity,
-        te0_2d: Quantity,
-        wsd: Quantity,
-        dp1: Quantity,
     ):
         if self.call_checkpointer:
             self.checkpointer(
@@ -395,26 +404,23 @@ class DynamicalCore:
                 w=state.w,
                 ua=state.ua,
                 va=state.va,
-                cappa=cappa,
+                cappa=self._cappa,
                 pkz=state.pkz,
                 pk=state.pk,
                 pe=state.pe.transpose(
                     [X_DIM, Z_INTERFACE_DIM, Y_DIM]
                 ),  # [x, z, y] fortran data
                 phis=state.phis,
-                te_2d=te0_2d,
+                te_2d=self._te0_2d,
                 ps=state.ps,
-                wsd=wsd,
+                wsd=self._wsd,
                 omga=state.omga,
-                dp1=dp1,
+                dp1=self._dp1,
             )
 
     def _checkpoint_remapping_out(
         self,
         state: DycoreState,
-        cappa: Quantity,
-        te0_2d: Quantity,
-        dp1: Quantity,
     ):
         if self.call_checkpointer:
             self.checkpointer(
@@ -428,15 +434,43 @@ class DynamicalCore:
                 u=state.u,
                 v=state.v,
                 w=state.w,
-                cappa=cappa,
+                cappa=self._cappa,
                 pkz=state.pkz,
                 pk=state.pk,
                 pe=state.pe.transpose(
                     [X_DIM, Z_INTERFACE_DIM, Y_DIM]
                 ),  # [x, z, y] fortran data
-                te_2d=te0_2d,
+                te_2d=self._te0_2d,
                 omga=state.omga,
-                dp1=dp1,
+                dp1=self._dp1,
+            )
+
+    def _checkpoint_tracer_advection_in(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Tracer2D1L-In",
+                dp1=self._dp1,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+                cxd=state.cxd,
+                cyd=state.cyd,
+            )
+
+    def _checkpoint_tracer_advection_out(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Tracer2D1L-Out",
+                dp1=self._dp1,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+                cxd=state.cxd,
+                cyd=state.cyd,
             )
 
     def step_dynamics(
@@ -535,9 +569,7 @@ class DynamicalCore:
                 if __debug__:
                     log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
-                    self._checkpoint_remapping_in(
-                        state, self._cappa, self._te0_2d, self._wsd, self._dp1
-                    )
+                    self._checkpoint_remapping_in(state)
                     self._lagrangian_to_eulerian_obj(
                         self.tracer_storages,
                         state.pt,
@@ -572,9 +604,7 @@ class DynamicalCore:
                         self._timestep / self._k_split,
                         self._timestep,
                     )
-                    self._checkpoint_remapping_out(
-                        state, self._cappa, self._te0_2d, self._dp1
-                    )
+                    self._checkpoint_remapping_out(state)
                 if last_step:
                     da_min: float = self._get_da_min()
                     self.post_remap(
@@ -611,6 +641,7 @@ class DynamicalCore:
             if __debug__:
                 log_on_rank_0("TracerAdvection")
             with timer.clock("TracerAdvection"):
+                self._checkpoint_tracer_advection_in(state)
                 self.tracer_advection(
                     tracers,
                     self._dp1,
@@ -620,6 +651,7 @@ class DynamicalCore:
                     state.cyd,
                     self._timestep / self._k_split,
                 )
+                self._checkpoint_tracer_advection_out(state)
 
     def post_remap(
         self,

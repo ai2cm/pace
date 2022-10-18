@@ -183,28 +183,11 @@ class TracerAdvection:
         grid_data,
         comm: pace.util.CubedSphereCommunicator,
         tracers: Dict[str, Quantity],
-        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["tracers"],
-        )
-        self._checkpointer = checkpointer
-        # this is only computed in init because Dace does not yet support
-        # this operation
-        self._call_checkpointer = checkpointer is not None
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            method_to_orchestrate="_checkpoint_input",
-            dace_compiletime_args=["tracers", "dp1", "mfxd", "mfyd", "cxd", "cyd"],
-        )
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            method_to_orchestrate="_checkpoint_output",
-            dace_compiletime_args=["tracers", "dp1", "mfxd", "mfyd", "cxd", "cyd"],
         )
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
@@ -293,32 +276,6 @@ class TracerAdvection:
             [t for t in tracers.keys()],
         )
 
-    def _checkpoint_input(
-        self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd
-    ):
-        if self._checkpointer is not None:
-            self._checkpointer(
-                "Tracer2D1L-In",
-                dp1=dp1,
-                mfxd=mfxd,
-                mfyd=mfyd,
-                cxd=cxd,
-                cyd=cyd,
-            )
-
-    def _checkpoint_output(
-        self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd
-    ):
-        if self._checkpointer is not None:
-            self._checkpointer(
-                "Tracer2D1L-Out",
-                dp1=dp1,
-                mfxd=mfxd,
-                mfyd=mfyd,
-                cxd=cxd,
-                cyd=cyd,
-            )
-
     def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:
@@ -329,7 +286,6 @@ class TracerAdvection:
             cxd (inout):
             cyd (inout):
         """
-        self._checkpoint_input(tracers, dp1, mfxd, mfyd, cxd, cyd)
         # TODO: remove unused mdt argument
         # DaCe parsing issue
         # if len(tracers) != self._tracer_count:
@@ -433,4 +389,3 @@ class TracerAdvection:
                 self._tracers_halo_updater.update()
                 # use variable assignment to avoid a data copy
                 self._swap_dp(dp1, dp2)
-        self._checkpoint_output(tracers, dp1, mfxd, mfyd, cxd, cyd)
