@@ -98,6 +98,7 @@ commands:
         type: enum
         enum:
           - "test_main"
+          - "test_savepoint"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
           - "physics_savepoint_tests"
@@ -412,7 +413,7 @@ jobs:
   test_mpi_54rank:
     docker:
       - image: cimg/python:3.8
-    resource_class: large
+    resource_class: xlarge
     working_directory: ~/repo
     steps:
       - checkout
@@ -425,6 +426,20 @@ jobs:
           command: |
             . venv/bin/activate
             mpirun -n 54 --oversubscribe --mca btl_vader_single_copy_mechanism none python3 -m mpi4py -m pytest tests/mpi_54rank
+
+  test_savepoint:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: large
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: numpy
+          experiment: c12_6ranks_standard
+          target: test_savepoint
+          num_ranks: 6
 
   test_notebooks:
     docker:
@@ -533,6 +548,12 @@ workflows:
             parameters:
               backend:
                 - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - test_savepoint:
           context:
             - GCLOUD_ENCODED_KEY
           filters:
