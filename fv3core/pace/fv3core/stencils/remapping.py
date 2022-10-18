@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from gt4py.gtscript import (
     __INLINED,
@@ -15,6 +15,7 @@ from gt4py.gtscript import (
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -286,12 +287,17 @@ class LagrangianToEulerian:
         nq,
         pfull,
         tracers: Dict[str, Quantity],
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["tracers"],
         )
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
             raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
