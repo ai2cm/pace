@@ -1,6 +1,6 @@
 stencil_config:
   compilation_config:
-    backend: numpy
+    backend: dace:cpu
     rebuild: false
     validate_args: true
     format_source: false
@@ -8,35 +8,15 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: false
+  performance_mode: true
   experiment_name: c12_baroclinic
-comm_config:
-  type: read
-  config:
-    path: comm
-    rank: 0
 nx_tile: 12
 nz: 79
-dt_atmos: 180
-minutes: 6
+dt_atmos: 225
+minutes: 1
 layout:
   - 1
   - 1
-diagnostics_config:
-  path: "output.zarr"
-  names:
-    - u
-    - v
-    - ua
-    - va
-    - pt
-    - delp
-    - qvapor
-    - qliquid
-    - qice
-    - qrain
-    - qsnow
-    - qgraupel
 dycore_config:
   a_imp: 1.0
   beta: 0.

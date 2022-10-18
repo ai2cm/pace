@@ -29,7 +29,7 @@ class MapNTracer:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["tracers"],
+            dace_compiletime_args=["tracers"],
         )
         grid_indexing = stencil_factory.grid_indexing
         self._origin = (i1, j1, 0)

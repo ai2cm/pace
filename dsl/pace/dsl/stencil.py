@@ -326,7 +326,6 @@ class FrozenStencil(SDFGConvertible):
                     gt_cache=gt4py.config.cache_settings["dir_name"]
                 ),
             )
-        self._argument_names = tuple(inspect.getfullargspec(func).args)
 
         assert (
             len(self._argument_names) > 0

@@ -24,18 +24,18 @@ virtualenv_path=$1
 
 set -e -x
 
+workdir=$(pwd)
 git submodule update --init ${PACE_DIR}/external/daint_venv
 git submodule update --init ${PACE_DIR}/external/gt4py
 ${PACE_DIR}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install -r fv3core/requirements/requirements_dace.txt # To allow for non-release version of DaCe to be picked up first (since PIP doesn't allow git constrainted anymore...)
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/external/gt4py/
-python3 -m pip install ${PACE_DIR}/util/
-python3 -m pip install $wheel_command -c ${PACE_DIR}/constraints.txt -r fv3core/requirements/requirements_base.txt
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3core/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/physics/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/stencils/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/dsl/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/driver/
+
+workdir=$(pwd)
+cd ${PACE_DIR}
+python3 -m pip install $wheel_command -r ${PACE_DIR}/requirements_dev.txt -c ${PACE_DIR}/constraints.txt
+# have to be installed in non-develop mode because the directory where this gets built from
+# gets deleted before the tests run on daint
+python3 -m pip install ${PACE_DIR}/driver ${PACE_DIR}/dsl ${PACE_DIR}/fv3core ${PACE_DIR}/physics ${PACE_DIR}/stencils ${PACE_DIR}/util ${PACE_DIR}/external/gt4py -c ${PACE_DIR}/constraints.txt
+cd ${workdir}
 
 deactivate

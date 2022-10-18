@@ -41,6 +41,9 @@ def atmos_phys_driver_statein(
 ):
     from __externals__ import nwat, pk0inv, pktop, ptop
 
+    with computation(BACKWARD), interval(...):
+        phii = 0.0
+
     with computation(BACKWARD), interval(0, -1):
         phii = phii[0, 0, 1] - delz * constants.GRAV
 
@@ -105,6 +108,16 @@ def prepare_microphysics(
     qvapor: FloatField,
     pt: FloatField,
     delp: FloatField,
+    u_dt: FloatField,
+    v_dt: FloatField,
+    pt_dt: FloatField,
+    qv_dt: FloatField,
+    ql_dt: FloatField,
+    qr_dt: FloatField,
+    qi_dt: FloatField,
+    qs_dt: FloatField,
+    qg_dt: FloatField,
+    qa_dt: FloatField,
 ):
     with computation(BACKWARD), interval(...):
         dz = (phii[0, 0, 1] - phii[0, 0, 0]) * constants.RGRAV
@@ -115,6 +128,17 @@ def prepare_microphysics(
             / delp
             * (constants.RDGAS * constants.RGRAV)
         )
+    with computation(PARALLEL), interval(...):
+        u_dt = 0.0
+        v_dt = 0.0
+        pt_dt = 0.0
+        qv_dt = 0.0
+        ql_dt = 0.0
+        qr_dt = 0.0
+        qi_dt = 0.0
+        qs_dt = 0.0
+        qg_dt = 0.0
+        qa_dt = 0.0
 
 
 @gtscript.function
@@ -179,7 +203,7 @@ class Physics:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["physics_state"],
+            dace_compiletime_args=["physics_state"],
         )
 
         grid_indexing = stencil_factory.grid_indexing
@@ -291,6 +315,16 @@ class Physics:
                 physics_state.qvapor,
                 physics_state.pt,
                 physics_state.delp,
+                physics_state.microphysics.udt,
+                physics_state.microphysics.vdt,
+                physics_state.microphysics.pt_dt,
+                physics_state.microphysics.qv_dt,
+                physics_state.microphysics.ql_dt,
+                physics_state.microphysics.qr_dt,
+                physics_state.microphysics.qi_dt,
+                physics_state.microphysics.qs_dt,
+                physics_state.microphysics.qg_dt,
+                physics_state.microphysics.qa_dt,
             )
             self._microphysics(physics_state.microphysics, timestep=timestep)
             # Fortran uses IPD interface, here we use physics_updated_<var> to denote

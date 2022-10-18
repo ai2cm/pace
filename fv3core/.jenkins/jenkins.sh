@@ -190,7 +190,7 @@ if [ ${python_env} == "virtualenv" ]; then
     else
         echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
         export FV3CORE_INSTALL_FLAGS="-e"
-        ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+        ${TOP_LEVEL_JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
