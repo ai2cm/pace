@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Optional
+from typing import Dict
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
