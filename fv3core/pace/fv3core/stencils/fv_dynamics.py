@@ -22,7 +22,7 @@ from pace.fv3core.stencils.dyn_core import AcousticDynamics
 from pace.fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from pace.fv3core.stencils.remapping import LagrangianToEulerian
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util import Timer
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM, Timer
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
 from pace.util.quantity import Quantity
@@ -177,6 +177,20 @@ class DynamicalCore:
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_fvdynamics",
             dace_compiletime_args=["state", "tag"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_remapping_in",
+            dace_compiletime_args=["state", "cappa", "te0_2d", "wsd", "dp1"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_remapping_out",
+            dace_compiletime_args=["state", "cappa", "te0_2d", "dp1"],
         )
 
         # nested and stretched_grid are options in the Fortran code which we
@@ -359,6 +373,72 @@ class DynamicalCore:
                 qvapor=state.qvapor,
             )
 
+    def _checkpoint_remapping_in(
+        self,
+        state: DycoreState,
+        cappa: Quantity,
+        te0_2d: Quantity,
+        wsd: Quantity,
+        dp1: Quantity,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Remapping-In",
+                pt=state.pt,
+                delp=state.delp,
+                delz=state.delz,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                ua=state.ua,
+                va=state.va,
+                cappa=cappa,
+                pkz=state.pkz,
+                pk=state.pk,
+                pe=state.pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                phis=state.phis,
+                te_2d=te0_2d,
+                ps=state.ps,
+                wsd=wsd,
+                omga=state.omga,
+                dp1=dp1,
+            )
+
+    def _checkpoint_remapping_out(
+        self,
+        state: DycoreState,
+        cappa: Quantity,
+        te0_2d: Quantity,
+        dp1: Quantity,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Remapping-Out",
+                pt=state.pt,
+                delp=state.delp,
+                delz=state.delz,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                cappa=cappa,
+                pkz=state.pkz,
+                pk=state.pk,
+                pe=state.pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                te_2d=te0_2d,
+                omga=state.omga,
+                dp1=dp1,
+            )
+
     def step_dynamics(
         self,
         state: DycoreState,
@@ -455,6 +535,9 @@ class DynamicalCore:
                 if __debug__:
                     log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
+                    self._checkpoint_remapping_in(
+                        state, self._cappa, self._te0_2d, self._wsd, self._dp1
+                    )
                     self._lagrangian_to_eulerian_obj(
                         self.tracer_storages,
                         state.pt,
@@ -488,6 +571,9 @@ class DynamicalCore:
                         self._conserve_total_energy,
                         self._timestep / self._k_split,
                         self._timestep,
+                    )
+                    self._checkpoint_remapping_out(
+                        state, self._cappa, self._te0_2d, self._dp1
                     )
                 if last_step:
                     da_min: float = self._get_da_min()

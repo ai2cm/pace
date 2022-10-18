@@ -194,6 +194,18 @@ class TracerAdvection:
         # this is only computed in init because Dace does not yet support
         # this operation
         self._call_checkpointer = checkpointer is not None
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_input",
+            dace_compiletime_args=["tracers", "dp1", "mfxd", "mfyd", "cxd", "cyd"],
+        )
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_output",
+            dace_compiletime_args=["tracers", "dp1", "mfxd", "mfyd", "cxd", "cyd"],
+        )
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)

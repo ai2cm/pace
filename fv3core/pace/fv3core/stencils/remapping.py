@@ -25,7 +25,7 @@ from pace.fv3core.stencils.map_single import MapSingle
 from pace.fv3core.stencils.mapn_tracer import MapNTracer
 from pace.fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM, Quantity
+from pace.util import Quantity
 
 
 # TODO: Should this be set here or in global_constants?
@@ -563,36 +563,6 @@ class LagrangianToEulerian:
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
         """
-
-        if self._call_checkpointer:
-            self._checkpointer(
-                "Remapping-In",
-                pt=pt,
-                delp=delp,
-                delz=delz,
-                peln=peln.transpose(
-                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
-                ),  # [x, z, y] fortran data
-                u=u,
-                v=v,
-                w=w,
-                ua=ua,
-                va=va,
-                cappa=cappa,
-                pkz=pkz,
-                pk=pk,
-                pe=pe.transpose(
-                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
-                ),  # [x, z, y] fortran data
-                phis=hs,
-                te_2d=te0_2d,
-                ps=ps,
-                wsd=wsd,
-                omga=omga,
-                ak=ak,
-                bk=bk,
-                dp1=dp1,
-            )
         # TODO: remove unused arguments (and commented code that references them)
         # TODO: can we trim ps or make it a temporary
         self._init_pe(pe, self._pe1, self._pe2, ptop)
@@ -728,26 +698,3 @@ class LagrangianToEulerian:
             )
         else:
             self._basic_adjust_divide_stencil(pkz, pt)
-
-        if self._call_checkpointer:
-            self._checkpointer(
-                "Remapping-Out",
-                pt=pt,
-                delp=delp,
-                delz=delz,
-                peln=peln.transpose(
-                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
-                ),  # [x, z, y] fortran data
-                u=u,
-                v=v,
-                w=w,
-                cappa=cappa,
-                pkz=pkz,
-                pk=pk,
-                pe=pe.transpose(
-                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
-                ),  # [x, z, y] fortran data
-                te_2d=te0_2d,
-                omga=omga,
-                dp1=dp1,
-            )
