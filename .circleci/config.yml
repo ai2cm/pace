@@ -69,7 +69,7 @@ commands:
           command: date +"week_%U_of_%Y" > week.txt
       - restore_cache:
           keys:
-            - v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ cat "week.txt"}}
+            - v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ checksum "week.txt"}}
   save_gt_cache:
     description: "Save .gt_cache"
     parameters:
@@ -77,7 +77,7 @@ commands:
         type: string
     steps:
       - save_cache:
-          key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ cat "week.txt"}}
+          key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ checksum "week.txt"}}
           paths:
             - .gt_cache
   make_savepoints:
