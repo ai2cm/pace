@@ -4,10 +4,10 @@ from typing import List, Tuple, Union
 
 import cftime
 
-from . import _xarray as xr
-from . import constants, utils
-from ._optional_imports import cupy, zarr
-from .partitioner import CubedSpherePartitioner, subtile_slice
+from .. import _xarray as xr
+from .. import constants, utils
+from .._optional_imports import cupy, zarr
+from ..partitioner import CubedSpherePartitioner, subtile_slice
 
 
 logger = logging.getLogger("pace.util")
@@ -49,11 +49,10 @@ class ZarrMonitor:
 
         Args:
             store: Zarr store in which to store data
-            partitoner: object providing grid layout information to the Monitor
+            partitioner: object providing grid layout information to the Monitor
             mode: mode to use to open the store. Options are as in zarr.open_group.
             mpi_comm: mpi4py comm object to use for communications. By default, will
                 use a dummy comm object that works in single-core mode.
-            time_chunk_size: the chunk size of the time dimension
         """
         if mpi_comm.Get_rank() == 0:
             group = zarr.open_group(store, mode=mode)
@@ -116,8 +115,8 @@ class ZarrMonitor:
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
             self._writers[name].append(quantity)  # type: ignore[index]
 
-    def store_constant(self, grid: dict) -> None:
-        for name, quantity in grid.items():
+    def store_constant(self, state: dict) -> None:
+        for name, quantity in state.items():
             if name in self._constants:
                 raise RuntimeError(
                     f"constant fields can only be written once, {name} exists"
@@ -130,6 +129,9 @@ class ZarrMonitor:
             )
             constant_writer.append(quantity)  # type: ignore[index]
             self._constants.append(name)
+
+    def cleanup(self):
+        pass
 
 
 class _ZarrVariableWriter:
