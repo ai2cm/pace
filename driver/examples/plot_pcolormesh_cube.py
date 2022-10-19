@@ -87,6 +87,13 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--diff_python_path",
+        type=str,
+        action="store",
+        help="python reference path",
+        default=None,
+    )
+    parser.add_argument(
         "--start",
         type=int,
         action="store",
@@ -151,6 +158,14 @@ def gather_fortran_wrapper_at_klevel(
 
 if __name__ == "__main__":
     args = parse_args()
+    if (
+        sum(x is not None for x in [args.fortran_data_path, args.diff_python_path])
+        + args.diff_init
+    ) > 1:
+        raise RuntimeError(
+            "Scirpt called with confilicting options between: \
+            Diff init, diff python and diff to fortran"
+        )
     if args.fortran_data_path is not None:
         if args.fortran_var is None:
             raise ValueError(
@@ -169,6 +184,17 @@ if __name__ == "__main__":
         raise ValueError(
             "You must specify the path (fortran_data_path) to Fortran data."
         )
+    if args.diff_python_path is not None:
+        ds_ref = xr.open_zarr(
+            store=zarr.DirectoryStore(path=args.diff_python_path), consolidated=False
+        )
+        if args.var2D:
+            python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size]
+        else:
+            python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size].isel(
+                z=args.zlevel
+            )
+
     ds = xr.open_zarr(
         store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
     )
@@ -209,6 +235,8 @@ if __name__ == "__main__":
             plotted_data = python - fortran[t, :]
         elif args.diff_init:
             plotted_data = python - python_init
+        elif args.diff_python_path is not None:
+            plotted_data = python - python_ref.isel(time=t).values
         else:
             plotted_data = python
         fig, ax = plt.subplots(1, 1, subplot_kw={"projection": ccrs.Robinson()})
@@ -229,6 +257,7 @@ if __name__ == "__main__":
                 python_lon,
                 plotted_data,
                 ax=ax,
+                cmap=plt.cm.bwr if args.vmin == -1 * args.vmax else plt.cm.viridis,
                 vmin=args.vmin,
                 vmax=args.vmax,
             )
