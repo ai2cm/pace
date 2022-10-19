@@ -29,6 +29,10 @@ class Diagnostics(abc.ABC):
     def store_grid(self, grid_data: pace.util.grid.GridData):
         ...
 
+    @abc.abstractmethod
+    def cleanup(self):
+        ...
+
 
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
@@ -36,7 +40,10 @@ class DiagnosticsConfig:
     Attributes:
         path: directory to save diagnostics if given, otherwise no diagnostics
             will be stored
-        output_format: one of "zarr" or "netcdf"
+        output_format: one of "zarr" or "netcdf", be careful when using the "netcdf"
+            format as this requires all diagnostics to be stored in memory on the
+            root rank before saving, which can cause out-of-memory errors if the
+            global data size or number of variables is too large
         time_chunk_size: number of timesteps stored in each netcdf file, only used if
             output_format is "netcdf"
         names: state variables to save as diagnostics
@@ -154,6 +161,9 @@ class MonitorDiagnostics(Diagnostics):
         }
         self.monitor.store_constant(zarr_grid)
 
+    def cleanup(self):
+        self.monitor.cleanup()
+
 
 class NullDiagnostics(Diagnostics):
     """Diagnostics that do nothing."""
@@ -162,6 +172,9 @@ class NullDiagnostics(Diagnostics):
         pass
 
     def store_grid(self, grid_data: pace.util.grid.GridData):
+        pass
+
+    def cleanup(self):
         pass
 
 

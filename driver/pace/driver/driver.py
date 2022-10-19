@@ -649,6 +649,7 @@ class Driver:
     @dace_inhibitor
     def cleanup(self):
         logger.info("cleaning up driver")
+        self.diagnostics.cleanup()
         self.config.restart_config.write_final_if_enabled(
             state=self.state,
             comm=self.comm,
