@@ -462,7 +462,6 @@ class AcousticDynamics:
         self._da_min = damping_coefficients.da_min
         self.grid_data = grid_data
         self._ptop = self.grid_data.ptop
-        self._ks = self.grid_data.ks
         self._pfull = pfull
         self._wsd = wsd
         self._nk_heat_dissipation = get_nk_heat_dissipation(
@@ -997,7 +996,6 @@ class AcousticDynamics:
                     self._pfull,
                     dt_acoustic_substep,
                     self._ptop,
-                    self._ks,
                 )
 
             if it != n_split - 1:

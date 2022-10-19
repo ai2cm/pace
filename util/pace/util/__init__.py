@@ -48,6 +48,7 @@ from .constants import (
     Z_INTERFACE_DIM,
     Z_SOIL_DIM,
 )
+from .filesystem import get_fs
 from .halo_data_transformer import QuantityHaloSpec
 from .halo_updater import HaloUpdater, HaloUpdateRequest
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer

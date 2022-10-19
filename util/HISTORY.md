@@ -13,6 +13,9 @@ Major changes:
 - Comm and Request abstract base classes are added to the top level
 - Added the following attributes/methods to the Comm abstract base classes: `allreduce`, `allgather`
 - Added classes `Threshold`, `ThresholdCalibrationCheckpointer`, `ValidationCheckpointer`, and `SavepointThresholds`
+- Added `get_fs` as publicly-available function
+- Legacy restart routines can now load restart data from any fsspec-supported filesystem
+- Legacy restart routines will raise an exception if no restart files are present instead of loading an empty state
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator

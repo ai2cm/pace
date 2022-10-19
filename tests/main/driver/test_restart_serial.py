@@ -1,17 +1,20 @@
+import os
 import shutil
-import unittest.mock
+from datetime import datetime
 
 import gt4py
 import numpy as np
-import pytest
 import xarray as xr
+import yaml
 
 import pace.dsl
-from pace.driver import CreatesComm, Driver, DriverConfig
-from pace.driver.initialization import BaroclinicConfig
+from pace.driver import CreatesComm, DriverConfig
+from pace.driver.driver import RestartConfig
+from pace.driver.initialization import BaroclinicInit
 from pace.util.null_comm import NullComm
 
-from .test_driver import get_driver_config, mocked_components
+
+DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class NullCommConfig(CreatesComm):
@@ -30,28 +33,20 @@ class NullCommConfig(CreatesComm):
 
 
 def test_default_save_restart():
-    driver_config = DriverConfig(
-        stencil_config=pace.dsl.StencilConfig(),
-        nx_tile=12,
-        nz=79,
-        dt_atmos=225,
-        days=0,
-        hours=0,
-        minutes=0,
-        seconds=225,
-        layout=(1, 1),
-        initialization=unittest.mock.MagicMock(),
-        performance_config=unittest.mock.MagicMock(),
-        comm_config=NullCommConfig((1, 1)),
-        diagnostics_config=unittest.mock.MagicMock(),
-        dycore_config=unittest.mock.MagicMock(nwat=6),
-        physics_config=unittest.mock.MagicMock(),
-    )
-    assert driver_config.save_restart is False
+    restart_config = RestartConfig()
+    assert restart_config.save_restart is False
 
 
 def test_restart_save_to_disk():
     try:
+        with open(
+            os.path.join(
+                DIR,
+                "../../../driver/examples/configs/baroclinic_c12_write_restart.yaml",
+            ),
+            "r",
+        ) as f:
+            driver_config = DriverConfig.from_dict(yaml.safe_load(f))
         backend = "numpy"
         mpi_comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
         partitioner = pace.util.CubedSpherePartitioner(
@@ -72,11 +67,28 @@ def test_restart_save_to_disk():
             sizer=sizer, backend=backend
         )
 
-        init = BaroclinicConfig()
+        (
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
+        ) = pace.driver.GeneratedGridConfig().get_grid(quantity_factory, communicator)
+        init = BaroclinicInit()
         driver_state = init.get_driver_state(
-            quantity_factory=quantity_factory, communicator=communicator
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
+            grid_data=grid_data,
         )
-        driver_state.save_state(mpi_comm)
+        time = datetime(2016, 1, 1, 0, 0, 0)
+
+        driver_config.restart_config.write_final_if_enabled(
+            state=driver_state,
+            comm=mpi_comm,
+            time=time,
+            driver_config=driver_config,
+            restart_path="RESTART",
+        )
 
         restart_dycore = xr.open_dataset(
             f"RESTART/restart_dycore_state_{mpi_comm.rank}.nc"
@@ -94,6 +106,8 @@ def test_restart_save_to_disk():
                         should not be in dycore restart file"
                     )
 
+        # TODO: the physics state isn't actually needed in the restart folders as
+        # all prognostic state is in dycore state, we could refactor it out
         restart_physics = xr.open_dataset(
             f"RESTART/restart_physics_state_{mpi_comm.rank}.nc"
         )
@@ -112,24 +126,37 @@ def test_restart_save_to_disk():
                         f"{var} is not a storage and \
                             should not be in physics restart file"
                     )
+        # test we can use the saved driver config in the restart to load it
+        with open("RESTART/restart.yaml", "r") as f:
+            restart_config = DriverConfig.from_dict(yaml.safe_load(f))
+
+            (
+                damping_coefficients,
+                driver_grid_data,
+                grid_data,
+            ) = restart_config.get_grid(
+                communicator=communicator,
+            )
+
+            restart_state = restart_config.get_driver_state(
+                communicator=communicator,
+                damping_coefficients=damping_coefficients,
+                driver_grid_data=driver_grid_data,
+                grid_data=grid_data,
+            )
+            for var in driver_state.dycore_state.__dict__.keys():
+                before_restart = driver_state.dycore_state.__dict__[var]
+                after_restart = restart_state.dycore_state.__dict__[var]
+                if isinstance(before_restart, pace.util.Quantity):
+                    np.testing.assert_allclose(
+                        before_restart.view[:],
+                        after_restart.view[:],
+                    )
+                else:
+                    np.testing.assert_allclose(
+                        before_restart,
+                        after_restart,
+                    )
+
     finally:
         shutil.rmtree("RESTART")
-
-
-@pytest.mark.parametrize(
-    "steps,intermediate_restart",
-    [
-        pytest.param(5, [2, 3, 4], id="five_steps_three_intermediate_restart"),
-        pytest.param(5, [1], id="five_steps_one_intermediate_restart"),
-        pytest.param(5, [], id="five_steps_no_intermediate_restart"),
-    ],
-)
-def test_intermediate_restart(steps: int, intermediate_restart: list):
-    config = get_driver_config(
-        dt_atmos=200, seconds=200 * steps, intermediate_restart=intermediate_restart
-    )
-    with mocked_components() as mock:
-        driver = Driver(config=config)
-        driver.step_all()
-    assert driver.restart.save_state_as_restart.call_count == len(intermediate_restart)
-    assert driver.restart.write_restart_config.call_count == len(intermediate_restart)

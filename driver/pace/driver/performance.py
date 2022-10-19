@@ -8,6 +8,10 @@ import pace.util
 from .report import collect_data_and_write_to_file
 
 
+# TODO: this class contains non-config dataclass attributes which should
+# ideally be separated out and used inside some kind of PerformanceMetrics
+# class. This would e.g. remove workaround code required to deal with these
+# "not really config" attributes when writing updated restart configuration.
 @dataclasses.dataclass
 class PerformanceConfig:
     performance_mode: bool = False
@@ -55,7 +59,7 @@ class PerformanceConfig:
                     .rstrip()
                 )
             except subprocess.CalledProcessError:
-                git_hash = "notarepo"
+                git_hash = "None"
 
             self.times_per_step.append(self.total_timer.times)
             self.hits_per_step.append(self.total_timer.hits)

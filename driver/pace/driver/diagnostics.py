@@ -10,7 +10,6 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace.dsl.dace.orchestration import dace_inhibitor
-from pace.util.quantity import QuantityMetadata
 
 from .state import DriverState
 
@@ -27,9 +26,7 @@ class Diagnostics(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def store_grid(
-        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
-    ):
+    def store_grid(self, grid_data: pace.util.grid.GridData):
         ...
 
 
@@ -133,19 +130,11 @@ class ZarrDiagnostics(Diagnostics):
                     warnings.warn(f"{name} is not a supported diagnostic variable.")
         return output
 
-    def store_grid(
-        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
-    ):
-        zarr_grid = {}
-        for name in ["lat", "lon"]:
-            grid_quantity = pace.util.Quantity(
-                getattr(grid_data, name),
-                dims=("x_interface", "y_interface"),
-                origin=metadata.origin,
-                extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
-                units="rad",
-            )
-            zarr_grid[name] = grid_quantity
+    def store_grid(self, grid_data: pace.util.grid.GridData):
+        zarr_grid = {
+            "lat": grid_data.lat,
+            "lon": grid_data.lon,
+        }
         self.monitor.store_constant(zarr_grid)
 
 
@@ -155,9 +144,7 @@ class NullDiagnostics(Diagnostics):
     def store(self, time: Union[datetime, timedelta], state: DriverState):
         pass
 
-    def store_grid(
-        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
-    ):
+    def store_grid(self, grid_data: pace.util.grid.GridData):
         pass
 
 

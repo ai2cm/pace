@@ -1,5 +1,7 @@
+import dataclasses
 import functools
 import warnings
+from typing import Tuple
 
 from pace import util
 from pace.dsl.gt4py_utils import asarray
@@ -10,6 +12,7 @@ from pace.stencils.corners import (
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_INTERFACE_DIM
 from pace.util.constants import N_HALO_DEFAULT, PI, RADIUS
 
 from .eta import set_hybrid_pressure_coefficients
@@ -65,13 +68,139 @@ def ignore_zero_division(func):
     return wrapped
 
 
+@dataclasses.dataclass
+class GridDefinition:
+    dims: Tuple[str, ...]
+    units: str
+
+
+class GridDefinitions:
+    CELL_CENTER = (X_DIM, Y_DIM)
+    CELL_CORNERS = (X_INTERFACE_DIM, Y_INTERFACE_DIM)
+    LON_OR_LAT_DIM = "lon_or_lat"
+    TILE_DIM = "tile"
+    CARTESIAN_DIM = "xyz_direction"
+
+    grid = GridDefinition(dims=CELL_CORNERS + (LON_OR_LAT_DIM,), units="radians")
+    agrid = GridDefinition(dims=CELL_CENTER + (LON_OR_LAT_DIM,), units="radians")
+    lon = GridDefinition(dims=CELL_CORNERS, units="radians")
+    lat = GridDefinition(dims=CELL_CORNERS, units="radians")
+    lon_agrid = GridDefinition(dims=CELL_CENTER, units="radians")
+    lat_agrid = GridDefinition(dims=CELL_CENTER, units="radians")
+    area = GridDefinition(dims=CELL_CENTER, units="m^2")
+    area_cgrid = GridDefinition(dims=CELL_CORNERS, units="m^2")
+    rarea = GridDefinition(dims=area.dims, units="1/m^2")
+    rarea_c = GridDefinition(dims=area_cgrid.dims, units="1/m^2")
+    dx = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="m")
+    dy = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="m")
+    dxc = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="m")
+    dyc = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="m")
+    dxa = GridDefinition(dims=CELL_CENTER, units="m")
+    dya = GridDefinition(dims=CELL_CENTER, units="m")
+    rdx = GridDefinition(dims=dx.dims, units="1/m")
+    rdy = GridDefinition(dims=dy.dims, units="1/m")
+    rdxc = GridDefinition(dims=dxc.dims, units="1/m")
+    rdyc = GridDefinition(dims=dyc.dims, units="1/m")
+    rdxa = GridDefinition(dims=dxa.dims, units="1/m")
+    rdya = GridDefinition(dims=dya.dims, units="1/m")
+    ak = GridDefinition(dims=(Z_INTERFACE_DIM,), units="m")
+    bk = GridDefinition(dims=(Z_INTERFACE_DIM,), units="m")
+    ec1 = GridDefinition(dims=CELL_CENTER + (CARTESIAN_DIM,), units="m")
+    ec2 = GridDefinition(dims=CELL_CENTER + (CARTESIAN_DIM,), units="m")
+    ew1 = GridDefinition(dims=CELL_CORNERS + (CARTESIAN_DIM,), units="m")
+    ew2 = GridDefinition(dims=CELL_CORNERS + (CARTESIAN_DIM,), units="m")
+    es1 = GridDefinition(
+        dims=(
+            X_DIM,
+            Y_INTERFACE_DIM,
+            CARTESIAN_DIM,
+        ),
+        units="m",
+    )
+    es2 = GridDefinition(
+        dims=(
+            X_DIM,
+            Y_INTERFACE_DIM,
+            CARTESIAN_DIM,
+        ),
+        units="m",
+    )
+    cosa_u = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    cosa_v = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    cosa_s = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sina_u = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    sina_v = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    rsin_u = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    rsin_v = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    rsina = GridDefinition(dims=(X_INTERFACE_DIM, Y_INTERFACE_DIM), units="")
+    rsin2 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cosa = GridDefinition(dims=(X_INTERFACE_DIM, Y_INTERFACE_DIM), units="")
+    sina = GridDefinition(dims=(X_INTERFACE_DIM, Y_INTERFACE_DIM), units="")
+    cos_sg1 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg2 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg3 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg4 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg5 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg6 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg7 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg8 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    cos_sg9 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg1 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg2 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg3 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg4 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg5 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg6 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg7 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg8 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    sin_sg9 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    l2c_u = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    l2c_v = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    ee1 = GridDefinition(dims=CELL_CORNERS + (CARTESIAN_DIM,), units="")
+    ee2 = GridDefinition(dims=CELL_CORNERS + (CARTESIAN_DIM,), units="")
+    del6_u = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    del6_v = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    divg_u = GridDefinition(dims=(X_DIM, Y_INTERFACE_DIM), units="")
+    divg_v = GridDefinition(dims=(X_INTERFACE_DIM, Y_DIM), units="")
+    z11 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    z12 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    z21 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    z22 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    a11 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    a12 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    a21 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    a22 = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    edge_s = GridDefinition(dims=(X_INTERFACE_DIM,), units="")
+    edge_n = GridDefinition(dims=(X_INTERFACE_DIM,), units="")
+    edge_e = GridDefinition(
+        dims=(
+            X_DIM,
+            Y_INTERFACE_DIM,
+        ),
+        units="",
+    )
+    edge_w = GridDefinition(
+        dims=(
+            X_DIM,
+            Y_INTERFACE_DIM,
+        ),
+        units="",
+    )
+    edge_vect_s = GridDefinition(dims=(X_DIM,), units="")
+    edge_vect_n = GridDefinition(dims=(X_DIM,), units="")
+    edge_vect_e_1d = GridDefinition(dims=(Y_DIM,), units="")
+    edge_vect_w_1d = GridDefinition(dims=(Y_DIM,), units="")
+    edge_vect_e = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+    edge_vect_w = GridDefinition(dims=(X_DIM, Y_DIM), units="")
+
+
 # TODO
 # corners use sizer + partitioner rather than GridIndexer,
 # have to refactor fv3core calls to corners to do this as well
 class MetricTerms:
-    LON_OR_LAT_DIM = "lon_or_lat"
-    TILE_DIM = "tile"
-    CARTESIAN_DIM = "xyz_direction"
+    LON_OR_LAT_DIM = GridDefinitions.LON_OR_LAT_DIM
+    TILE_DIM = GridDefinitions.TILE_DIM
+    CARTESIAN_DIM = GridDefinitions.CARTESIAN_DIM
     N_TILES = 6
     RIGHT_HAND_GRID = False
 
@@ -126,7 +255,6 @@ class MetricTerms:
         self._dy_center = None
         self._ak = None
         self._bk = None
-        self._ks = None
         self._ptop = None
         self._ec1 = None
         self._ec2 = None
@@ -360,7 +488,6 @@ class MetricTerms:
         """
         if self._ak is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,
@@ -375,30 +502,11 @@ class MetricTerms:
         """
         if self._bk is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,
             ) = self._set_hybrid_pressure_coefficients()
         return self._bk
-
-    # TODO: can ks and ptop just be derived from ak and bk instead of being returned
-    # as part of _set_hybrid_pressure_coefficients?
-    @property
-    def ks(self) -> util.Quantity:
-        """
-        the number of pure-pressure layers at the top of the model
-        also the level where model transitions from pure pressure to
-        hybrid pressure levels
-        """
-        if self._ks is None:
-            (
-                self._ks,
-                self._ptop,
-                self._ak,
-                self._bk,
-            ) = self._set_hybrid_pressure_coefficients()
-        return self._ks
 
     @property
     def ptop(self) -> util.Quantity:
@@ -407,7 +515,6 @@ class MetricTerms:
         """
         if self._ptop is None:
             (
-                self._ks,
                 self._ptop,
                 self._ak,
                 self._bk,
@@ -1089,7 +1196,7 @@ class MetricTerms:
         return self._edge_n
 
     @property
-    def edge_vect_w(self) -> util.Quantity:
+    def edge_vect_w_1d(self) -> util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the western grid edge
         """
@@ -1103,7 +1210,7 @@ class MetricTerms:
         return self._edge_vect_w
 
     @property
-    def edge_vect_w_2d(self) -> util.Quantity:
+    def edge_vect_w(self) -> util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the western grid edge
         repeated in x and y to be used in stencils
@@ -1116,7 +1223,7 @@ class MetricTerms:
         return self._edge_vect_w_2d
 
     @property
-    def edge_vect_e(self) -> util.Quantity:
+    def edge_vect_e_1d(self) -> util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the eastern grid edge
         """
@@ -1130,7 +1237,7 @@ class MetricTerms:
         return self._edge_vect_e
 
     @property
-    def edge_vect_e_2d(self) -> util.Quantity:
+    def edge_vect_e(self) -> util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the eastern grid edge
         repeated in x and y to be used in stencils
@@ -1719,16 +1826,14 @@ class MetricTerms:
         return area_cgrid
 
     def _set_hybrid_pressure_coefficients(self):
-        ks = self.quantity_factory.zeros([], "")
         ptop = self.quantity_factory.zeros([], "mb")
         ak = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "mb")
         bk = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "")
         pressure_coefficients = set_hybrid_pressure_coefficients(self._npz)
-        ks = pressure_coefficients.ks
         ptop = pressure_coefficients.ptop
         ak.data[:] = asarray(pressure_coefficients.ak, type(ak.data))
         bk.data[:] = asarray(pressure_coefficients.bk, type(bk.data))
-        return ks, ptop, ak, bk
+        return ptop, ak, bk
 
     def _calculate_center_vectors(self):
         ec1 = self.quantity_factory.zeros(
@@ -2240,9 +2345,9 @@ class MetricTerms:
         edge_vect_e_2d = self.quantity_factory.zeros([util.X_DIM, util.Y_DIM], "")
         edge_vect_w_2d = self.quantity_factory.zeros([util.X_DIM, util.Y_DIM], "")
         shape = self.lon.data.shape
-        east_edge_data = self.edge_vect_e.data[self._np.newaxis, ...]
+        east_edge_data = self.edge_vect_e_1d.data[self._np.newaxis, ...]
         east_edge_data = self._np.repeat(east_edge_data, shape[0], axis=0)
-        west_edge_data = self.edge_vect_w.data[self._np.newaxis, ...]
+        west_edge_data = self.edge_vect_w_1d.data[self._np.newaxis, ...]
         west_edge_data = self._np.repeat(west_edge_data, shape[0], axis=0)
         edge_vect_e_2d.data[:-1, :-1], edge_vect_w_2d.data[:-1, :-1] = (
             east_edge_data[:-1, :-1],
