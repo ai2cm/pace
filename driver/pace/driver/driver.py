@@ -629,7 +629,6 @@ class Driver:
 
     def _write_performance_json_output(self):
         self.performance_collector.write_out_performance(
-            self.comm,
             self.config.stencil_config.compilation_config.backend,
             self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,

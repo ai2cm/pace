@@ -7,7 +7,7 @@ import pytest
 import pace.driver
 import pace.dsl
 from pace.driver import CreatesComm, DriverConfig
-from pace.driver.report import (
+from pace.driver.performance.report import (
     TimeReport,
     gather_hit_counts,
     gather_timing_data,
