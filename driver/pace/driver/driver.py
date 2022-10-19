@@ -439,10 +439,14 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
+            self.performance_config.profiler.enable()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_config.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
+            )
+            self.performance_config.profiler.dump_stats(
+                f"{self.performance_config.experiment_name}_{self.comm.Get_rank()}.prof"
             )
 
     def _step_dynamics(
