@@ -18,7 +18,8 @@ layout:
   - 1
   - 1
 diagnostics_config:
-  path: "output.zarr"
+  path: output
+  output_format: netcdf
   names:
     - u
     - v
