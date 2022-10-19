@@ -48,3 +48,4 @@ for x in os.listdir():
             print(f"Rank {rank}, mainloop average time: {np.mean(data['times']['mainloop']['times'][rank][1:])}")
 EOF
 python results.py
+cp *.json driver.out /project/s1053/performance/fv3core_performance/dace_gpu
