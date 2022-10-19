@@ -92,9 +92,7 @@ def test_monitor_store_multi_rank_state(
     for monitor in monitor_list:
         monitor.cleanup()
 
-    ds = xr.open_mfdataset(
-        str(tmpdir / "state_*.nc"), concat_dim="time", decode_times=True
-    )
+    ds = xr.open_mfdataset(str(tmpdir / "state_*.nc"), decode_times=True)
     assert "var1" in ds
     np.testing.assert_array_equal(
         ds["var1"].shape, (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
