@@ -105,13 +105,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
         self._base.in_vars["data_vars"]["wsd"]["kstart"] = grid.npz
         self._base.in_vars["data_vars"]["wsd"]["kend"] = None
 
-        self._base.in_vars["parameters"] = [
-            "mdt",
-            "akap",
-            "ptop",
-            "n_map",
-            "ks",
-        ]
+        self._base.in_vars["parameters"] = ["mdt", "akap", "ptop", "n_map"]
 
         self._base.out_vars = {}
         for v, d in self._base.in_vars["data_vars"].items():
@@ -145,7 +139,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
-            grid_data.ks = inputs["ks"]
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
         wsd: pace.util.Quantity = self.grid.quantity_factory.empty(

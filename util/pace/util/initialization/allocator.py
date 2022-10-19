@@ -1,5 +1,7 @@
 from typing import Callable, Sequence
 
+import numpy as np
+
 from .._optional_imports import gt4py
 from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
@@ -74,6 +76,22 @@ class QuantityFactory:
         dtype: type = float,
     ):
         return self._allocate(self._numpy.ones, dims, units, dtype)
+
+    def from_array(
+        self,
+        data: np.ndarray,
+        dims: Sequence[str],
+        units: str,
+    ):
+        """
+        Create a Quantity from a numpy array.
+
+        That numpy array must correspond to the correct shape and extent
+        for the given dims.
+        """
+        base = self.empty(dims=dims, units=units, dtype=data.dtype)
+        base.data[:] = base.np.asarray(data)
+        return base
 
     def _allocate(
         self,

@@ -97,6 +97,7 @@ commands:
         description: "make target to run"
         type: enum
         enum:
+          - "test_main"
           - "test_savepoint"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
@@ -395,20 +396,19 @@ jobs:
               python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c12_orch_cpu.yaml
 
   test_main:
-    docker:
-      - image: cimg/python:3.8
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: medium
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     working_directory: ~/repo
     steps:
       - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
-      - setup_environment_mpi
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            pytest tests/main
+      - make_savepoints:
+          backend: numpy
+          experiment: c12_6ranks_standard
+          target: test_main
+          num_ranks: 1
 
   test_mpi_54rank:
     docker:
@@ -564,6 +564,8 @@ workflows:
             tags:
               only: /^v.*/
       - test_main:
+          context:
+            - GCLOUD_ENCODED_KEY
           filters:
             tags:
               only: /^v.*/

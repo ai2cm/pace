@@ -276,7 +276,7 @@ def configure_domain(
     # workaround for single layer
     if single_layer:
         horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
-        vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
+        vertical_grid_data = VerticalGridData(ak=[10.0, 0.0], bk=[0.0, 1.0])
         contravariant_grid_data = ContravariantGridData.new_from_metric_terms(
             metric_terms
         )
@@ -334,7 +334,7 @@ def configure_stencil(
 
     if single_layer:
         horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
-        vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
+        vertical_grid_data = VerticalGridData(ak=[10], bk=[0])
         contravariant_grid_data = ContravariantGridData.new_from_metric_terms(
             metric_terms
         )

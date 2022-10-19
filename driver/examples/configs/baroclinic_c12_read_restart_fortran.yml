@@ -1,21 +1,41 @@
 stencil_config:
   compilation_config:
-    backend: dace:cpu
+    backend: numpy
     rebuild: false
     validate_args: true
     format_source: false
     device_sync: false
 initialization:
-  type: baroclinic
+  config:
+    path: /home/ajdas/pace/restart_data/1.0
+  type: fortran_restart
 performance_config:
-  performance_mode: false
+  performance_mode: true
+  experiment_name: c12_baroclinic_restart
+grid_config:
+  type: generated
 nx_tile: 12
 nz: 79
 dt_atmos: 225
-minutes: 5
+minutes: 15
 layout:
   - 1
   - 1
+diagnostics_config:
+  path: "output.zarr"
+  names:
+    - u
+    - v
+    - ua
+    - va
+    - pt
+    - delp
+    - qvapor
+    - qliquid
+    - qice
+    - qrain
+    - qsnow
+    - qgraupel
 dycore_config:
   a_imp: 1.0
   beta: 0.

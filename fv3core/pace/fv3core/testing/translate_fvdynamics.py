@@ -209,12 +209,11 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         },
         "bdt": {"dims": []},
         "ptop": {"dims": []},
-        "ks": {"dims": []},
     }
 
     outputs = inputs.copy()
 
-    for name in ("bdt", "ak", "bk", "ks", "ptop"):
+    for name in ("bdt", "ak", "bk", "ptop"):
         outputs.pop(name)
 
     def __init__(
@@ -318,7 +317,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
-            grid_data.ks = inputs["ks"]
 
         state = self.state_from_inputs(inputs)
         return state, grid_data
