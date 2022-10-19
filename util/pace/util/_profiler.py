@@ -12,6 +12,7 @@ class Profiler:
 
     def dump_stats(self, filename: str):
         self.profiler.disable()
+        self._enabled = False
         self.profiler.dump_stats(filename)
 
     @property
@@ -28,6 +29,7 @@ class NullProfiler(Profiler):
 
     def __init__(self):
         super().__init__()
+        self.profiler = None
         self._enabled = False
 
     def enable(self):

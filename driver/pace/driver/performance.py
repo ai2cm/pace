@@ -13,7 +13,6 @@ class PerformanceConfig:
     performance_mode: bool = False
     experiment_name: str = "test"
     cProfile: bool = False
-    profiler: pace.util.Profiler = pace.util.NullProfiler()
     timestep_timer: pace.util.Timer = pace.util.NullTimer()
     total_timer: pace.util.Timer = pace.util.NullTimer()
     times_per_step: List = dataclasses.field(default_factory=list)
@@ -25,6 +24,8 @@ class PerformanceConfig:
             self.total_timer = pace.util.Timer()
         if self.cProfile:
             self.profiler = pace.util.Profiler()
+        else:
+            self.profiler = pace.util.NullProfiler()
 
     def collect_performance(self):
         """
