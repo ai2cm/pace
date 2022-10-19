@@ -78,6 +78,10 @@ class DriverConfig:
             copies during model execution, raising an exception if results ever
             differ. This is considerably more expensive since all model data must
             be communicated at the start and end of every stencil call.
+        output_initial_state: flag to determine if the first output should be the
+            initial state of the model before timestepping
+        output_frequency: number of model timesteps between diagnostic timesteps,
+            defaults to every timestep
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -117,6 +121,8 @@ class DriverConfig:
         default_factory=lambda: RestartConfig()
     )
     pair_debug: bool = False
+    output_initial_state: bool = False
+    output_frequency: int = 1
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -513,8 +519,7 @@ class Driver:
                 self.dycore_to_physics = None
                 self.end_of_step_update = None
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
-                partitioner=communicator.partitioner,
-                comm=self.comm,
+                communicator=communicator
             )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
@@ -522,7 +527,7 @@ class Driver:
         self.diagnostics.store_grid(
             grid_data=self.state.grid_data,
         )
-        if config.diagnostics_config.output_initial_state:
+        if config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
@@ -563,7 +568,7 @@ class Driver:
         if __debug__:
             logger.info(f"Finished stepping {step}")
         self.time += self.config.timestep
-        if not ((step + 1) % self.config.diagnostics_config.output_frequency):
+        if ((step + 1) % self.config.output_frequency) == 0:
             self.diagnostics.store(time=self.time, state=self.state)
         self.config.restart_config.write_intermediate_if_enabled(
             state=self.state,

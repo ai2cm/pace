@@ -32,8 +32,8 @@ diagnostics_config:
     - qrain
     - qsnow
     - qgraupel
-  output_frequency: 10
-  output_initial_state: false
+output_frequency: 10
+output_initial_state: false
 dycore_config:
   a_imp: 1.0
   beta: 0.

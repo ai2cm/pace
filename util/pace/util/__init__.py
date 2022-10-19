@@ -53,7 +53,7 @@ from .halo_updater import HaloUpdater, HaloUpdateRequest
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer
 from .io import read_state, write_state
 from .local_comm import LocalComm
-from .monitor import NetCDFMonitor, ZarrMonitor
+from .monitor import Monitor, NetCDFMonitor, ZarrMonitor
 from .mpi import MPIComm
 from .namelist import Namelist, NamelistDefaults
 from .nudging import apply_nudging, get_nudging_tendencies

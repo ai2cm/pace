@@ -9,9 +9,7 @@ from pace.driver.diagnostics import NullDiagnostics
 def test_returns_null_diagnostics_if_no_path_given():
     config = pace.driver.DiagnosticsConfig(path=None, names=[])
     assert isinstance(
-        config.diagnostics_factory(
-            unittest.mock.MagicMock(), unittest.mock.MagicMock()
-        ),
+        config.diagnostics_factory(unittest.mock.MagicMock()),
         NullDiagnostics,
     )
 
@@ -21,7 +19,7 @@ def test_returns_zarr_diagnostics_if_path_given(tmpdir):
         path=tmpdir, names=["foo"], derived_names=["bar"]
     )
     with unittest.mock.patch(target="pace.driver.diagnostics.ZarrDiagnostics") as mock:
-        config.diagnostics_factory(unittest.mock.MagicMock(), unittest.mock.MagicMock())
+        config.diagnostics_factory(unittest.mock.MagicMock())
         mock.assert_called_once_with(
             path=tmpdir,
             names=["foo"],
