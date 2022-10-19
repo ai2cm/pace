@@ -128,16 +128,16 @@ class MonitorDiagnostics(Diagnostics):
 
     @dace_inhibitor
     def store(self, time: Union[datetime, timedelta], state: DriverState):
-        zarr_state = {"time": time}
+        monitor_state = {"time": time}
         for name in self.names:
             try:
                 quantity = getattr(state.dycore_state, name)
             except AttributeError:
                 quantity = getattr(state.physics_state, name)
-            zarr_state[name] = quantity
+            monitor_state[name] = quantity
         derived_state = self._get_derived_state(state)
-        zarr_state.update(derived_state)
-        self.monitor.store(zarr_state)
+        monitor_state.update(derived_state)
+        self.monitor.store(monitor_state)
 
     def _get_derived_state(self, state: DriverState):
         output = {}
