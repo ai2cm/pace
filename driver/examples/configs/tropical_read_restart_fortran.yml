@@ -20,7 +20,7 @@ grid_config:
     vertical_grid_from_restart: True
   type: generated
 performance_config:
-  performance_mode: true
+  collect_performance: false
   experiment_name: c128_tropical
 nx_tile: 128
 nz: 79

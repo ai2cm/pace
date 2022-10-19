@@ -8,7 +8,7 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: true
+  collect_performance: true
   experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79

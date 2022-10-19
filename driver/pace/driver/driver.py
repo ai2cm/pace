@@ -303,12 +303,6 @@ class DriverConfig:
         config_dict["stencil_config"][
             "compilation_config"
         ] = self.stencil_config.compilation_config.as_dict()
-        # TODO: these attributes are popped because they're not really config,
-        # we should move them off of config classes and onto non-config classes.
-        config_dict["performance_config"].pop("times_per_step", None)
-        config_dict["performance_config"].pop("hits_per_step", None)
-        config_dict["performance_config"].pop("timestep_timer", None)
-        config_dict["performance_config"].pop("total_timer", None)
         # TODO: these attributes are popped because they're defined in the
         # top-level DriverConfig, if we refactor DycoreConfig and PhysicsConfig
         # so they don't have these attributes and pass them separately then we
@@ -393,8 +387,8 @@ class Driver:
         else:
             self.comm = global_comm
             stencil_compare_comm = None
-        self.performance_config = self.config.performance_config
-        with self.performance_config.total_timer.clock("initialization"):
+        self.performance_collector = self.config.performance_config.build(self.comm)
+        with self.performance_collector.total_timer.clock("initialization"):
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
@@ -573,7 +567,7 @@ class Driver:
             driver_config=self.config,
             restart_path=f"RESTART_{step}",
         )
-        self.performance_config.collect_performance()
+        self.performance_collector.collect_performance()
 
     def _critical_path_step_all(
         self,
@@ -590,7 +584,7 @@ class Driver:
             with timer.clock("mainloop"):
                 self._step_dynamics(
                     self.state.dycore_state,
-                    self.performance_config.timestep_timer,
+                    self.performance_collector.timestep_timer,
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
@@ -598,10 +592,10 @@ class Driver:
 
     def step_all(self):
         logger.info("integrating driver forward in time")
-        with self.performance_config.total_timer.clock("total"):
+        with self.performance_collector.total_timer.clock("total"):
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
-                timer=self.performance_config.timestep_timer,
+                timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
 
@@ -634,7 +628,7 @@ class Driver:
         )
 
     def _write_performance_json_output(self):
-        self.performance_config.write_out_performance(
+        self.performance_collector.write_out_performance(
             self.comm,
             self.config.stencil_config.compilation_config.backend,
             self.config.stencil_config.dace_config.is_dace_orchestrated(),
