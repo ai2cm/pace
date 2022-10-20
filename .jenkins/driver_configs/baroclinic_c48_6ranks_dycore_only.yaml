@@ -11,7 +11,7 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: false
+  collect_performance: false
 nx_tile: 48
 nz: 79
 dt_atmos: 225
@@ -25,7 +25,6 @@ diagnostics_config:
     - ua
     - va
     - pt
-  output_frequency: 1
 dycore_config:
   a_imp: 1.0
   beta: 0.

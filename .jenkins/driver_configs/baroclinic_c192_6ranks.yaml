@@ -16,7 +16,9 @@ diagnostics_config:
     - ua
     - va
     - pt
-  output_initial_state: true
+output_initial_state: true
+performance_config:
+  collect_performance: true
 nx_tile: 192
 nz: 79
 dt_atmos: 200
