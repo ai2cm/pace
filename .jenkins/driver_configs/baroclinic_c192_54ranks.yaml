@@ -12,6 +12,7 @@ diagnostics_config:
   names:
     - ua
     - va
+    - pt
 output_initial_state: true
 performance_config:
   performance_mode: false
