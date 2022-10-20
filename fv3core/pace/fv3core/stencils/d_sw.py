@@ -390,11 +390,11 @@ def coriolis_force_correction(zh, radius):
     return 1.0 + (zh + zh[0, 0, 1]) / radius
 
 
-def compute_vort(
-    wk: FloatField,
+def rel_vorticity_to_abs(
+    relative_vorticity: FloatField,
     f0: FloatFieldIJ,
     zh: FloatField,
-    vort: FloatField,
+    absolute_vorticity: FloatField,
 ):
     """
     Args:
@@ -411,9 +411,9 @@ def compute_vort(
     with computation(PARALLEL), interval(...):
         if __INLINED(do_f3d and not hydrostatic):
             z_rat = coriolis_force_correction(zh, radius)
-            vort = wk + f0 * z_rat
+            absolute_vorticity = relative_vorticity + f0 * z_rat
         else:
-            vort = wk[0, 0, 0] + f0[0, 0]
+            absolute_vorticity = relative_vorticity[0, 0, 0] + f0[0, 0]
 
 
 @gtscript.function
@@ -436,16 +436,17 @@ def u_from_ke(ke, u, dx, fy):
     are scalar.
 
     Args:
-        ke (in): kinetic energy
+        ke (in): dt * kinetic energy defined on cell corners
         u (in): x-velocity
         dx (in): grid cell width
-        fy (in):
+        fy (in): flux of absolute vorticity in y-direction
     """
     return u * dx + ke - ke[1, 0, 0] + fy
 
 
 @gtscript.function
 def v_from_ke(ke, v, dy, fx):
+    # see docstring for u_from_ke
     return v * dy + ke - ke[0, 1, 0] - fx
 
 
@@ -518,14 +519,17 @@ def heat_source_from_vorticity_damping(
 ):
     """
     Calculates heat source from vorticity damping implied by energy conservation.
+
+    Described in Section 8.5 of FV3 docs.
+
     Args:
-        vort_x_delta (in):
-        vort_y_delta (in):
-        ut (in):
-        vt (in):
-        u (in):
-        v (in):
-        delp (in):
+        vort_x_delta (in): x finite difference of damped b-grid vorticity
+        vort_y_delta (in): y finite difference of damped b-grid vorticity
+        ut (in): damping flux in x-direction of a-grid relative vorticity
+        vt (in): damping flux in y-direction of a-grid relative vorticity
+        u (in): d-grid x-velocity
+        v (in): d-grid y-velocity
+        delp (in): pressure thickness of layer
         rsin2 (in):
         cosa_s (in):
         rdx (in): 1 / dx
@@ -534,13 +538,20 @@ def heat_source_from_vorticity_damping(
             implied by energy conservation
         heat_source_total (inout): accumulated heat source
         dissipation_estimate (out): dissipation estimate, only calculated if
-            calculate_dissipation_estimate is 1
+            calculate_dissipation_estimate is 1. Used for stochastic kinetic
+            energy backscatter (skeb) routine.
         kinetic_energy_fraction_to_damp (in): according to its comment in fv_arrays,
             the fraction of kinetic energy to explicitly damp and convert into heat.
             TODO: confirm this description is accurate, why is it multiplied
             by 0.25 below?
     """
     from __externals__ import d_con, do_skeb, local_ie, local_is, local_je, local_js
+
+    # TODO: propagate these descriptions to where these are defined
+    # d_con is portion of dissipative kinetic energy restored as heat, turns off
+    # if it's below some threshold
+    # do_skeb means do stochastic kinetic energy backscattering
+    # for data assimilation and ensemble modeling
 
     with computation(PARALLEL), interval(...):
         ubt = (vort_x_delta + vt) * rdx
@@ -580,12 +591,15 @@ def update_u_and_v(
     damp_vt: FloatFieldK,
 ):
     """
-    Updates u and v after calculation of heat source from vorticity damping.
+    Updates u and v with fluxes resulting from the diffusive flux of vorticity.
+
+    See docstring of u_from_ke for description of equations.
+
     Args:
-        ut (in):
-        vt (in):
-        u (inout):
-        v (inout):
+        ut (in): x-direction diffusivie vorticity flux
+        vt (in): y-direction diffusivie vorticity flux
+        u (inout): d-grid x-velocity
+        v (inout): d-grid y-velocity
         damp_vt (in): column scalar for damping vorticity
     """
     from __externals__ import local_ie, local_is, local_je, local_js
@@ -771,7 +785,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._vort_x_delta = make_storage()
         self._vort_y_delta = make_storage()
         self._dt_kinetic_energy_on_cell_corners = make_storage()
-        self._tmp_vort = make_storage()
+        self._abs_vorticity_agrid = make_storage()
         self._uc_contra = make_storage()
         self._vc_contra = make_storage()
         self._tmp_ut = make_storage()
@@ -889,8 +903,8 @@ class DGridShallowWaterLagrangianDynamics:
         self._u_and_v_from_ke_stencil = stencil_factory.from_dims_halo(
             func=u_and_v_from_ke, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
-        self._compute_vort_stencil = stencil_factory.from_dims_halo(
-            func=compute_vort,
+        self._rel_vorticity_to_abs = stencil_factory.from_dims_halo(
+            func=rel_vorticity_to_abs,
             externals={
                 "radius": constants.RADIUS,
                 "do_f3d": config.do_f3d,
@@ -1190,16 +1204,19 @@ class DGridShallowWaterLagrangianDynamics:
             uc,
             delpc,
             self._dt_kinetic_energy_on_cell_corners,
-            self._vorticity_agrid,  # a-grid relative vorticity computed before divergence damping
+            # a-grid relative vorticity computed before divergence damping
+            self._vorticity_agrid,
             dt,
         )
 
         # Vorticity transport
-        self._compute_vort_stencil(self._vorticity_agrid, self._f0, zh, self._tmp_vort)
+        self._rel_vorticity_to_abs(
+            self._vorticity_agrid, self._f0, zh, self._abs_vorticity_agrid
+        )
 
         # [DaCe] Unroll CopiedCorners see __init__
         self.fvtp2d_vt_nodelnflux(
-            self._tmp_vort,
+            self._abs_vorticity_agrid,
             crx,
             cry,
             xfx,
@@ -1218,14 +1235,15 @@ class DGridShallowWaterLagrangianDynamics:
             self.grid_data.dy,
         )
 
-        # we are here
+        # TODO: use a separate temporary/storage for this variable name
+        damped_rel_vorticity_agrid = self._abs_vorticity_agrid
 
         self.delnflux_nosg_v(
             self._vorticity_agrid,
             self._tmp_ut,
             self._tmp_vt,
             self._delnflux_damp_vt,
-            self._tmp_vort,
+            damped_rel_vorticity_agrid,
         )
         # TODO(eddied): These stencils were split to ensure GTC verification
         self._vort_differencing_stencil(

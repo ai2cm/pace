@@ -939,6 +939,7 @@ class AcousticDynamics:
                 self._halo_updaters.zh.start()
                 self._halo_updaters.pkc.start()
                 if remap_step:
+                    # TODO: can this be moved to the start of the remapping routine?
                     self._edge_pe_stencil(state.pe, state.delp, self._ptop)
                 if self.config.use_logp:
                     raise NotImplementedError(
@@ -988,6 +989,8 @@ class AcousticDynamics:
             else:
                 if self.config.grid_type < 4:
                     self._halo_updaters.interface_uc__vc.interface()
+
+        # we are here
 
         if self._do_del2cubed:
             self._halo_updaters.heat_source.update()

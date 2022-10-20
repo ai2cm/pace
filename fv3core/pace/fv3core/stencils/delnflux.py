@@ -1226,7 +1226,7 @@ class DelnFluxNoSG:
             fx2 (out): x-flux on A grid to apply damping to q
             fy2 (out): y-flux on A grid to apply damping to q
             damp_c (in): damping coefficient for q
-            d2 (out): ? a damped copy of the q field
+            d2 (out): higher-order damped version of q
             mass (unused): if given, apply d2 damping (does not use this as input)
         """
 

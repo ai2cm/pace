@@ -25,16 +25,22 @@ def sim1_solver(
     p_fac: float,
 ):
     """
-    w (inout):
-    dm (in):
-    gm (in):
-    dz (inout):
-    ptr (in):
-    pm (in):
-    pe (out): nonhydrostatic perturbation pressure defined on interfaces
-    pem (in):
-    wsr (in):
-    cp3 (in):
+    Tridiagonal solve for w and dz, handles pressure gradient force and sound waves
+    in the vertical.
+
+    Documented in Chapter 7.1 of the FV3 dynamical core documentation.
+
+    Args:
+        w (inout):
+        dm (in):
+        gm (in):
+        dz (inout):
+        ptr (in):
+        pm (in):
+        pe (out): nonhydrostatic perturbation pressure defined on interfaces
+        pem (in):
+        wsr (in):
+        cp3 (in):
     """
     with computation(PARALLEL), interval(0, -1):
         pe = exp(gm * log(-dm / dz * constants.RDGAS * ptr)) - pm
