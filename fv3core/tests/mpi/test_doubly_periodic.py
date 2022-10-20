@@ -111,14 +111,12 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         phis=state.phis,
         state=state,
     )
-    do_adiabatic_init = False
     # TODO compute from namelist
     bdt = config.dt_atmos
 
     args = [
         state,
         config.consv_te,
-        do_adiabatic_init,
         bdt,
         config.n_split,
     ]

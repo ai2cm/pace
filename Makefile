@@ -24,12 +24,13 @@ PULL ?=True
 DEV ?=y
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 CONTAINER_CMD?=docker
+SAVEPOINT_SETUP=pip3 list && python3 -m gt4py.gt_src_manager install
 
 VOLUMES ?=
+BUILD_FLAGS ?=
 
 ### Testing variables
 
-FV3=fv3core
 RUN_FLAGS ?=--rm
 ifeq ("$(CONTAINER_CMD)","")
 	PACE_PATH?=$(ROOT_DIR)
@@ -55,12 +56,12 @@ else
 	VOLUMES += -v $(EXPERIMENT_DATA):$(EXPERIMENT_DATA_RUN)
 endif
 ifeq ($(CONTAINER_CMD),docker)
-	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
+	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) --env GT_CACHE_ROOT=/pace/.gt_cache $(PACE_IMAGE)
 else
 	CONTAINER_FLAGS=
 endif
 NUM_RANKS ?=6
-MPIRUN_ARGS ?=--oversubscribe
+MPIRUN_ARGS ?=--oversubscribe --mca btl_vader_single_copy_mechanism none
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
 TEST_ARGS ?=-v
 TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
@@ -83,6 +84,7 @@ endif
 
 _force_build:
 	DOCKER_BUILDKIT=1 docker build \
+		$(BUILD_FLAGS) \
 		-f $(CWD)/Dockerfile \
 		-t $(PACE_IMAGE) \
 		.
@@ -101,36 +103,43 @@ test_util:
 		$(MAKE) -C util test; \
 	fi
 
-savepoint_tests: build
+savepoint_tests: build  ## dycore-only savepoint tests
 	TARGET=dycore $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(FV3CORE_THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(FV3CORE_THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
 
 savepoint_tests_mpi: build
 	TARGET=dycore $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(FV3CORE_THRESH_ARGS) -m parallel $(PACE_PATH)/fv3core/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(FV3CORE_THRESH_ARGS) -m parallel $(PACE_PATH)/fv3core/tests/savepoint"
 
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: dsl/requirements.txt fv3core/requirements.txt util/requirements.txt physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
+constraints.txt: driver/setup.py dsl/setup.py fv3core/setup.py physics/setup.py util/setup.py stencils/setup.py util/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
 	pip-compile $^ --output-file constraints.txt
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak
 
 physics_savepoint_tests: build
 	TARGET=physics $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) $(PACE_PATH)/physics/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) $(PACE_PATH)/physics/tests/savepoint"
 
 physics_savepoint_tests_mpi: build
 	TARGET=physics $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) -m parallel $(PACE_PATH)/physics/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) -m parallel $(PACE_PATH)/physics/tests/savepoint"
 
 test_main: build
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
+
+test_savepoint:  ## top level savepoint tests
+	TARGET=dycore $(MAKE) get_test_data
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/savepoint"
+
+test_mpi_54rank:
+	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank
 
 driver_savepoint_tests_mpi: build
 	TARGET=driver $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/driver/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) -m parallel $(PACE_PATH)/physics/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/driver/ $(TEST_ARGS) $(PHYSICS_THRESH_ARGS) -m parallel $(PACE_PATH)/physics/tests/savepoint"
 
 docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html

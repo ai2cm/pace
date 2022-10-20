@@ -18,7 +18,8 @@ seconds: 225
 layout:
   - 1
   - 1
-save_restart: true
+restart_config:
+  save_restart: true
 diagnostics_config:
   path: "output.zarr"
   names:

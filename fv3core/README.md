@@ -184,6 +184,8 @@ $ make dev_tests TEST_ARGS="-–which_modules=<stencil name(s)>"
 **Please also review the [Porting conventions](#porting-conventions) section for additional explanation**
 ## Installation
 
+### Docker Image
+
 To build the `us.gcr.io/vcm-ml/fv3core` image with required dependencies for running the Python code, run
 
 ```shell

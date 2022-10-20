@@ -1,16 +1,67 @@
+[![CircleCI][circleci-shield]][circleci-url]
+[![Contributors][contributors-shield]][contributors-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![Apache License][license-shield]][license-url]
+
 # Pace
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
-The top-level directory contains the main compnents of pace such as the dynamical core, the physical parameterizations and infrastructure utilities.
 
 **WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
+## Quickstart - bare metal
 
-This git repository is laid out as a mono-repo, containing multiple independent projects. Because of this, it is important not to introduce unintended dependencies between projects. The graph below indicates a project depends on another by an arrow pointing from the parent project to its dependency. For example, the tests for fv3core should be able to run with only files contained under the fv3core and util projects, and should not access any files in the driver or physics packages. Only the top-level tests in Pace are allowed to read all files.
+### Build
 
-![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
+Pace requires GCC > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend. You will also need the headers of the boost libraries in your `$PATH` (boost itself does not need to be installed).
 
-## Building the docker container
+```shell
+cd BOOST/ROOT
+wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
+tar -xzf boost_1_79_0.tar.gz
+mkdir -p boost_1_79_0/include
+mv boost_1_79_0/boost boost_1_79_0/include/
+export BOOST_ROOT=BOOST/ROOT/boost_1_79_0
+```
+
+When cloning Pace you will need to update the repository's submodules as well:
+```shell
+git clone --recursive https://github.com/ai2cm/pace.git
+```
+or if you have already cloned the repository:
+```
+git submodule update --init --recursive
+```
+
+We recommend creating a python `venv` or conda environment specifically for Pace.
+
+```shell
+python3 -m venv venv_name
+source venv_name/bin/activate
+```
+
+Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
+```shell
+pip3 install -r requirements_dev.txt -c constraints.txt
+```
+
+Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
+
+### Run
+
+With the environment activated, you can run an example baroclinic test case with the following command:
+```shell
+mpirun -n 6 python3 -m pace.driver.run driver/examples/configs/baroclinic_c12.yaml
+
+# or with oversubscribe if you do not have at least 6 cores
+mpirun -n 6 --oversubscribe python3 -m pace.driver.run driver/examples/configs/baroclinic_c12.yaml
+```
+
+After the run completes, you will see an output direcotry `output.zarr`. An example to visualize the output is provided in `driver/examples/plot_output.py`. See the [driver example](driver/examples/README.md) section for more details.
+
+## Quickstart - Docker
+### Build
 
 While it is possible to install and build pace bare-metal, we can ensure all system libraries are installed with the correct versions by using a Docker container to test and develop pace.
 
@@ -23,75 +74,33 @@ Then build the `pace` docker image at the top level.
 ```shell
 make build
 ```
-
-## Downloading test data
-
-The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data.
-
-First, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
-```shell
-gcloud auth login
-gcloud auth configure-docker
-```
-
-Next, you can download the test data for the dynamical core and the physics tests.
-
-```shell
-cd fv3core
-make get_test_data
-cd ../physics
-make get_test_data
-cd ..
-```
-
-If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket. You will need a valid in stallation of the `lftp` command.
-
-## Running the tests (manually)
-
-There are two ways to run the tests, manually by explicitly invoking `pytest` or autmatically using make targets. The former can be used both inside the Docker container as well as for a bare-metal installation and will be described here.
-
-First enter the container and navigate to the pace directory:
+### Run
 
 ```shell
 make dev
-cd /pace
+mpirun --mca btl_vader_single_copy_mechanism none -n 6 python3 -m pace.driver.run /pace/driver/examples/configs/baroclinic_c12.yaml
 ```
 
-Note that by entering the container with the `make dev` command, volumes for code and test data will be mounted into the container and modifications inside the container will be retained.
+## Running translate tests
 
-There are two sets of tests. The "sequential tests" test components which do not require MPI-parallelism. The "parallel tests" can only within an MPI environment.
+See the [translate tests](stencils/pace/stencils/testing/README.md) section for more information.
 
-To run the sequential and parallel tests for the dynmical core (fv3core), you can execute the following commands (these take a bit of time):
+## Repository structure
 
-```shell
-pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore ./fv3core/tests
-```
+The top-level directory contains the main components of pace such as the dynamical core, the physical parameterizations and utilities.
 
-Note that you must have already downloaded the test data according to the instructions above. The precise path needed for `--data_path` may be different, particularly the version directory.
+This git repository is laid out as a mono-repo, containing multiple independent projects. Because of this, it is important not to introduce unintended dependencies between projects. The graph below indicates a project depends on another by an arrow pointing from the parent project to its dependency. For example, the tests for fv3core should be able to run with only files contained under the fv3core and util projects, and should not access any files in the driver or physics packages. Only the top-level tests in Pace are allowed to read all files.
 
-Similarly, you can run the sequential and parallel tests for the physical parameterizations (physics). Currently, only the microphysics is integrated into pace and will be tested.
+![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
-```shell
-pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
-```
 
-Finally, to test the pace infrastructure utilities (util), you can run the following commands:
-
-```shell
-cd util
-make test
-make test_mpi
-```
-
-## Running the tests automatically using Docker
-
-To automatize testing, a set of convenience commands is available that build the Docker image, run the container and execute the tests (dynamical core and physics only). This is mainly useful for CI/CD workflows.
-
-```shell
-DEV=y make savepoint_tests
-DEV=y make savepoint_tests_mpi
-DEV=y make physics_savepoint_tests
-DEV=y make physics_savepoint_tests_mpi
-```
+[circleci-shield]: https://dl.circleci.com/status-badge/img/gh/ai2cm/pace/tree/main.svg?style=svg
+[circleci-url]: https://dl.circleci.com/status-badge/redirect/gh/ai2cm/pace/tree/main
+[contributors-shield]: https://img.shields.io/github/contributors/ai2cm/pace.svg
+[contributors-url]: https://github.com/ai2cm/pace/graphs/contributors
+[stars-shield]: https://img.shields.io/github/stars/ai2cm/pace.svg
+[stars-url]: https://github.com/ai2cm/pace/stargazers
+[issues-shield]: https://img.shields.io/github/issues/ai2cm/pace.svg
+[issues-url]: https://github.com/ai2cm/pace/issues
+[license-shield]: https://img.shields.io/github/license/ai2cm/pace.svg
+[license-url]: https://github.com/ai2cm/pace/blob/main/LICENSE.md

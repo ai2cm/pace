@@ -1,7 +1,7 @@
 # flake8: noqa: F401
 
 from .eta import set_hybrid_pressure_coefficients
-from .generation import MetricTerms
+from .generation import GridDefinitions, MetricTerms
 from .gnomonic import (
     great_circle_distance_along_axis,
     great_circle_distance_lon_lat,
@@ -20,3 +20,4 @@ from .helper import (
     HorizontalGridData,
     VerticalGridData,
 )
+from .stretch_transformation import direct_transform

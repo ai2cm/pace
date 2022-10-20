@@ -1,6 +1,7 @@
 import os
 import unittest.mock
 from dataclasses import fields
+from datetime import timedelta
 from typing import Tuple
 
 import pace.dsl.stencil
@@ -100,11 +101,13 @@ def setup_dycore() -> Tuple[
         quantity_factory=quantity_factory,
         communicator=communicator,
     )
+    grid_data = GridData.new_from_metric_terms(metric_terms)
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
     # test case perturbation. JRMS2006
     state = baroclinic_init.init_baroclinic_state(
-        metric_terms,
+        grid_data,
+        quantity_factory=quantity_factory,
         adiabatic=config.adiabatic,
         hydrostatic=config.hydrostatic,
         moist_phys=config.moist_phys,
@@ -117,21 +120,13 @@ def setup_dycore() -> Tuple[
 
     dycore = fv3core.DynamicalCore(
         comm=communicator,
-        grid_data=GridData.new_from_metric_terms(metric_terms),
+        grid_data=grid_data,
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
+        timestep=timedelta(seconds=config.dt_atmos),
         phis=state.phis,
         state=state,
-    )
-    do_adiabatic_init = False
-
-    dycore.update_state(
-        config.consv_te,
-        do_adiabatic_init,
-        config.dt_atmos,
-        config.n_split,
-        state,
     )
 
     return dycore, state, pace.util.NullTimer()

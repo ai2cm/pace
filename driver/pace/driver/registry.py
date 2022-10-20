@@ -5,6 +5,7 @@ import dacite
 
 
 T = TypeVar("T")
+TT = TypeVar("TT", bound=Type)
 
 
 @dataclasses.dataclass
@@ -84,7 +85,7 @@ class Registry(Generic[T]):
         self._types: Dict[str, Type[T]] = {}
         self.default_type = default_type
 
-    def register(self, type_name: str) -> Callable[[Type], None]:
+    def register(self, type_name: str) -> Callable[[TT], TT]:
         """
         Registers a configuration type with the registry.
 
@@ -98,7 +99,7 @@ class Registry(Generic[T]):
                 class as the target type to be initialized when using from_dict.
         """
 
-        def register_func(cls: Type[T]):
+        def register_func(cls: TT) -> TT:
             self._types[type_name] = cls
             return cls
 

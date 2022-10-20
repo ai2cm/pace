@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from gt4py.gtscript import (
     __INLINED,
@@ -15,6 +15,7 @@ from gt4py.gtscript import (
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -286,12 +287,17 @@ class LagrangianToEulerian:
         nq,
         pfull,
         tracers: Dict[str, Quantity],
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["tracers"],
+            dace_compiletime_args=["tracers"],
         )
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
             raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
@@ -518,7 +524,6 @@ class LagrangianToEulerian:
         consv_te: float,
         mdt: float,
         bdt: float,
-        do_adiabatic_init: bool,
     ):
         """
         tracers (inout): Tracer species tracked across
@@ -554,7 +559,6 @@ class LagrangianToEulerian:
         consv_te (in): If True, conserve total energy
         mdt (in) : Remap time step
         bdt (in): Timestep
-        do_adiabatic_init (in): If True, do adiabatic dynamics
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
@@ -636,7 +640,7 @@ class LagrangianToEulerian:
 
         self._copy_from_below_stencil(ua, pe)
         dtmp = 0.0
-        if last_step and not do_adiabatic_init:
+        if last_step:
             if consv_te > CONSV_MIN:
                 raise NotImplementedError(
                     "We do not support consv_te > 0.001 "
@@ -652,7 +656,7 @@ class LagrangianToEulerian:
                 )
 
         if self._do_sat_adjust:
-            fast_mp_consv = not do_adiabatic_init and consv_te > CONSV_MIN
+            fast_mp_consv = consv_te > CONSV_MIN
             self._saturation_adjustment(
                 dp1,
                 tracers["qvapor"],

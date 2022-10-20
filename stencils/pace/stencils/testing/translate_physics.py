@@ -81,6 +81,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             if n_dim == 3:
                 var_reshape = np.reshape(data[:, 0, :], (cn, cn, npz))
                 rearranged = var_reshape[:, :, :]
+            elif n_dim == 2:
+                rearranged = np.reshape(data[:, :], (cn, cn))
             elif len(data.flatten()) == 1:
                 rearranged = data[0]
             else:
@@ -141,7 +143,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 roll_zero = info["out_roll_zero"] if "out_roll_zero" in info else False
                 index_order = info["order"] if "order" in info else "C"
                 dycore = info["dycore"] if "dycore" in info else False
-                data_result.synchronize()
+                if hasattr(data_result, "synchronize"):
+                    data_result.synchronize()
                 if n_dim == 3:
                     npz = data_result.shape[2]
                     k_length = info["kend"] if "kend" in info else npz

@@ -121,13 +121,18 @@ class ValidationCheckpointer(Checkpointer):
 
             # cannot use relative threshold when comparing to zero value
             expected_not_zero = expected != 0
-            np.testing.assert_allclose(
-                output[expected_not_zero],
-                expected[expected_not_zero],
-                rtol=var_thresholds[varname].relative,
-            )
+            rtol = var_thresholds[varname].relative
+            atol = var_thresholds[varname].absolute
+            if not np.isnan(rtol):
+                np.testing.assert_allclose(
+                    output[expected_not_zero],
+                    expected[expected_not_zero],
+                    rtol=var_thresholds[varname].relative,
+                    atol=0.0,
+                )
 
-            np.testing.assert_allclose(
-                output, expected, atol=var_thresholds[varname].absolute
-            )
+            if not np.isnan(atol):
+                np.testing.assert_allclose(
+                    output, expected, atol=var_thresholds[varname].absolute, rtol=0.0
+                )
         self._n_calls[savepoint_name] += 1

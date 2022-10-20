@@ -510,7 +510,7 @@ class CGridShallowWaterDynamics:
         grid_type: int,
         nord: int,
     ):
-        orchestrate(self, config=stencil_factory.config.dace_config)
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
         grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True

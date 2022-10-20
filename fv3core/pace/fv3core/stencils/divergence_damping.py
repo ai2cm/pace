@@ -11,7 +11,7 @@ from gt4py.gtscript import (
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.stencils.corners as corners
-from pace.dsl.dace.orchestration import orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
@@ -320,7 +320,7 @@ def redo_divg_d(
         # i.e. when do_adjustment = not stretched_grid is False
         # compare to the Fortran and fix
         if __INLINED(do_adjustment):
-            # reference https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/sw_core.F90#L1422
+            # reference https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/sw_core.F90#L1422  # noqa: E501
             divg_d = divg_d * adjustment_factor
 
 
@@ -364,7 +364,9 @@ class DivergenceDamping:
         # TODO: make dddmp a compile-time external, instead of runtime scalar
         self._dddmp = dddmp
         # TODO: make da_min_c a compile-time external, instead of runtime scalar
-        self._da_min_c = damping_coefficients.da_min_c
+        self._damping_coefficients = damping_coefficients
+        self._stretched_grid = stretched_grid
+        self._d4_bg = d4_bg
         self._grid_type = grid_type
         self._nord_column = nord_col
         self._d2_bg_column = d2_bg
@@ -400,12 +402,7 @@ class DivergenceDamping:
                 nonzero_nord_k = k
                 self._nonzero_nord = int(self._nord_column[k])
                 break
-        if stretched_grid:
-            self._dd8 = damping_coefficients.da_min * d4_bg ** (self._nonzero_nord + 1)
-        else:
-            self._dd8 = (damping_coefficients.da_min_c * d4_bg) ** (
-                self._nonzero_nord + 1
-            )
+
         kstart = nonzero_nord_k
         nk = self.grid_indexing.domain[2] - kstart
         self._do_zero_order = nonzero_nord_k > 0
@@ -546,6 +543,38 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
+    # We need to use a getter for da_min & da_min_c in order to go around a DaCe inline
+    # behavior. As part of the automatic optimization process, DaCe tries to inline
+    # as many scalars as possible.
+    # The grid is _not_ passed as an input to the top level function we orchestrate,
+    # so its scalar values will be inlined.
+
+    # 'alas, our distributed compilation system works by compiling a 3,3 layout
+    # top tile, then using those 9 caches on every layout upward.
+    # This setup leads to the values of da_min/da_min_c from the 3,3 layout
+    # to be inlined in the generated code. Those variables are used in runtime
+    # calculation (kinetic energy, etc.) which obviously leads to misbehaving numerics
+    # and errors when the 3,3 layout values are used on larger layouts
+
+    # The solution we implement here is making use of the fact that callbacks
+    # are never inlined in dace optimization. the current workaround uses the
+    # following functions.
+
+    # An alternative would be to pass the Grid or the DampingCoefficients to DaCe,
+    # clearly flagging it has a dynamic piece of memory (which would
+    # cancel any inlining) but the feature to do that (dace.struct)
+    # is currently in disarray.
+    # N.B.: another solution is to pass da_min and da_min_c as input, put it seems
+    # odd and adds a lot of boilerplate throughout the model code.
+
+    @dace_inhibitor
+    def _get_da_min_c(self) -> float:
+        return self._damping_coefficients.da_min_c
+
+    @dace_inhibitor
+    def _get_da_min(self) -> float:
+        return self._damping_coefficients.da_min
+
     def __call__(
         self,
         u: FloatField,
@@ -654,12 +683,13 @@ class DivergenceDamping:
             )
             """
 
+            da_min_c: float = self._get_da_min_c()
             self._damping(
                 delpc,
                 v_contra_dxc,
                 ke,
                 self._d2_bg_column,
-                self._da_min_c,
+                da_min_c,
                 self._dddmp,
                 dt,
             )
@@ -700,13 +730,20 @@ class DivergenceDamping:
                 v_contra_dxc,
                 abs(dt),
             )
+
+        da_min: float = self._get_da_min()
+        if self._stretched_grid:
+            dd8 = da_min * self._d4_bg ** (self._nonzero_nord + 1)
+        else:
+            dd8 = (da_min_c * self._d4_bg) ** (self._nonzero_nord + 1)
+
         self._damping_nord_highorder_stencil(
             v_contra_dxc,
             ke,
             delpc,
             divg_d,
             self._d2_bg_column,
-            self._da_min_c,
+            da_min_c,
             self._dddmp,
-            self._dd8,
+            dd8,
         )

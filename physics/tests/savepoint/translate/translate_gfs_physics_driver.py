@@ -110,6 +110,13 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["physics_updated_va"] = copy.deepcopy(storage)
         inputs["prsi"] = copy.deepcopy(storage)
         inputs["prsik"] = copy.deepcopy(storage)
+        # When we start doing standard case physics driver test,
+        # land will need to be added as part of the savepoint.
+        inputs["land"] = utils.make_storage_from_shape(
+            self.grid_indexing.domain_full(add=(1, 1, 1))[0:2],
+            origin=self.grid_indexing.origin_compute()[0:2],
+            backend=self.stencil_factory.backend,
+        )
         sizer = util.SubtileGridSizer.from_tile_params(
             nx_tile=self.namelist.npx - 1,
             ny_tile=self.namelist.npy - 1,
@@ -128,8 +135,6 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             quantity_factory=quantity_factory,
             active_packages=active_packages,
         )
-        # because it's not in the serialized data
-        self.grid.grid_data.ptop = 300.0
         physics = Physics(
             self.stencil_factory,
             self.grid.grid_data,
@@ -143,8 +148,8 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         dycore_to_physics = update_atmos_state.DycoreToPhysics(
             self.stencil_factory,
             self.namelist,
-            self.namelist.fv_sg_adj > 0,
-            self.namelist.dycore_only,
+            do_dry_convective_adjust=False,
+            dycore_only=self.namelist.dycore_only,
         )
         dycore_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(
@@ -189,6 +194,16 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.qvapor,
             physics_state.pt,
             physics_state.delp,
+            physics_state.microphysics.udt,
+            physics_state.microphysics.vdt,
+            physics_state.microphysics.pt_dt,
+            physics_state.microphysics.qv_dt,
+            physics_state.microphysics.ql_dt,
+            physics_state.microphysics.qr_dt,
+            physics_state.microphysics.qi_dt,
+            physics_state.microphysics.qs_dt,
+            physics_state.microphysics.qg_dt,
+            physics_state.microphysics.qa_dt,
         )
         microph_state = physics_state.microphysics
         physics._microphysics(microph_state, float(self.namelist.dt_atmos))

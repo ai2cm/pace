@@ -82,7 +82,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "consv_te",
             "mdt",
             "bdt",
-            "do_adiabatic_init",
             "nq",
         ]
         self.out_vars = {}

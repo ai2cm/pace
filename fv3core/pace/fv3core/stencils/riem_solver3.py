@@ -204,7 +204,7 @@ class RiemannSolver3:
         cappa: FloatField,
         ptop: float,
         zs: FloatFieldIJ,
-        wsd: FloatField,
+        wsd: FloatFieldIJ,
         delz: FloatField,
         q_con: FloatField,
         delp: FloatField,

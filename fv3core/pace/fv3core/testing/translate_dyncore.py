@@ -105,13 +105,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
         self._base.in_vars["data_vars"]["wsd"]["kstart"] = grid.npz
         self._base.in_vars["data_vars"]["wsd"]["kend"] = None
 
-        self._base.in_vars["parameters"] = [
-            "mdt",
-            "akap",
-            "ptop",
-            "n_map",
-            "ks",
-        ]
+        self._base.in_vars["parameters"] = ["mdt", "akap", "ptop", "n_map"]
 
         self._base.out_vars = {}
         for v, d in self._base.in_vars["data_vars"].items():
@@ -145,11 +139,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
-            grid_data.ks = inputs["ks"]
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
-        state.cappa = self.grid.quantity_factory.empty(
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+        wsd: pace.util.Quantity = self.grid.quantity_factory.empty(
+            dims=[pace.util.X_DIM, pace.util.Y_DIM],
             units="unknown",
         )
         for name, value in inputs.items():
@@ -171,14 +164,20 @@ class TranslateDynCore(ParallelTranslate2PyState):
             config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
             pfull=inputs["pfull"],
             phis=inputs["phis"],
+            wsd=wsd.storage,
             state=state,
         )
-        state.__dict__.update(acoustic_dynamics._temporaries)
-        acoustic_dynamics(state, n_map=state.n_map, update_temporaries=False)
+        acoustic_dynamics.cappa.storage[:] = inputs["cappa"][:]
+
+        acoustic_dynamics(state, timestep=inputs["mdt"], n_map=state.n_map)
+        # the "inputs" dict is not used to return, we construct a new dict based
+        # on variables attached to `state`
         storages_only = {}
         for name, value in vars(state).items():
             if isinstance(value, pace.util.Quantity):
                 storages_only[name] = value.storage
             else:
                 storages_only[name] = value
+        storages_only["wsd"] = wsd.storage
+        storages_only["cappa"] = acoustic_dynamics.cappa.storage
         return self._base.slice_output(storages_only)

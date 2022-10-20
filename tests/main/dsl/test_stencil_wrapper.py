@@ -287,7 +287,6 @@ def test_backend_options(
             "device_sync": False,
             "format_source": False,
             "name": "test_stencil_wrapper.copy_stencil",
-            "verbose": False,
         },
     }
 

@@ -1,7 +1,6 @@
 import dataclasses
 import enum
 import hashlib
-import re
 from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Sequence, Tuple
 
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
@@ -172,11 +171,13 @@ class StencilConfig(Hashable):
     dace_config: Optional[DaceConfig] = None
 
     def __post_init__(self):
-        self.backend_opts = self._get_backend_opts(
-            self.compilation_config.device_sync, self.compilation_config.format_source
-        )
+        self.backend_opts = {
+            "device_sync": self.compilation_config.device_sync,
+            "format_source": self.compilation_config.format_source,
+        }
         self._hash = self._compute_hash()
-        # We need a DaceConfig to known our orchestration as part of the build system
+
+        # We need a DaceConfig to know if orchestration is part of the build system
         # but we can't hash it very well (for now). The workaround is to make
         # sure we have a default Python orchestrated config.
         if self.dace_config is None:
@@ -215,36 +216,6 @@ class StencilConfig(Hashable):
             return self.__hash__() == other.__hash__()
         except AttributeError:
             return False
-
-    def _get_backend_opts(
-        self,
-        device_sync: Optional[bool] = None,
-        format_source: Optional[bool] = None,
-    ) -> Dict[str, Any]:
-        backend_opts: Dict[str, Any] = {}
-        all_backend_opts: Optional[Dict[str, Any]] = {
-            "device_sync": {
-                "backend": r".*(gpu|cuda)$",
-                "value": False,
-            },
-            "format_source": {
-                "value": False,
-            },
-            "verbose": {"backend": r"(gt:|cuda)", "value": False},
-        }
-        for name, option in all_backend_opts.items():
-            using_option_backend = re.match(
-                option.get("backend", ""), self.compilation_config.backend
-            )
-            if "backend" not in option or using_option_backend:
-                backend_opts[name] = option["value"]
-
-        if device_sync is not None:
-            backend_opts["device_sync"] = device_sync
-        if format_source is not None:
-            backend_opts["format_source"] = format_source
-
-        return backend_opts
 
     def stencil_kwargs(
         self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()

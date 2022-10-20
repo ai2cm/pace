@@ -4,6 +4,8 @@ History
 latest
 ------
 
+
+
 Major changes:
 - Added the following attributes/methods to Communicator: `tile`, `halo_update`, `boundaries`, `start_halo_update`, `vector_halo_update`, `start_vector_halo_update`, `synchronize_vector_interfaces`, `start_synchronize_vector_interfaces`, `get_scalar_halo_updater`, and `get_vector_halo_updater`
 - Added Checkpointer and NullCheckpointer classes
@@ -11,14 +13,20 @@ Major changes:
 - Comm and Request abstract base classes are added to the top level
 - Added the following attributes/methods to the Comm abstract base classes: `allreduce`, `allgather`
 - Added classes `Threshold`, `ThresholdCalibrationCheckpointer`, `ValidationCheckpointer`, and `SavepointThresholds`
+- Added `get_fs` as publicly-available function
+- Legacy restart routines can now load restart data from any fsspec-supported filesystem
+- Legacy restart routines will raise an exception if no restart files are present instead of loading an empty state
+- Added NetCDFMonitor for saving the global state in time-chunked NetCDF files
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
 - fixed a bug in `pace.util.grid` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
+- Added .cleanup() method to ZarrMonitor, used only for API compatibility with NetCDFMonitor and does nothing
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
 - Refactored `pace.util.grid.helper` so that `HorizontalGridData`, `VerticalGridData`, `ContravariantGridData` and `AngleGridData` have their own `new_from_metric_terms` class methods, and `GridData` calls those in its own method definition.
+- Added `stretch_transformation` to `pace.util.grid` - stretches the grid as needed for refinement, tropical test case.
 
 v0.9.0
 ------

@@ -15,6 +15,7 @@ import pytest
 import pace.util
 from pace.util import X_DIMS, Y_DIMS
 from pace.util._optional_imports import xarray as xr
+from pace.util.monitor.zarr_monitor import array_chunks, get_calendar
 from pace.util.testing import DummyComm
 
 
@@ -157,7 +158,7 @@ def validate_xarray_can_open(dirname):
 @requires_xarray
 def validate_store(states, filename, numpy, start_time):
     nt = len(states)
-    calendar = pace.util.zarr_monitor.get_calendar(start_time)
+    calendar = get_calendar(start_time)
 
     def assert_no_missing_names(store, state):
         missing_names = set(states[0].keys()).difference(store.array_keys())
@@ -321,7 +322,7 @@ def test_monitor_file_store_multi_rank_state(
 @requires_zarr
 @requires_xarray
 def test_array_chunks(layout, tile_array_shape, array_dims, target):
-    result = pace.util.zarr_monitor.array_chunks(layout, tile_array_shape, array_dims)
+    result = array_chunks(layout, tile_array_shape, array_dims)
     assert result == target
 
 

@@ -29,7 +29,7 @@ class TranslateQSInit(TranslateDycoreFortranData2Py):
         self._compute_q_tables_stencil = self.stencil_factory.from_origin_domain(
             satadjust.compute_q_tables, origin=(0, 0, 0), domain=self.maxshape
         )
-        self.max_error = 1e-13
+        self.max_error = 1e-12
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
