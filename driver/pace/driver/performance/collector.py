@@ -83,8 +83,8 @@ class PerformanceCollector:
 
 class NullPerformanceCollector:
     def __init__(self):
-        self.total_timer = pace.util.Timer()
-        self.timestep_timer = pace.util.Timer()
+        self.total_timer = pace.util.NullTimer()
+        self.timestep_timer = pace.util.NullTimer()
 
     def collect_performance(self):
         pass
