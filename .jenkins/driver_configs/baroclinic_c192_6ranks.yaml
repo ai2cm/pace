@@ -13,7 +13,7 @@ diagnostics_config:
     - ua
     - va
     - pt
-  output_initial_state: true
+output_initial_state: true
 performance_config:
   performance_mode: false
 nx_tile: 192

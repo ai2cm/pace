@@ -16,10 +16,12 @@ Major changes:
 - Added `get_fs` as publicly-available function
 - Legacy restart routines can now load restart data from any fsspec-supported filesystem
 - Legacy restart routines will raise an exception if no restart files are present instead of loading an empty state
+- Added NetCDFMonitor for saving the global state in time-chunked NetCDF files
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
 - fixed a bug in `pace.util.grid` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
+- Added .cleanup() method to ZarrMonitor, used only for API compatibility with NetCDFMonitor and does nothing
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
