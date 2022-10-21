@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, cast_to_index3d
@@ -83,6 +83,7 @@ class HyperdiffusionDamping:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         rarea,
         nmax: int,
@@ -96,15 +97,16 @@ class HyperdiffusionDamping:
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v
         self._rarea = rarea
-        self._fx = utils.make_storage_from_shape(
-            grid_indexing.max_shape, backend=stencil_factory.backend
+
+        # the units of these temporaries are relative to the input units,
+        # so they are undefined
+        self._fx = quantity_factory.zeros(
+            dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM], units="undefined"
         )
-        self._fy = utils.make_storage_from_shape(
-            grid_indexing.max_shape, backend=stencil_factory.backend
+        self._fy = quantity_factory.zeros(
+            dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM], units="undefined"
         )
-        self._q = utils.make_storage_from_shape(
-            grid_indexing.max_shape, backend=stencil_factory.backend
-        )
+        self._q = quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="undefined")
 
         self._corner_fill = stencil_factory.from_dims_halo(
             func=corner_fill,

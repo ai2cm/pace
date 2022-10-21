@@ -11,7 +11,7 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
@@ -532,6 +532,7 @@ class AGrid2BGridFourthOrder:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         grid_type,
         z_dim=Z_DIM,
@@ -564,15 +565,18 @@ class AGrid2BGridFourthOrder:
 
         self.replace = replace
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                self._idx.max_shape,
-                backend=self._stencil_config.compilation_config.backend,
-            )
+        self._tmp_qx = quantity_factory.zeros(
+            dims=[X_INTERFACE_DIM, Y_DIM, z_dim], units="unknown"
+        )
+        self._tmp_qy = quantity_factory.zeros(
+            dims=[X_DIM, Y_INTERFACE_DIM, z_dim], units="unknown"
+        )
+        # TODO: the dimensions of tmp_qout_edges may not be correct, verify
+        # with Lucas and either update the code or remove this comment
+        self._tmp_qout_edges = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, z_dim], units="unknown"
+        )
 
-        self._tmp_qx = make_storage()
-        self._tmp_qy = make_storage()
-        self._tmp_qout_edges = make_storage()
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 

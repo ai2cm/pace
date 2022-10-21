@@ -1,11 +1,12 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
+import pace.util
 import pace.util.constants as constants
-from pace.dsl import gt4py_utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils import corners
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 DZ_MIN = constants.DZ_MIN
@@ -81,20 +82,17 @@ def update_dz_c(
 
 
 class UpdateGeopotentialHeightOnCGrid:
-    def __init__(self, stencil_factory: StencilFactory, area):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+        area: pace.util.Quantity,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         self._area = area
         largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
-        self._gz_x = gt4py_utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-            backend=stencil_factory.backend,
-        )
-        self._gz_y = gt4py_utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-            backend=stencil_factory.backend,
-        )
+        self._gz_x = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
+        self._gz_y = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
         full_origin = grid_indexing.origin_full()
         full_domain = grid_indexing.domain_full(add=(0, 0, 1))
         self._double_copy_stencil = stencil_factory.from_origin_domain(

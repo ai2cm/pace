@@ -492,6 +492,7 @@ class Driver:
             if not config.disable_step_physics:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
                     dycore_config=self.config.dycore_config,
                     do_dry_convective_adjust=config.do_dry_convective_adjustment,
                     dycore_only=self.config.dycore_only,

@@ -125,13 +125,13 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         inputs["last_step"] = bool(inputs["last_step"])
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
-            DynamicalCoreConfig.from_namelist(self.namelist).remapping,
-            self.grid.area_64,
-            inputs["nq"],
-            inputs["pfull"],
-            inputs["tracers"],
+            quantity_factory=self.grid.quantity_factory,
+            config=DynamicalCoreConfig.from_namelist(self.namelist).remapping,
+            area_64=self.grid.area_64,
+            nq=inputs.pop("nq"),
+            pfull=inputs["pfull"],
+            tracers=inputs["tracers"],
         )
-        inputs.pop("nq")
         l_to_e_obj(**inputs)
         inputs.pop("q_cld")
         return inputs

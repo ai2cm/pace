@@ -12,7 +12,11 @@ class TranslateRiem_Solver_C(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = RiemannSolverC(stencil_factory, namelist.p_fac)
+        self.compute_func = RiemannSolverC(
+            stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
+            p_fac=namelist.p_fac,
+        )
         self.in_vars["data_vars"] = {
             "cappa": {},
             "hs": {},

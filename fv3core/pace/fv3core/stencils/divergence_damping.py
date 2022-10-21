@@ -8,7 +8,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.stencils.corners as corners
 import pace.util
@@ -281,6 +280,7 @@ class DivergenceDamping:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         nested: bool,
@@ -361,11 +361,7 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
-        self.ptc = utils.make_storage_from_shape(
-            self.grid_indexing.max_shape,
-            origin=(self.grid_indexing.isc - 1, self.grid_indexing.jsc - 1, 0),
-            backend=stencil_factory.backend,
-        )
+        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
             func=get_delpc,
@@ -384,12 +380,8 @@ class DivergenceDamping:
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(0, 0),
         )
-        corner_tmp = utils.make_storage_from_shape(
-            self.grid_indexing.max_shape, backend=stencil_factory.backend
-        )
         self.fill_corners_bgrid_x = corners.FillCornersBGrid(
             direction="x",
-            temporary_field=corner_tmp,
             stencil_factory=high_k_stencil_factory,
         )
 
@@ -421,7 +413,6 @@ class DivergenceDamping:
 
         self.fill_corners_bgrid_y = corners.FillCornersBGrid(
             direction="y",
-            temporary_field=corner_tmp,
             stencil_factory=high_k_stencil_factory,
         )
 
@@ -454,6 +445,7 @@ class DivergenceDamping:
 
         self.a2b_ord4 = AGrid2BGridFourthOrder(
             stencil_factory=high_k_stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             grid_type=self._grid_type,
             replace=False,

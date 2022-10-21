@@ -5,10 +5,12 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.basic_operations import dim
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.constants import (
     C_ICE,
     C_LIQ,
@@ -20,7 +22,6 @@ from pace.util.constants import (
     RDGAS,
     ZVIR,
 )
-from pace.util.quantity import Quantity
 
 
 RK = CP_AIR / RDGAS + 1.0
@@ -770,6 +771,7 @@ class DryConvectiveAdjustment:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         nwat: int,
         fv_sg_adj: float,
         n_sponge: int,
@@ -823,28 +825,29 @@ class DryConvectiveAdjustment:
             domain=kbot_domain,
         )
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                grid_indexing.domain_full(add=(1, 1, 0)),
-                backend=stencil_factory.backend,
-            )
+        def make_quantity():
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
         self._q0 = {}
         for tracername in utils.tracer_variables:
-            self._q0[tracername] = make_storage()
-        self._tmp_u0 = make_storage()
-        self._tmp_v0 = make_storage()
-        self._tmp_w0 = make_storage()
-        self._tmp_gz = make_storage()
-        self._tmp_t0 = make_storage()
-        self._tmp_static_energy = make_storage()
-        self._tmp_total_energy = make_storage()
-        self._tmp_cvm = make_storage()
-        self._tmp_cpm = make_storage()
+            self._q0[tracername] = make_quantity()
+        self._tmp_u0 = make_quantity()
+        self._tmp_v0 = make_quantity()
+        self._tmp_w0 = make_quantity()
+        self._tmp_gz = make_quantity()
+        self._tmp_t0 = make_quantity()
+        self._tmp_static_energy = make_quantity()
+        self._tmp_total_energy = make_quantity()
+        self._tmp_cvm = make_quantity()
+        self._tmp_cpm = make_quantity()
         self._ratios = {0: 0.25, 1: 0.5, 2: 0.999}
 
     def __call__(
-        self, state: DycoreState, u_dt: Quantity, v_dt: Quantity, timestep: float
+        self,
+        state: DycoreState,
+        u_dt: pace.util.Quantity,
+        v_dt: pace.util.Quantity,
+        timestep: float,
     ):
         """
         Performs dry convective adjustment mixing on the subgrid vertical scale.

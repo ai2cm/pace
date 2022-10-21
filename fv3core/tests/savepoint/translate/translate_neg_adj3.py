@@ -48,8 +48,9 @@ class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         compute_fn = AdjustNegativeTracerMixingRatio(
             self.stencil_factory,
-            self.namelist.check_negative,
-            self.namelist.hydrostatic,
+            quantity_factory=self.grid.quantity_factory,
+            check_negative=self.namelist.check_negative,
+            hydrostatic=self.namelist.hydrostatic,
         )
         compute_fn(
             inputs["qvapor"],

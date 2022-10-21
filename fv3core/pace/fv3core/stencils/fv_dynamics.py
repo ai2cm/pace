@@ -73,6 +73,24 @@ def init_pfull(
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
+def get_pfull(
+    ak: pace.util.Quantity,
+    bk: pace.util.Quantity,
+    quantity_factory: pace.util.QuantityFactory,
+    p_ref: float,
+) -> pace.util.Quantity:
+    p_interface = ak.data + bk.data * p_ref
+    # pfull = (ph2 - ph1) / log(ph2 / ph1)
+    p_full = quantity_factory.zeros(
+        dims=[pace.util.Z_DIM],
+        units="Pa",
+    )
+    p_full.data[:] = (p_interface[1:] - p_interface[:-1]) / p_interface.np.log(
+        p_interface[1:] / p_interface[:-1]
+    )
+    return p_full
+
+
 def fvdyn_temporaries(
     quantity_factory: pace.util.QuantityFactory,
 ) -> Mapping[str, Quantity]:
@@ -241,6 +259,7 @@ class DynamicalCore:
 
         tracer_transport = fvtp2d.FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -250,9 +269,6 @@ class DynamicalCore:
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             self.tracers[name] = state.__dict__[name]
-        self.tracer_storages = {
-            name: quantity.storage for name, quantity in self.tracers.items()
-        }
 
         temporaries = fvdyn_temporaries(quantity_factory)
         self._te_2d = temporaries["te_2d"]
@@ -263,26 +279,22 @@ class DynamicalCore:
 
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory,
-            tracer_transport,
-            self.grid_data,
-            comm,
-            self.tracers,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            transport=tracer_transport,
+            grid_data=self.grid_data,
+            comm=comm,
+            tracers=self.tracers,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
         self._phis = phis
         self._ptop = self.grid_data.ptop
-        pfull_stencil = stencil_factory.from_origin_domain(
-            init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
-        )
-        pfull = utils.make_storage_from_shape(
-            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
-        )
-        pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
-        # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(
-            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
+        self._pfull = get_pfull(
+            ak=self._ak,
+            bk=self._bk,
+            quantity_factory=quantity_factory,
+            p_ref=self._ptop,
         )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
@@ -357,7 +369,7 @@ class DynamicalCore:
             grid_indexing.domain_full(add=(1, 1, 1)),
             grid_indexing.origin_compute(),
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            n_halo=utils.halo,
+            n_halo=grid_indexing.n_halo,
             backend=stencil_factory.backend,
         )
         self._omega_halo_updater = WrappedHaloUpdater(
@@ -573,7 +585,7 @@ class DynamicalCore:
                 with timer.clock("Remapping"):
                     self._checkpoint_remapping_in(state)
                     self._lagrangian_to_eulerian_obj(
-                        self.tracer_storages,
+                        self.tracers,
                         state.pt,
                         state.delp,
                         state.delz,

@@ -6,7 +6,6 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from pace.stencils.testing.parallel_translate import ParallelTranslateGrid
 from pace.util.grid import MetricTerms, set_hybrid_pressure_coefficients
 from pace.util.grid.global_setup import global_mirror_grid, gnomonic_grid
@@ -1809,9 +1808,6 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
         in_state = self.state_from_inputs(inputs)
         grid_generator._grid.data[:] = in_state["grid"].data[:]
         grid_generator._agrid.data[:] = in_state["agrid"].data[:]
-        a2b = AGrid2BGridFourthOrder(
-            self.stencil_factory, self.grid.grid_data, namelist.grid_type
-        )
         state = {}
         for metric_term, metadata in self.outputs.items():
             state[metadata["name"]] = getattr(grid_generator, metric_term)

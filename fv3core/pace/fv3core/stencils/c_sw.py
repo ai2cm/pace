@@ -7,7 +7,7 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
@@ -464,27 +464,20 @@ class CGridShallowWaterDynamics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         nested: bool,
         grid_type: int,
         nord: int,
     ):
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
         self._fC = self.grid_data.fC
-        origin_halo1 = (grid_indexing.isc - 1, grid_indexing.jsc - 1, 0)
-        self.delpc = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            origin=origin_halo1,
-            backend=stencil_factory.backend,
-        )
-        self.ptc = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            origin=origin_halo1,
-            backend=stencil_factory.backend,
-        )
+        # TODO: double-check the dimensions on these, they may be incorrect
+        # as they are only documentation and not used by the code
+        self.delpc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
         self._initialize_delpc_ptc = stencil_factory.from_dims_halo(
             initialize_delpc_ptc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -493,23 +486,23 @@ class CGridShallowWaterDynamics:
 
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
             stencil_factory,
-            grid_data,
-            nested,
-            grid_type,
-            self._dord4,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            nested=nested,
+            grid_type=grid_type,
+            dord4=self._dord4,
         )
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                grid_indexing.max_shape,
-                backend=stencil_factory.backend,
-            )
+        def make_quantity() -> pace.util.Quantity:
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._tmp_ke = make_storage()
-        self._tmp_vort = make_storage()
-        self._tmp_fx = make_storage()
-        self._tmp_fx1 = make_storage()
-        self._tmp_fx2 = make_storage()
+        # TODO: double-check the dimensions on these, they may be incorrect
+        # as they are only documentation and not used by the code
+        self._tmp_ke = make_quantity()
+        self._tmp_vort = make_quantity()
+        self._tmp_fx = make_quantity()
+        self._tmp_fx1 = make_quantity()
+        self._tmp_fx2 = make_quantity()
 
         if nord > 0:
             self._divergence_corner = stencil_factory.from_dims_halo(

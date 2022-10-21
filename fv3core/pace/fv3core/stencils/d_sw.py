@@ -733,6 +733,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self.fvtp2d_dp = FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -742,6 +743,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self.fvtp2d_dp_t = FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -751,6 +753,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self.fvtp2d_tm = FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -760,6 +763,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self.fvtp2d_vt_nodelnflux = FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -771,16 +775,17 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self.divergence_damping = DivergenceDamping(
             stencil_factory,
-            grid_data,
-            damping_coefficients,
-            nested,
-            stretched_grid,
-            config.dddmp,
-            config.d4_bg,
-            config.nord,
-            config.grid_type,
-            column_namelist["nord"],
-            column_namelist["d2_divg"],
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            nested=nested,
+            stretched_grid=stretched_grid,
+            dddmp=config.dddmp,
+            d4_bg=config.d4_bg,
+            nord=config.nord,
+            grid_type=config.grid_type,
+            nord_col=column_namelist["nord"],
+            d2_bg=column_namelist["d2_divg"],
         )
 
         self._apply_pt_delp_fluxes = stencil_factory.from_dims_halo(

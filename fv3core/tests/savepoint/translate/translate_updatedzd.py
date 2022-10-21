@@ -55,18 +55,23 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=((0, 0), (0, 0)),
         )
+        self.ignore_near_zero_errors = {"zh": True, "wsd": True}
+        self.near_zero = 1e-30
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
+        dp0 = self.grid.quantity_factory.zeros([pace.util.Z_DIM], units="Pa")
+        dp0.data[:] = inputs.pop("dp0")
         self.updatedzd = pace.fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,
             self.grid.grid_type,
             self.namelist.hord_tm,
-            inputs.pop("dp0"),
-            d_sw.get_column_namelist(
-                self.namelist, self.grid.npz, backend=self.stencil_factory.backend
+            dp_ref=dp0,
+            column_namelist=d_sw.get_column_namelist(
+                self.namelist, quantity_factory=self.grid.quantity_factory
             ),
         )
         self.updatedzd(**inputs)

@@ -439,7 +439,10 @@ class AcousticDynamics:
         )
         self.nonhydrostatic_pressure_gradient = (
             nh_p_grad.NonHydrostaticPressureGradient(
-                stencil_factory, grid_data, config.grid_type
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                grid_data=grid_data,
+                grid_type=config.grid_type,
             )
         )
 
@@ -464,9 +467,7 @@ class AcousticDynamics:
             self._pk3.data[:] = HUGE_R
 
         column_namelist = d_sw.get_column_namelist(
-            config.d_grid_shallow_water,
-            grid_indexing.domain[2],
-            backend=stencil_factory.backend,
+            config.d_grid_shallow_water, quantity_factory=quantity_factory
         )
         if not config.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
@@ -480,6 +481,7 @@ class AcousticDynamics:
 
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,
+                quantity_factory,
                 damping_coefficients,
                 grid_data,
                 grid_type,
@@ -487,8 +489,14 @@ class AcousticDynamics:
                 self._dp_ref,
                 column_namelist,
             )
-            self.riem_solver3 = RiemannSolver3(stencil_factory, config.riemann)
-            self.riem_solver_c = RiemannSolverC(stencil_factory, p_fac=config.p_fac)
+            self.riem_solver3 = RiemannSolver3(
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config.riemann,
+            )
+            self.riem_solver_c = RiemannSolverC(
+                stencil_factory, quantity_factory=quantity_factory, p_fac=config.p_fac
+            )
             origin, domain = grid_indexing.get_origin_domain(
                 [X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(2, 2)
             )
@@ -552,7 +560,9 @@ class AcousticDynamics:
         )
 
         self.update_geopotential_height_on_c_grid = (
-            updatedzc.UpdateGeopotentialHeightOnCGrid(stencil_factory, grid_data.area)
+            updatedzc.UpdateGeopotentialHeightOnCGrid(
+                stencil_factory, quantity_factory=quantity_factory, area=grid_data.area
+            )
         )
 
         self._zero_data = stencil_factory.from_origin_domain(
@@ -594,7 +604,7 @@ class AcousticDynamics:
                 nk=self._nk_heat_dissipation
             ).domain_compute(),
         )
-        self._pk3_halo = PK3Halo(stencil_factory)
+        self._pk3_halo = PK3Halo(stencil_factory, quantity_factory)
         self._copy_stencil = stencil_factory.from_origin_domain(
             basic.copy_defn,
             origin=grid_indexing.origin_full(),

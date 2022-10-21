@@ -11,7 +11,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
@@ -960,9 +959,10 @@ class DelnFlux:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         rarea: pace.util.Quantity,
-        nord: pace.util.Quantity,
+        nord_col: pace.util.Quantity,
         damp_c: pace.util.Quantity,
     ):
         """
@@ -988,23 +988,9 @@ class DelnFlux:
         nk = grid_indexing.domain[2]
         self._origin = grid_indexing.origin_full()
 
-        shape = grid_indexing.max_shape
-        k_shape = (1, 1, nk)
-
-        self._damp_3d = utils.make_storage_from_shape(
-            k_shape, backend=stencil_factory.backend
-        )
-        # fields must be 3d to assign to them
-        self._fx2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
-        )
-        self._fy2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
-        )
-        self._d2 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(),
-            backend=stencil_factory.backend,
-        )
+        self._fx2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
+        self._fy2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
+        self._d2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
 
         self._add_diffusive_stencil = stencil_factory.from_dims_halo(
             func=add_diffusive_component,
@@ -1015,11 +1001,11 @@ class DelnFlux:
         )
 
         self._damp = calc_damp(
-            damp_c=damp_c, da_min=damping_coefficients.da_min, nord=nord
+            damp_c=damp_c, da_min=damping_coefficients.da_min, nord=nord_col
         )
 
         self.delnflux_nosg = DelnFluxNoSG(
-            stencil_factory, damping_coefficients, rarea, nord, nk=nk
+            stencil_factory, damping_coefficients, rarea, nord_col, nk=nk
         )
 
     def __call__(
