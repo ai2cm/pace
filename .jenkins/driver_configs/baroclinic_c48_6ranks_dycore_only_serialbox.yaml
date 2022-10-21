@@ -14,7 +14,7 @@ initialization:
     path: /project/s1053/fv3core_serialized_test_data/8.1.1/c48_6ranks_baroclinic/driver
     serialized_grid: grid_option
 performance_config:
-  performance_mode: false
+  collect_performance: false
 nx_tile: 48
 nz: 79
 dt_atmos: 225
@@ -28,7 +28,6 @@ diagnostics_config:
     - ua
     - va
     - pt
-  output_frequency: 1
 dycore_config:
   namelist_override: /project/s1053/fv3core_serialized_test_data/8.1.1/c48_6ranks_baroclinic/driver/input.nml
 

@@ -525,11 +525,6 @@ class TranslateSetEta(ParallelTranslateGrid):
             "dims": [],
             "units": "",
         },
-        "ks": {
-            "name": "ks",
-            "dims": [],
-            "units": "",
-        },
         "ptop": {
             "name": "ptop",
             "dims": [],
@@ -547,11 +542,6 @@ class TranslateSetEta(ParallelTranslateGrid):
         },
     }
     outputs: Dict[str, Any] = {
-        "ks": {
-            "name": "ks",
-            "dims": [],
-            "units": "",
-        },
         "ptop": {
             "name": "ptop",
             "dims": [],
@@ -581,7 +571,6 @@ class TranslateSetEta(ParallelTranslateGrid):
     def _compute_local(self, inputs):
         state = self.state_from_inputs(inputs)
         pressure_coefficients = set_hybrid_pressure_coefficients(state["npz"])
-        state["ks"] = pressure_coefficients.ks
         state["ptop"] = pressure_coefficients.ptop
         array_type = type(state["ak"].data[:])
         state["ak"].data[:] = utils.asarray(

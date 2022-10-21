@@ -46,12 +46,17 @@ def open_restart(
     tile_index = communicator.partitioner.tile_index(rank)
     state = {}
     if communicator.tile.rank == constants.ROOT_RANK:
-        for file in restart_files(dirname, tile_index, label):
-            state.update(
-                load_partial_state_from_restart_file(
-                    file, restart_properties, only_names=only_names
+        filenames = restart_filenames(dirname, tile_index, label)
+        if len(filenames) == 0:
+            raise ValueError("no restart files found at {}".format(dirname))
+
+        for filename in filenames:
+            with filesystem.open(filename, "rb") as file:
+                state.update(
+                    load_partial_state_from_restart_file(
+                        file, restart_properties, only_names=only_names
+                    )
                 )
-            )
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
             if only_names is None or "time" in only_names:

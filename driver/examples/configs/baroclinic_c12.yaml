@@ -8,7 +8,7 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: true
+  collect_performance: true
   experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79
@@ -18,7 +18,8 @@ layout:
   - 1
   - 1
 diagnostics_config:
-  path: "output.zarr"
+  path: output
+  output_format: netcdf
   names:
     - u
     - v

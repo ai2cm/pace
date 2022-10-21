@@ -10,9 +10,10 @@ def direct_transform(
     *,
     lon: Union[Quantity, np.ndarray],
     lat: Union[Quantity, np.ndarray],
-    stretch_factor: np.float_,
-    lon_target: np.float_,
-    lat_target: np.float_,
+    stretch_factor: float,
+    lon_target: float,
+    lat_target: float,
+    np,
 ) -> Tuple[Union[np.ndarray, Quantity], Union[np.ndarray, Quantity]]:
     """
     The direct_transform subroutine from fv_grid_utils.F90.
@@ -24,10 +25,11 @@ def direct_transform(
     Args:
         lon (in) in radians
         lat (in) in radians
-        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution on
-            tile 6 becomes 3 times as fine)
+        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution
+            on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
+        np: numpy or cupy module
 
     Returns:
         lon_transform (out) in radians
@@ -43,6 +45,12 @@ def direct_transform(
     else:
         raise Exception("Input data type not supported.")
 
+    STRETCH_GRID_ROTATION_LON_OFFSET_DEG = 190
+    # this is added to all longitude values to match the SHiELD TC case
+    # 180 is to flip the orientation around the center tile (6)
+    # 10 is because the tile center is offset from the prime meridian by 10
+    lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
+
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
     sin_p, cos_p = np.sin(lat_p), np.cos(lat_p)
     c2p1 = 1.0 + stretch_factor ** 2
@@ -56,10 +64,8 @@ def direct_transform(
         lat_t = np.arcsin(
             (c2m1 + c2p1 * np.sin(lat_data)) / (c2p1 + c2m1 * np.sin(lat_data))
         )
-        lon_t = lon_data
     else:  # no stretching
         lat_t = lat_data
-        lon_t = lon_data
 
     sin_lat = np.sin(lat_t)
     cos_lat = np.cos(lat_t)
@@ -67,67 +73,30 @@ def direct_transform(
     sin_o = -(sin_p * sin_lat + cos_p * cos_lat * np.cos(lon_data))
     tmp = 1 - np.abs(sin_o)
 
-    lon_trans = np.zeros(lon_data.shape) * np.nan
-    lat_trans = np.zeros(lat_data.shape) * np.nan
+    lon_transformed = np.zeros(lon_data.shape) * np.nan
+    lat_transformed = np.zeros(lat_data.shape) * np.nan
 
-    lon_trans[tmp < 1e-7] = 0.0
-    lat_trans[tmp < 1e-7] = _sign(np.pi / 2, sin_o[tmp < 1e-7])
+    lon_transformed[tmp < 1e-7] = 0.0
+    lat_transformed[tmp < 1e-7] = np.abs(np.pi / 2) * np.sign(sin_o[tmp < 1e-7])
 
-    lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(
+    lon_transformed[tmp >= 1e-7] = lon_p + np.arctan2(
         -np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon_data[tmp >= 1e-7]),
         -np.sin(lat_t[tmp >= 1e-7]) * np.cos(lat_p)
         + np.cos(lat_t[tmp >= 1e-7]) * np.sin(lat_p) * np.cos(lon_data[tmp >= 1e-7]),
     )
-    lat_trans[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
+    lat_transformed[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
 
-    lon_trans[lon_trans < 0] += 2 * np.pi
-    lon_trans[lon_trans >= 2 * np.pi] -= 2 * np.pi
+    lon_transformed[lon_transformed < 0] += 2 * np.pi
+    lon_transformed[lon_transformed >= 2 * np.pi] -= 2 * np.pi
 
     if isinstance(lon, Quantity):
-        lon_transform = copy.deepcopy(lon)
-        lat_transform = copy.deepcopy(lat)
+        lon_out = copy.deepcopy(lon)
+        lat_out = copy.deepcopy(lat)
 
-        lon_transform.data[:] = lon_trans
-        lat_transform.data[:] = lat_trans
+        lon_out.data[:] = lon_transformed
+        lat_out.data[:] = lat_transformed
+    else:
+        lon_out = lon_transformed
+        lat_out = lat_transformed
 
-    elif isinstance(lon, np.ndarray):
-        lon_transform = lon_trans
-        lat_transform = lat_trans
-
-    return lon_transform, lat_transform
-
-
-def _sign(input, pn):
-    """
-    Use:
-    output = sign(input, pn)
-
-    Takes the sign of pn (positive or negative) and assigns it to value.
-
-    Args:
-        input (in): value to be assigned a sign
-        pn (in): value whose sign is assigned to input
-    Returns:
-        output (out): value with assigned sign based on pn
-    """
-    if isinstance(input, float) and isinstance(pn, float):
-        output = np.nan
-
-        if pn >= 0:
-            output = np.abs(input)
-        else:
-            output = -np.abs(input)
-
-    elif isinstance(input, np.ndarray):
-        tmp = np.abs(input)
-        output = np.zeros(input.shape) * np.nan
-        output[pn >= 0] = tmp[pn >= 0]
-        output[pn < 0] = -tmp[pn < 0]
-
-    elif isinstance(pn, np.ndarray) and isinstance(input, float):
-        tmp = np.abs(input)
-        output = np.zeros(pn.shape) * np.nan
-        output[pn >= 0] = tmp
-        output[pn < 0] = -tmp
-
-    return output
+    return lon_out, lat_out

@@ -4,10 +4,11 @@ import logging
 import warnings
 from datetime import datetime, timedelta
 from math import floor
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dace
 import dacite
+import yaml
 
 import pace.driver
 import pace.dsl
@@ -27,15 +28,21 @@ from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
-from .gridconfig import GridConfig
+from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
+from .state import DriverState
 
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class DriverConfig:
     """
     Configuration for a run of the Pace model.
@@ -71,7 +78,10 @@ class DriverConfig:
             copies during model execution, raising an exception if results ever
             differ. This is considerably more expensive since all model data must
             be communicated at the start and end of every stencil call.
-        intermediate_restart: list of time steps to save intermediate restart files
+        output_initial_state: flag to determine if the first output should be the
+            initial state of the model before timestepping
+        output_frequency: number of model timesteps between diagnostic timesteps,
+            defaults to every timestep
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -80,6 +90,11 @@ class DriverConfig:
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
+    grid_config: GridInitializerSelector = dataclasses.field(
+        default_factory=lambda: GridInitializerSelector(
+            type="generated", config=GeneratedGridConfig()
+        )
+    )
     diagnostics_config: diagnostics.DiagnosticsConfig = dataclasses.field(
         default_factory=diagnostics.DiagnosticsConfig
     )
@@ -95,7 +110,6 @@ class DriverConfig:
     physics_config: pace.physics.PhysicsConfig = dataclasses.field(
         default_factory=pace.physics.PhysicsConfig
     )
-    grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
     days: int = 0
     hours: int = 0
@@ -103,9 +117,12 @@ class DriverConfig:
     seconds: int = 0
     dycore_only: bool = False
     disable_step_physics: bool = False
-    save_restart: bool = False
+    restart_config: "RestartConfig" = dataclasses.field(
+        default_factory=lambda: RestartConfig()
+    )
     pair_debug: bool = False
-    intermediate_restart: List[int] = dataclasses.field(default_factory=list)
+    output_initial_state: bool = False
+    output_frequency: int = 1
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -137,6 +154,80 @@ class DriverConfig:
     @functools.cached_property
     def apply_tendencies(self) -> bool:
         return self.do_dry_convective_adjustment or not self.dycore_only
+
+    def get_grid(
+        self,
+        communicator: pace.util.Communicator,
+        quantity_factory: Optional[pace.util.QuantityFactory] = None,
+    ) -> Tuple[
+        pace.util.grid.DampingCoefficients,
+        pace.util.grid.DriverGridData,
+        pace.util.grid.GridData,
+    ]:
+        if quantity_factory is None:
+            sizer = pace.util.SubtileGridSizer.from_tile_params(
+                nx_tile=self.nx_tile,
+                ny_tile=self.nx_tile,
+                nz=self.nz,
+                n_halo=pace.util.N_HALO_DEFAULT,
+                extra_dim_lengths={},
+                layout=self.layout,
+                tile_partitioner=communicator.partitioner.tile,
+                tile_rank=communicator.tile.rank,
+            )
+            quantity_factory = pace.util.QuantityFactory.from_backend(
+                sizer, backend=self.stencil_config.compilation_config.backend
+            )
+
+        return self.grid_config.get_grid(
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+        )
+
+    def get_driver_state(
+        self,
+        communicator: pace.util.Communicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
+        quantity_factory: Optional[pace.util.QuantityFactory] = None,
+        stencil_factory: Optional[pace.dsl.StencilFactory] = None,
+    ) -> DriverState:
+        """Load the initial state of the driver."""
+        if quantity_factory is None or stencil_factory is None:
+            sizer = pace.util.SubtileGridSizer.from_tile_params(
+                nx_tile=self.nx_tile,
+                ny_tile=self.nx_tile,
+                nz=self.nz,
+                n_halo=pace.util.N_HALO_DEFAULT,
+                extra_dim_lengths={},
+                layout=self.layout,
+                tile_partitioner=communicator.partitioner.tile,
+                tile_rank=communicator.tile.rank,
+            )
+            if quantity_factory is None:
+                quantity_factory = pace.util.QuantityFactory.from_backend(
+                    sizer, backend=self.stencil_config.compilation_config.backend
+                )
+            if stencil_factory is None:
+                grid_indexing = (
+                    pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
+                        sizer=sizer, cube=communicator
+                    )
+                )
+                stencil_factory = pace.dsl.StencilFactory(
+                    config=self.stencil_config,
+                    grid_indexing=grid_indexing,
+                    comm=communicator,
+                )
+
+        return self.initialization.get_driver_state(
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
+            grid_data=grid_data,
+        )
 
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
@@ -179,6 +270,10 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
+        if "grid_config" in kwargs:
+            kwargs["grid_config"] = GridInitializerSelector.from_dict(
+                kwargs["grid_config"]
+            )
 
         if (
             isinstance(kwargs["stencil_config"], dict)
@@ -200,6 +295,78 @@ class DriverConfig:
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
+
+    def write_for_restart(
+        self,
+        time: Union[datetime, timedelta],
+        restart_path: str,
+    ):
+        config_dict = dataclasses.asdict(self)
+        if self.stencil_config.dace_config:
+            config_dict["stencil_config"][
+                "dace_config"
+            ] = self.stencil_config.dace_config.as_dict()
+        config_dict["stencil_config"][
+            "compilation_config"
+        ] = self.stencil_config.compilation_config.as_dict()
+        # TODO: these attributes are popped because they're defined in the
+        # top-level DriverConfig, if we refactor DycoreConfig and PhysicsConfig
+        # so they don't have these attributes and pass them separately then we
+        # can remove this
+        for field in ["dt_atmos", "layout", "npx", "npy", "npz", "ntiles"]:
+            config_dict["dycore_config"].pop(field, None)
+            config_dict["physics_config"].pop(field, None)
+        config_dict["initialization"]["type"] = "restart"
+        config_dict["initialization"]["config"]["start_time"] = time
+        config_dict["initialization"]["config"]["path"] = restart_path
+        with open(f"{restart_path}/restart.yaml", "w") as file:
+            yaml.safe_dump(config_dict, file)
+
+
+@dataclasses.dataclass()
+class RestartConfig:
+    save_restart: bool = False
+    intermediate_restart: List[int] = dataclasses.field(default_factory=list)
+    save_intermediate_restart: bool = False
+
+    def __post_init__(self):
+        if len(self.intermediate_restart) > 0:
+            self.save_intermediate_restart = True
+
+    def write_final_if_enabled(
+        self,
+        state: DriverState,
+        *,
+        comm: pace.util.Comm,
+        time: datetime,
+        driver_config: DriverConfig,
+        restart_path: str,
+    ):
+        if self.save_restart:
+            state.save_state(comm=comm, restart_path=restart_path)
+            if comm.Get_rank() == 0:
+                driver_config.write_for_restart(
+                    time=time,
+                    restart_path=restart_path,
+                )
+
+    def write_intermediate_if_enabled(
+        self,
+        state: DriverState,
+        *,
+        step: int,
+        comm: pace.util.Comm,
+        time: Union[datetime, timedelta],
+        driver_config: DriverConfig,
+        restart_path: str,
+    ):
+        if self.save_intermediate_restart and step in self.intermediate_restart:
+            state.save_state(comm=comm, restart_path=restart_path)
+            if comm.Get_rank() == 0:
+                driver_config.write_for_restart(
+                    time=time,
+                    restart_path=restart_path,
+                )
 
 
 class Driver:
@@ -226,8 +393,8 @@ class Driver:
         else:
             self.comm = global_comm
             stencil_compare_comm = None
-        self.performance_config = self.config.performance_config
-        with self.performance_config.total_timer.clock("initialization"):
+        self.performance_collector = self.config.performance_config.build(self.comm)
+        with self.performance_collector.total_timer.clock("initialization"):
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
@@ -287,10 +454,19 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
-
-            self.state = self.config.initialization.get_driver_state(
-                quantity_factory=self.quantity_factory, communicator=communicator
+            (damping_coefficients, driver_grid_data, grid_data,) = self.config.get_grid(
+                quantity_factory=self.quantity_factory,
+                communicator=communicator,
             )
+
+            self.state = self.config.get_driver_state(
+                quantity_factory=self.quantity_factory,
+                communicator=communicator,
+                damping_coefficients=damping_coefficients,
+                driver_grid_data=driver_grid_data,
+                grid_data=grid_data,
+            )
+
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
@@ -337,21 +513,15 @@ class Driver:
                 self.dycore_to_physics = None
                 self.end_of_step_update = None
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
-                partitioner=communicator.partitioner,
-                comm=self.comm,
-            )
-            self.restart = pace.driver.Restart(
-                save_restart=self.config.save_restart,
-                intermediate_restart=self.config.intermediate_restart,
+                communicator=communicator
             )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
         )
         self.diagnostics.store_grid(
             grid_data=self.state.grid_data,
-            metadata=self.state.dycore_state.ps.metadata,
         )
-        if config.diagnostics_config.output_initial_state:
+        if config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
@@ -385,20 +555,6 @@ class Driver:
         self.diagnostics.store(time=self._time_run, state=self.state)
 
     @dace_inhibitor
-    def _callback_restart(self, restart_path: str):
-        self.restart.save_state_as_restart(
-            state=self.state,
-            comm=self.comm,
-            restart_path=restart_path,
-        )
-        self.restart.write_restart_config(
-            comm=self.comm,
-            time=self.time,
-            driver_config=self.config,
-            restart_path=restart_path,
-        )
-
-    @dace_inhibitor
     def end_of_step_actions(self, step: int):
         """Gather operations unrelated to computation.
         Using a function allows those actions to be removed from the orchestration path.
@@ -406,14 +562,17 @@ class Driver:
         if __debug__:
             logger.info(f"Finished stepping {step}")
         self.time += self.config.timestep
-        if not ((step + 1) % self.config.diagnostics_config.output_frequency):
+        if ((step + 1) % self.config.output_frequency) == 0:
             self.diagnostics.store(time=self.time, state=self.state)
-        if (
-            self.restart.save_intermediate_restart
-            and step in self.config.intermediate_restart
-        ):
-            self._write_restart_files(restart_path=f"RESTART_{step}")
-        self.performance_config.collect_performance()
+        self.config.restart_config.write_intermediate_if_enabled(
+            state=self.state,
+            step=step,
+            comm=self.comm,
+            time=self.time,
+            driver_config=self.config,
+            restart_path=f"RESTART_{step}",
+        )
+        self.performance_collector.collect_performance()
 
     def _critical_path_step_all(
         self,
@@ -430,7 +589,7 @@ class Driver:
             with timer.clock("mainloop"):
                 self._step_dynamics(
                     self.state.dycore_state,
-                    self.performance_config.timestep_timer,
+                    self.performance_collector.timestep_timer,
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
@@ -438,10 +597,10 @@ class Driver:
 
     def step_all(self):
         logger.info("integrating driver forward in time")
-        with self.performance_config.total_timer.clock("total"):
+        with self.performance_collector.total_timer.clock("total"):
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
-                timer=self.performance_config.timestep_timer,
+                timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
 
@@ -474,31 +633,23 @@ class Driver:
         )
 
     def _write_performance_json_output(self):
-        self.performance_config.write_out_performance(
-            self.comm,
+        self.performance_collector.write_out_performance(
             self.config.stencil_config.compilation_config.backend,
             self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
         )
 
     @dace_inhibitor
-    def _write_restart_files(self, restart_path="RESTART"):
-        self.restart.save_state_as_restart(
+    def cleanup(self):
+        logger.info("cleaning up driver")
+        self.diagnostics.cleanup()
+        self.config.restart_config.write_final_if_enabled(
             state=self.state,
-            comm=self.comm,
-            restart_path=restart_path,
-        )
-        self.restart.write_restart_config(
             comm=self.comm,
             time=self.time,
             driver_config=self.config,
-            restart_path=restart_path,
+            restart_path="RESTART",
         )
-
-    def cleanup(self):
-        logger.info("cleaning up driver")
-        if self.config.save_restart:
-            self._write_restart_files()
         self._write_performance_json_output()
         self.comm_config.cleanup(self.comm)
 
@@ -517,7 +668,7 @@ def _setup_factories(
     config: DriverConfig,
     communicator: pace.util.CubedSphereCommunicator,
     stencil_compare_comm,
-) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
+) -> Tuple[pace.util.QuantityFactory, pace.dsl.StencilFactory]:
     """
     Args:
         config: configuration of driver

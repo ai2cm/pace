@@ -32,7 +32,7 @@ def configure_logging(log_rank: Optional[int], log_level: str):
             forced to 'all' if running without MPI
         log_level: log level to use
     """
-    level = log_levels[log_level]
+    level = log_levels[log_level.lower()]
     if MPI is None:
         logging.basicConfig(
             level=level,
@@ -84,12 +84,13 @@ def command_line(config_path: str, log_rank: Optional[int], log_level: str):
     main(driver_config=driver_config)
 
 
-def main(driver_config: DriverConfig):
+def main(driver_config: DriverConfig) -> Driver:
     driver = Driver(config=driver_config)
     try:
         driver.step_all()
     finally:
         driver.cleanup()
+    return driver
 
 
 if __name__ == "__main__":
