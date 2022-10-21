@@ -606,7 +606,8 @@ class Driver:
                 dt=self.config.timestep.total_seconds(),
             )
             self.profiler.dump_stats(
-                f"{self.config.performance_config.experiment_name}_{self.comm.Get_rank()}.prof"
+                f"{self.config.performance_config.experiment_name}_\
+                {self.comm.Get_rank()}.prof"
             )
 
     def _step_dynamics(
