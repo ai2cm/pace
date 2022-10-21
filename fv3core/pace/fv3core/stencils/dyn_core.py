@@ -1,5 +1,6 @@
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, Optional
 
+import numpy as np
 from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
@@ -12,7 +13,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.fv3core.stencils.d_sw as d_sw
 import pace.fv3core.stencils.nh_p_grad as nh_p_grad
@@ -92,6 +92,10 @@ def dp_ref_compute(
         dp_ref = ak[1] - ak + (bk[1] - bk) * 1.0e5
     with computation(PARALLEL), interval(...):
         zs = phis * rgrav
+
+
+def get_dp_ref(ak: pace.util.Quantity, bk: pace.util.Quantity) -> np.ndarray:
+    return ak[1:] - ak[:-1] + (bk[1:] - bk[:-1]) * 1.0e5
 
 
 def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
@@ -180,70 +184,33 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
-def _quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
-    origin, extent = grid_indexing.get_origin_domain(dims)
-    return pace.util.Quantity(
-        storage,
-        dims=dims,
-        units="unknown",
-        origin=origin,
-        extent=extent,
-    )
-
-
 def dyncore_temporaries(
-    grid_indexing: GridIndexing, *, backend: str
-) -> Tuple[Mapping[str, pace.util.Quantity], Mapping[str, "FloatField"]]:
-    tmp_storages: Dict[str, "FloatField"] = {}
-    utils.storage_dict(
-        tmp_storages,
-        ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd", "cappa"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_full(),
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["ws3"],
-        grid_indexing.max_shape[0:2],
-        grid_indexing.origin_full()[0:2],
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["crx", "xfx"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["cry", "yfx"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
-        backend=backend,
-    )
-    tmp_quantities: Dict[str, pace.util.Quantity] = {}
-    tmp_quantities["heat_source"] = _quantity_wrap(
-        tmp_storages["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
-    )
-    tmp_quantities["divgd"] = _quantity_wrap(
-        tmp_storages["divgd"],
-        dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-        grid_indexing=grid_indexing,
-    )
-    tmp_quantities["cappa"] = _quantity_wrap(
-        tmp_storages["cappa"],
-        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-        grid_indexing=grid_indexing,
-    )
-    for name in ["gz", "pkc", "zh"]:
-        tmp_quantities[name] = _quantity_wrap(
-            tmp_storages[name],
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
-            grid_indexing=grid_indexing,
+    quantity_factory: pace.util.QuantityFactory,
+) -> Mapping[str, pace.util.Quantity]:
+    temporaries: Dict[str, pace.util.Quantity] = {}
+    for name in ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "cappa"]:
+        # TODO: the dimensions of ut and vt may not be correct,
+        #       because they are not used. double-check and correct as needed.
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"
         )
-    return tmp_quantities, tmp_storages
+    for name in ["gz", "pkc", "zh"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
+    temporaries["divgd"] = quantity_factory.zeros(
+        dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+    )
+    temporaries["ws3"] = quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="unknown")
+    for name in ["crx", "xfx"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
+        )
+    for name in ["cry", "yfx"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+    return temporaries
 
 
 class AcousticDynamics:
@@ -394,6 +361,7 @@ class AcousticDynamics:
         self,
         comm: pace.util.CubedSphereCommunicator,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         grid_type,
@@ -410,6 +378,7 @@ class AcousticDynamics:
         Args:
             comm: object for cubed sphere inter-process communication
             stencil_factory: creates stencils
+            quantity_factory: creates quantities
             grid_data: metric terms defining the grid
             damping_coefficients: damping configuration
             grid_type: ???
@@ -474,27 +443,25 @@ class AcousticDynamics:
             )
         )
 
-        quantity_temporaries, storage_temporaries = dyncore_temporaries(
-            grid_indexing, backend=stencil_factory.backend
-        )
-        self._heat_source = quantity_temporaries["heat_source"]
-        self._divgd = quantity_temporaries["divgd"]
-        self._gz = quantity_temporaries["gz"]
-        self._pkc = quantity_temporaries["pkc"]
-        self._zh = quantity_temporaries["zh"]
-        self.cappa = quantity_temporaries["cappa"]
-        self._ut = storage_temporaries["ut"]
-        self._vt = storage_temporaries["vt"]
-        self._pem = storage_temporaries["pem"]
-        self._pk3 = storage_temporaries["pk3"]
-        self._crx = storage_temporaries["crx"]
-        self._cry = storage_temporaries["cry"]
-        self._xfx = storage_temporaries["xfx"]
-        self._yfx = storage_temporaries["yfx"]
-        self._ws3 = storage_temporaries["ws3"]
+        temporaries = dyncore_temporaries(quantity_factory)
+        self._heat_source = temporaries["heat_source"]
+        self._divgd = temporaries["divgd"]
+        self._gz = temporaries["gz"]
+        self._pkc = temporaries["pkc"]
+        self._zh = temporaries["zh"]
+        self.cappa = temporaries["cappa"]
+        self._ut = temporaries["ut"]
+        self._vt = temporaries["vt"]
+        self._pem = temporaries["pem"]
+        self._pk3 = temporaries["pk3"]
+        self._crx = temporaries["crx"]
+        self._cry = temporaries["cry"]
+        self._xfx = temporaries["xfx"]
+        self._yfx = temporaries["yfx"]
+        self._ws3 = temporaries["ws3"]
 
         if not config.hydrostatic:
-            self._pk3[:] = HUGE_R
+            self._pk3.data[:] = HUGE_R
 
         column_namelist = d_sw.get_column_namelist(
             config.d_grid_shallow_water,
@@ -504,39 +471,13 @@ class AcousticDynamics:
         if not config.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
-            dp_ref_3d = utils.make_storage_from_shape(
-                grid_indexing.max_shape, backend=stencil_factory.backend
+            self._dp_ref = quantity_factory.zeros([Z_DIM], units="Pa")
+            self._dp_ref.view[:] = get_dp_ref(
+                grid_data.ak.view[:], grid_data.bk.view[:]
             )
-            zs_3d = utils.make_storage_from_shape(
-                grid_indexing.max_shape, backend=stencil_factory.backend
-            )
+            self._zs = quantity_factory.zeros([X_DIM, Y_DIM], units="m")
+            self._zs.data[:] = phis.data / constants.GRAV
 
-            dp_ref_stencil = stencil_factory.from_origin_domain(
-                dp_ref_compute,
-                origin=grid_indexing.origin_full(),
-                domain=grid_indexing.domain_full(add=(0, 0, 1)),
-            )
-            dp_ref_stencil(
-                self.grid_data.ak,
-                self.grid_data.bk,
-                phis,
-                dp_ref_3d,
-                zs_3d,
-                1.0 / constants.GRAV,
-            )
-            # After writing, make 'dp_ref' a K-field and 'zs' an IJ-field
-            self._dp_ref = utils.make_storage_data(
-                dp_ref_3d[0, 0, :],
-                (dp_ref_3d.shape[2],),
-                (0,),
-                backend=stencil_factory.backend,
-            )
-            self._zs = utils.make_storage_data(
-                zs_3d[:, :, 0],
-                zs_3d.shape[0:2],
-                (0, 0),
-                backend=stencil_factory.backend,
-            )
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,
                 damping_coefficients,
@@ -559,12 +500,12 @@ class AcousticDynamics:
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(
                 stencil_factory,
-                grid_data,
-                damping_coefficients,
-                column_namelist,
-                nested,
-                stretched_grid,
-                config.d_grid_shallow_water,
+                grid_data=grid_data,
+                damping_coefficients=damping_coefficients,
+                column_namelist=column_namelist,
+                nested=nested,
+                stretched_grid=stretched_grid,
+                config=config.d_grid_shallow_water,
             )
         )
 

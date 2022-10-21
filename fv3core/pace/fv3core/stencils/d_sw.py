@@ -1,3 +1,5 @@
+from typing import Dict, Mapping
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
     __INLINED,
@@ -8,14 +10,13 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.delnflux as delnflux
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
-from pace.fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from pace.fv3core.stencils.d2a2c_vect import contravariant
 from pace.fv3core.stencils.delnflux import DelnFluxNoSG
 from pace.fv3core.stencils.divergence_damping import DivergenceDamping
@@ -546,18 +547,18 @@ def update_u_and_v(
 # Set the unique parameters for the smallest
 # k-values, e.g. k = 0, 1, 2 when generating
 # the column namelist
-def set_low_kvals(col, k):
+def set_low_kvals(col: Mapping[str, pace.util.Quantity], k):
     for name in ["nord", "nord_w", "d_con"]:
-        col[name][k] = 0
-    col["damp_w"][k] = col["d2_divg"][k]
+        col[name].view[k] = 0
+    col["damp_w"].view[k] = col["d2_divg"].view[k]
 
 
 # For the column namelist at a specific k-level
 # set the vorticity parameters if do_vort_damp is true
 def vorticity_damping_option(column, k, do_vort_damp):
     if do_vort_damp:
-        column["nord_v"][k] = 0
-        column["damp_vt"][k] = 0.5 * column["d2_divg"][k]
+        column["nord_v"].view[k] = 0
+        column["damp_vt"].view[k] = 0.5 * column["d2_divg"].view[k]
 
 
 def lowest_kvals(column, k, do_vort_damp):
@@ -566,7 +567,8 @@ def lowest_kvals(column, k, do_vort_damp):
 
 
 def get_column_namelist(
-    config: DGridShallowWaterLagrangianDynamicsConfig, npz, backend: str
+    config: DGridShallowWaterLagrangianDynamicsConfig,
+    quantity_factory: pace.util.QuantityFactory,
 ):
     """
     Generate a dictionary of columns that specify how parameters (such as nord, damp)
@@ -583,32 +585,36 @@ def get_column_namelist(
         "damp_t",
         "d2_divg",
     ]
-    col = {}
+    col: Dict[str, pace.util.Quantity] = {}
     for name in all_names:
-        col[name] = utils.make_storage_from_shape((npz + 1,), (0,), backend=backend)
+        # TODO: fill units information
+        col[name] = quantity_factory.zeros(dims=[Z_DIM], units="unknown")
     for name in direct_namelist:
-        col[name][:] = getattr(config, name)
+        col[name].view[:] = getattr(config, name)
 
-    col["d2_divg"][:] = min(0.2, config.d2_bg)
-    col["nord_v"][:] = min(2, col["nord"][0])
-    col["nord_w"][:] = col["nord_v"][0]
-    col["nord_t"][:] = col["nord_v"][0]
+    col["d2_divg"].view[:] = min(0.2, config.d2_bg)
+    col["nord_v"].view[:] = min(2, col["nord"].view[0])
+    col["nord_w"].view[:] = col["nord_v"].view[0]
+    col["nord_t"].view[:] = col["nord_v"].view[0]
     if config.do_vort_damp:
-        col["damp_vt"][:] = config.vtdm4
+        col["damp_vt"].view[:] = config.vtdm4
     else:
-        col["damp_vt"][:] = 0
-    col["damp_w"][:] = col["damp_vt"][0]
-    col["damp_t"][:] = col["damp_vt"][0]
-    if npz == 1 or config.n_sponge < 0:
-        col["d2_divg"][0] = config.d2_bg
+        col["damp_vt"].view[:] = 0
+    col["damp_w"].view[:] = col["damp_vt"].view[0]
+    col["damp_t"].view[:] = col["damp_vt"].view[0]
+    if (
+        col["d2_divg"].extent[col["d2_divg"].dims.index(Z_DIM)] == 1
+        or config.n_sponge < 0
+    ):
+        col["d2_divg"].view[0] = config.d2_bg
     else:
-        col["d2_divg"][0] = max(0.01, config.d2_bg, config.d2_bg_k1)
+        col["d2_divg"].view[0] = max(0.01, config.d2_bg, config.d2_bg_k1)
         lowest_kvals(col, 0, config.do_vort_damp)
         if config.d2_bg_k2 > 0.01:
-            col["d2_divg"][1] = max(config.d2_bg, config.d2_bg_k2)
+            col["d2_divg"].view[1] = max(config.d2_bg, config.d2_bg_k2)
             lowest_kvals(col, 1, config.do_vort_damp)
         if config.d2_bg_k2 > 0.05:
-            col["d2_divg"][2] = max(config.d2_bg, 0.2 * config.d2_bg_k2)
+            col["d2_divg"].view[2] = max(config.d2_bg, 0.2 * config.d2_bg_k2)
             set_low_kvals(col, 2)
     return col
 
@@ -653,22 +659,6 @@ def interpolate_uc_vc_to_cell_corners(
     return ub_contra, vb_contra
 
 
-def compute_f0(
-    stencil_factory: StencilFactory, lon_agrid: FloatFieldIJ, lat_agrid: FloatFieldIJ
-):
-    """
-    Compute the coriolis parameter on the D-grid
-    """
-    f0 = utils.make_storage_from_shape(lon_agrid.shape, backend=stencil_factory.backend)
-    f0_stencil = stencil_factory.from_dims_halo(
-        compute_coriolis_parameter_defn,
-        compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        compute_halos=(3, 3),
-    )
-    f0_stencil(f0, lon_agrid, lat_agrid, 0.0)
-    return f0
-
-
 class DGridShallowWaterLagrangianDynamics:
     """
     Fortran name is the d_sw subroutine
@@ -677,6 +667,7 @@ class DGridShallowWaterLagrangianDynamics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         column_namelist,
@@ -686,9 +677,7 @@ class DGridShallowWaterLagrangianDynamics:
     ):
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self.grid_data = grid_data
-        self._f0 = compute_f0(
-            stencil_factory, self.grid_data.lon_agrid, self.grid_data.lat_agrid
-        )
+        self._f0 = self.grid_data.fC_agrid
 
         self.grid_indexing = stencil_factory.grid_indexing
         assert config.grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
@@ -696,45 +685,38 @@ class DGridShallowWaterLagrangianDynamics:
         assert (
             config.d_ext <= 0
         ), "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
-        assert (column_namelist["damp_vt"] > dcon_threshold).all()
+        assert (column_namelist["damp_vt"].view[:] > dcon_threshold).all()
         # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
         # only compute delnflux for k-levels where this is true
-        assert (column_namelist["damp_w"] > dcon_threshold).all()
+        assert (column_namelist["damp_w"].view[:] > dcon_threshold).all()
         # TODO: in theory, we should check if damp_w > 1e-5 for each k-level and
         # only compute delnflux for k-levels where this is true
 
         # only compute for k-levels where this is true
         self.hydrostatic = config.hydrostatic
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                self.grid_indexing.max_shape,
-                backend=stencil_factory.backend,
-            )
+        def make_quantity():
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._tmp_heat_s = make_storage()
-        self._vort_x_delta = make_storage()
-        self._vort_y_delta = make_storage()
-        self._dt_kinetic_energy_on_cell_corners = make_storage()
-        self._tmp_vort = make_storage()
-        self._uc_contra = make_storage()
-        self._vc_contra = make_storage()
-        self._tmp_ut = make_storage()
-        self._tmp_vt = make_storage()
-        self._tmp_fx = make_storage()
-        self._tmp_fy = make_storage()
-        self._tmp_gx = make_storage()
-        self._tmp_gy = make_storage()
-        self._tmp_dw = make_storage()
-        self._tmp_wk = make_storage()
-        self._vorticity_agrid = make_storage()
-        self._vorticity_bgrid_damped = make_storage()
-        self._tmp_fx2 = make_storage()
-        self._tmp_fy2 = make_storage()
-        self._tmp_damp_3d = utils.make_storage_from_shape(
-            (1, 1, self.grid_indexing.domain[2]),
-            backend=stencil_factory.backend,
-        )
+        self._tmp_heat_s = make_quantity()
+        self._vort_x_delta = make_quantity()
+        self._vort_y_delta = make_quantity()
+        self._dt_kinetic_energy_on_cell_corners = make_quantity()
+        self._tmp_vort = make_quantity()
+        self._uc_contra = make_quantity()
+        self._vc_contra = make_quantity()
+        self._tmp_ut = make_quantity()
+        self._tmp_vt = make_quantity()
+        self._tmp_fx = make_quantity()
+        self._tmp_fy = make_quantity()
+        self._tmp_gx = make_quantity()
+        self._tmp_gy = make_quantity()
+        self._tmp_dw = make_quantity()
+        self._tmp_wk = make_quantity()
+        self._vorticity_agrid = make_quantity()
+        self._vorticity_bgrid_damped = make_quantity()
+        self._tmp_fx2 = make_quantity()
+        self._tmp_fy2 = make_quantity()
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
@@ -870,35 +852,15 @@ class DGridShallowWaterLagrangianDynamics:
         self._update_u_and_v_stencil = stencil_factory.from_dims_halo(
             update_u_and_v, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
-        damping_factor_calculation_stencil = stencil_factory.from_origin_domain(
-            delnflux.calc_damp,
-            origin=(0, 0, 0),
-            domain=(1, 1, stencil_factory.grid_indexing.domain[2]),
+        self._delnflux_damp_vt = delnflux.calc_damp(
+            damp_c=self._column_namelist["damp_vt"],
+            da_min=damping_coefficients.da_min_c,
+            nord=self._column_namelist["nord_v"],
         )
-        damping_factor_calculation_stencil(
-            self._tmp_damp_3d,
-            self._column_namelist["nord_v"],
-            self._column_namelist["damp_vt"],
-            damping_coefficients.da_min_c,
-        )
-        self._delnflux_damp_vt = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :],
-            (self.grid_indexing.domain[2],),
-            (0,),
-            backend=stencil_factory.backend,
-        )
-
-        damping_factor_calculation_stencil(
-            self._tmp_damp_3d,
-            self._column_namelist["nord_w"],
-            self._column_namelist["damp_w"],
-            damping_coefficients.da_min_c,
-        )
-        self._delnflux_damp_w = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :],
-            (self.grid_indexing.domain[2],),
-            (0,),
-            backend=stencil_factory.backend,
+        self._delnflux_damp_w = delnflux.calc_damp(
+            damp_c=self._column_namelist["damp_w"],
+            da_min=damping_coefficients.da_min_c,
+            nord=self._column_namelist["nord_w"],
         )
 
     def __call__(

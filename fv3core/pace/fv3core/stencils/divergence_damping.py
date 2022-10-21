@@ -11,6 +11,7 @@ from gt4py.gtscript import (
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.stencils.corners as corners
+import pace.util
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -286,7 +287,7 @@ class DivergenceDamping:
         stretched_grid: bool,
         dddmp,
         d4_bg,
-        nord,
+        nord: pace.util.Quantity,
         grid_type,
         nord_col: FloatFieldK,
         d2_bg: FloatFieldK,
@@ -326,10 +327,10 @@ class DivergenceDamping:
 
         nonzero_nord_k = 0
         self._nonzero_nord = int(nord)
-        for k in range(len(self._nord_column)):
-            if self._nord_column[k] > 0:
+        for k in range(self._nord_column.extent[0]):
+            if self._nord_column.view[k] > 0:
                 nonzero_nord_k = k
-                self._nonzero_nord = int(self._nord_column[k])
+                self._nonzero_nord = int(self._nord_column.view[k])
                 break
 
         kstart = nonzero_nord_k

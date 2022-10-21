@@ -523,12 +523,14 @@ def _convert_quantities_to_storage(args, kwargs):
         try:
             args[i] = arg.storage
         except AttributeError:
-            pass
+            # storage isn't allowed, int/float are
+            pass  # assert not hasattr(arg, "data")
     for name, arg in kwargs.items():
         try:
             kwargs[name] = arg.storage
         except AttributeError:
-            pass
+            # storage isn't allowed, int/float are
+            pass  # assert not hasattr(arg, "data")
 
 
 class GridIndexing:

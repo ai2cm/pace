@@ -11,7 +11,6 @@ import pace.dsl.gt4py_utils as utils
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from pace.fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from pace.stencils import corners
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -457,22 +456,6 @@ def update_y_velocity(
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
-def compute_fC(
-    stencil_factory: StencilFactory, lon: FloatFieldIJ, lat: FloatFieldIJ, backend: str
-):
-    """
-    Compute the coriolis parameter on the C-grid
-    """
-    fC = utils.make_storage_from_shape(lon.shape, backend=backend)
-    fC_stencil = stencil_factory.from_dims_halo(
-        compute_coriolis_parameter_defn,
-        compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-        compute_halos=(3, 3),
-    )
-    fC_stencil(fC, lon, lat, 0.0)
-    return fC
-
-
 class CGridShallowWaterDynamics:
     """
     Fortran name is c_sw
@@ -490,12 +473,7 @@ class CGridShallowWaterDynamics:
         grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
-        self._fC = compute_fC(
-            stencil_factory,
-            self.grid_data.lon,
-            self.grid_data.lat,
-            backend=stencil_factory.backend,
-        )
+        self._fC = self.grid_data.fC
         origin_halo1 = (grid_indexing.isc - 1, grid_indexing.jsc - 1, 0)
         self.delpc = utils.make_storage_from_shape(
             grid_indexing.max_shape,

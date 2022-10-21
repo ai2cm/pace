@@ -156,6 +156,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
         acoustic_dynamics = dyn_core.AcousticDynamics(
             comm=communicator,
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             grid_data=grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,

@@ -108,6 +108,7 @@ class DynamicalCore:
         comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
@@ -217,19 +218,19 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = pace.util.SubtileGridSizer.from_tile_params(
-            nx_tile=config.npx - 1,
-            ny_tile=config.npy - 1,
-            nz=config.npz,
-            n_halo=grid_indexing.n_halo,
-            layout=config.layout,
-            tile_partitioner=comm.tile.partitioner,
-            tile_rank=comm.tile.rank,
-            extra_dim_lengths={},
-        )
-        quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=stencil_factory.backend
-        )
+        # sizer = pace.util.SubtileGridSizer.from_tile_params(
+        #     nx_tile=config.npx - 1,
+        #     ny_tile=config.npy - 1,
+        #     nz=config.npz,
+        #     n_halo=grid_indexing.n_halo,
+        #     layout=config.layout,
+        #     tile_partitioner=comm.tile.partitioner,
+        #     tile_rank=comm.tile.rank,
+        #     extra_dim_lengths={},
+        # )
+        # quantity_factory = pace.util.QuantityFactory.from_backend(
+        #     sizer, backend=stencil_factory.backend
+        # )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
         self.comm_rank = comm.rank
@@ -308,18 +309,19 @@ class DynamicalCore:
             domain=grid_indexing.domain_full(),
         )
         self.acoustic_dynamics = AcousticDynamics(
-            comm,
-            stencil_factory,
-            grid_data,
-            damping_coefficients,
-            config.grid_type,
-            nested,
-            stretched_grid,
-            self.config.acoustic_dynamics,
-            self._pfull,
-            self._phis,
-            self._wsd.storage,
-            state,
+            comm=comm,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            grid_type=config.grid_type,
+            nested=nested,
+            stretched_grid=stretched_grid,
+            config=self.config.acoustic_dynamics,
+            pfull=self._pfull,
+            phis=self._phis,
+            wsd=self._wsd,
+            state=state,
             checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(

@@ -257,6 +257,8 @@ class GridData:
         self._vertical_data = vertical_data
         self._contravariant_data = contravariant_data
         self._angle_data = angle_data
+        self._fC = None
+        self._fC_agrid = None
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
@@ -278,14 +280,41 @@ class GridData:
         return self._horizontal_data.lat
 
     @property
-    def lon_agrid(self):
+    def lon_agrid(self) -> pace.util.Quantity:
         """longitude on the A-grid (cell centers)"""
         return self._horizontal_data.lon_agrid
 
     @property
-    def lat_agrid(self):
+    def lat_agrid(self) -> pace.util.Quantity:
         """latitude on the A-grid (cell centers)"""
         return self._horizontal_data.lat_agrid
+
+    @staticmethod
+    def _fC_from_lat(lat: pace.util.Quantity) -> pace.util.Quantity:
+        np = lat.np
+        data = 2.0 * pace.util.constants.OMEGA * np.sin(lat.data)
+        return pace.util.Quantity(
+            data,
+            units="1/s",
+            dims=lat.dims,
+            origin=lat.origin,
+            extent=lat.extent,
+            gt4py_backend=lat.gt4py_backend,
+        )
+
+    @property
+    def fC(self):
+        """Coriolis parameter at cell corners"""
+        if self._fC is None:
+            self._fC = self._fC_from_lat(self.lat)
+        return self._fC
+
+    @property
+    def fC_agrid(self):
+        """Coriolis parameter at cell centers"""
+        if self._fC_agrid is None:
+            self._fC_agrid = self._fC_from_lat(self.lat_agrid)
+        return self._fC_agrid
 
     @property
     def area(self):
