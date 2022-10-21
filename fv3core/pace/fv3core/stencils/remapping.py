@@ -332,7 +332,7 @@ class LagrangianToEulerian:
 
         self.kmp = grid_indexing.domain[2] - 1
         for k in range(pfull.shape[0]):
-            if pfull[k] > 10.0e2:
+            if pfull.view[k] > 10.0e2:
                 self.kmp = k
                 break
 

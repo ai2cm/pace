@@ -79,7 +79,7 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
     failures_8 = n_points - np.sum(
         np.logical_or(
             nans_match,
-            metric_err < 1e-10,
+            metric_err < 1e-8,
         )
     )
     greatest_error = np.max(metric_err[~np.isnan(metric_err)])

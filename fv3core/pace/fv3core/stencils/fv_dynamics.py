@@ -85,7 +85,7 @@ def get_pfull(
         dims=[pace.util.Z_DIM],
         units="Pa",
     )
-    p_full.data[:] = (p_interface[1:] - p_interface[:-1]) / p_interface.np.log(
+    p_full.view[:] = (p_interface[1:] - p_interface[:-1]) / p_full.np.log(
         p_interface[1:] / p_interface[:-1]
     )
     return p_full
@@ -338,9 +338,10 @@ class DynamicalCore:
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
-            damping_coefficients,
-            grid_data.rarea,
-            self.config.nf_omega,
+            quantity_factory=quantity_factory,
+            damping_coefficients=damping_coefficients,
+            rarea=grid_data.rarea,
+            nmax=self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
             state, stencil_factory, grid_data, config.c2l_ord, comm
@@ -351,16 +352,18 @@ class DynamicalCore:
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
             stencil_factory,
-            self.config.check_negative,
-            self.config.hydrostatic,
+            quantity_factory=quantity_factory,
+            check_negative=self.config.check_negative,
+            hydrostatic=self.config.hydrostatic,
         )
 
         self._lagrangian_to_eulerian_obj = LagrangianToEulerian(
-            stencil_factory,
-            config.remapping,
-            grid_data.area_64,
-            NQ,
-            self._pfull,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config.remapping,
+            area_64=grid_data.area_64,
+            nq=NQ,
+            pfull=self._pfull,
             tracers=self.tracers,
             checkpointer=checkpointer,
         )

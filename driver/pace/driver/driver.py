@@ -472,6 +472,7 @@ class Driver:
                 comm=communicator,
                 grid_data=self.state.grid_data,
                 stencil_factory=self.stencil_factory,
+                quantity_factory=self.quantity_factory,
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 timestep=self.config.timestep,

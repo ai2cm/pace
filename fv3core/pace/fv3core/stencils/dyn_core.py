@@ -508,6 +508,7 @@ class AcousticDynamics:
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(
                 stencil_factory,
+                quantity_factory=quantity_factory,
                 grid_data=grid_data,
                 damping_coefficients=damping_coefficients,
                 column_namelist=column_namelist,
@@ -535,10 +536,11 @@ class AcousticDynamics:
 
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
-            grid_data,
-            nested,
-            config.grid_type,
-            config.nord,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            nested=nested,
+            grid_type=config.grid_type,
+            nord=config.nord,
         )
 
         self._set_gz = stencil_factory.from_origin_domain(
@@ -588,7 +590,11 @@ class AcousticDynamics:
         if self._do_del2cubed:
             nf_ke = min(3, config.nord + 1)
             self._hyperdiffusion = HyperdiffusionDamping(
-                stencil_factory, damping_coefficients, grid_data.rarea, nmax=nf_ke
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                damping_coefficients=damping_coefficients,
+                rarea=grid_data.rarea,
+                nmax=nf_ke,
             )
         if config.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(
