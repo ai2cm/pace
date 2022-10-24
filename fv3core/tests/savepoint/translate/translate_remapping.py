@@ -4,6 +4,7 @@ import pace.util
 from pace.fv3core import DynamicalCoreConfig
 from pace.fv3core.stencils.remapping import LagrangianToEulerian
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
+from pace.util import Z_DIM
 
 
 class TranslateRemapping(TranslateDycoreFortranData2Py):
@@ -123,13 +124,15 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         inputs["last_step"] = bool(inputs["last_step"])
+        pfull = self.grid.quantity_factory.empty([Z_DIM], units="Pa")
+        pfull.data[:] = inputs["pfull"]
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
             quantity_factory=self.grid.quantity_factory,
             config=DynamicalCoreConfig.from_namelist(self.namelist).remapping,
             area_64=self.grid.area_64,
             nq=inputs.pop("nq"),
-            pfull=inputs["pfull"],
+            pfull=pfull,
             tracers=inputs["tracers"],
         )
         l_to_e_obj(**inputs)

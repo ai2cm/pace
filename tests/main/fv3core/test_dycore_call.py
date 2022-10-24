@@ -122,6 +122,7 @@ def setup_dycore() -> Tuple[
         comm=communicator,
         grid_data=grid_data,
         stencil_factory=stencil_factory,
+        quantity_factory=quantity_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         timestep=timedelta(seconds=config.dt_atmos),
