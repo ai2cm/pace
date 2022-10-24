@@ -3,7 +3,6 @@ from typing import Optional
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
     __INLINED,
-    FORWARD,
     PARALLEL,
     computation,
     horizontal,
@@ -17,13 +16,6 @@ from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients
-
-
-def calc_damp_stencil_def(
-    damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min: float
-):
-    with computation(FORWARD), interval(...):
-        damp4 = (damp_c * da_min) ** (nord + 1)
 
 
 def calc_damp(

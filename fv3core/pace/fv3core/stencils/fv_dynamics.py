@@ -224,19 +224,6 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        # sizer = pace.util.SubtileGridSizer.from_tile_params(
-        #     nx_tile=config.npx - 1,
-        #     ny_tile=config.npy - 1,
-        #     nz=config.npz,
-        #     n_halo=grid_indexing.n_halo,
-        #     layout=config.layout,
-        #     tile_partitioner=comm.tile.partitioner,
-        #     tile_rank=comm.tile.rank,
-        #     extra_dim_lengths={},
-        # )
-        # quantity_factory = pace.util.QuantityFactory.from_backend(
-        #     sizer, backend=stencil_factory.backend
-        # )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
         self.comm_rank = comm.rank
