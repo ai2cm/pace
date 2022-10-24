@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
-from gt4py.gtscript import PARALLEL, computation, interval, log
+from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
@@ -12,7 +12,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldK
+from pace.dsl.typing import FloatField
 from pace.fv3core._config import DynamicalCoreConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils import fvtp2d, tracer_2d_1l
@@ -61,25 +61,13 @@ def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatFiel
         omga = delp / delz * w
 
 
-def init_pfull(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatField,
-    p_ref: float,
-):
-    with computation(PARALLEL), interval(...):
-        ph1 = ak + bk * p_ref
-        ph2 = ak[1] + bk[1] * p_ref
-        pfull = (ph2 - ph1) / log(ph2 / ph1)
-
-
 def get_pfull(
     ak: pace.util.Quantity,
     bk: pace.util.Quantity,
     quantity_factory: pace.util.QuantityFactory,
     p_ref: float,
 ) -> pace.util.Quantity:
-    p_interface = ak.data + bk.data * p_ref
+    p_interface = ak.view[:] + bk.view[:] * p_ref
     # pfull = (ph2 - ph1) / log(ph2 / ph1)
     p_full = quantity_factory.zeros(
         dims=[pace.util.Z_DIM],
@@ -279,12 +267,12 @@ class DynamicalCore:
 
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory=stencil_factory,
-            quantity_factory=quantity_factory,
-            transport=tracer_transport,
-            grid_data=self.grid_data,
-            comm=comm,
-            tracers=self.tracers,
+            stencil_factory,
+            quantity_factory,
+            tracer_transport,
+            self.grid_data,
+            comm,
+            self.tracers,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -294,7 +282,7 @@ class DynamicalCore:
             ak=self._ak,
             bk=self._bk,
             quantity_factory=quantity_factory,
-            p_ref=self._ptop,
+            p_ref=self.config.p_ref,
         )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
@@ -338,10 +326,10 @@ class DynamicalCore:
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
-            quantity_factory=quantity_factory,
-            damping_coefficients=damping_coefficients,
-            rarea=grid_data.rarea,
-            nmax=self.config.nf_omega,
+            quantity_factory,
+            damping_coefficients,
+            grid_data.rarea,
+            self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
             state, stencil_factory, grid_data, config.c2l_ord, comm
