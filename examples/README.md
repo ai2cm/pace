@@ -40,7 +40,7 @@ If you prefer to run outside of a Docker container, you will need to install sev
 
 ## Building an environment to run these examples on the GFDL Post Processing and Analysis Cluster (PP/AN)
 
-Within the `build_scripts` directory, are a couple scripts relevant for setting up an environment to run these notebook examples on the [GFDL Post Processing and Analysis Cluster (PP/AN)](https://www.noaa.gov/organization/information-technology/ppan).  To create an environment, log in to either the `jhan` or `jhanbigmem` node on the analysis cluster clone this repository, and then navigate to the `build_scripts` directory:
+Within the `build_scripts` directory are a couple scripts relevant for setting up an environment to run these notebook examples on the [GFDL Post Processing and Analysis Cluster (PP/AN)](https://www.noaa.gov/organization/information-technology/ppan).  To create an environment, log in to either the `jhan` or `jhanbigmem` node on the analysis cluster clone this repository, and then navigate to the `build_scripts` directory:
 
 ```
 $ ssh analysis
