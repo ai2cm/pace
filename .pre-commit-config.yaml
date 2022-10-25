@@ -43,24 +43,24 @@ repos:
     #     (?x)^(
     #     stencils/pace/stencils/testing/grid.py |
     #     )$
-    # - id: mypy
-    #   name: mypy-driver
-    #   args: [
-    #       --config-file, setup.cfg,
-    #       --follow-imports, skip
-    #     ]
-    #   files: driver
-    #   exclude: |
-    #     (?x)^(
-    #     tests/main/driver/__init__.py |
-    #     )$
-    # - id: mypy
-    #   name: mypy-physics
-    #   args: [
-    #       --config-file, setup.cfg,
-    #       --follow-imports, skip
-    #     ]
-    #   files: physics
+    - id: mypy
+      name: mypy-driver
+      args: [
+          --config-file, setup.cfg,
+          --follow-imports, skip
+        ]
+      files: driver
+      exclude: |
+        (?x)^(
+        tests/main/driver/__init__.py |
+        )$
+    - id: mypy
+      name: mypy-physics
+      args: [
+          --config-file, setup.cfg,
+          --follow-imports, skip
+        ]
+      files: physics
     - id: mypy
       name: mypy-dsl
       args: [
