@@ -32,17 +32,16 @@ repos:
           --config-file, setup.cfg
         ]
       files: ^util
-    # - id: mypy
-    #   name: mypy-stencils
-    #   args: [
-    #       --config-file, setup.cfg,
-    #       --follow-imports, skip
-    #     ]
-    #   files: stencils
-    #   exclude: |
-    #     (?x)^(
-    #     stencils/pace/stencils/testing/grid.py |
-    #     )$
+    - id: mypy
+      name: mypy-stencils
+      args: [
+          --config-file, setup.cfg
+        ]
+      files: stencils
+      exclude: |
+        (?x)^(
+        stencils/pace/stencils/testing/grid.py |
+        )$
     - id: mypy
       name: mypy-driver
       args: [

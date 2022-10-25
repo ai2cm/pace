@@ -450,8 +450,8 @@ class AcousticDynamics:
         )
 
         self.call_checkpointer = checkpointer is not None
-        if not self.call_checkpointer:
-            self.checkpointer = pace.util.NullCheckpointer()
+        if checkpointer is None:
+            self.checkpointer: pace.util.Checkpointer = pace.util.NullCheckpointer()
         else:
             self.checkpointer = checkpointer
         grid_indexing = stencil_factory.grid_indexing
