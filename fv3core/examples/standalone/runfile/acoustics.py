@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# type: ignore
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 

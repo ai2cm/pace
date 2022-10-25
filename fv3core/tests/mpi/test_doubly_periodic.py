@@ -1,18 +1,19 @@
+from datetime import timedelta
 from typing import Any, List, Tuple
 
 import pace.dsl.stencil
+import pace.fv3core
 import pace.fv3core._config
 import pace.fv3core.initialization.baroclinic as baroclinic_init
 import pace.stencils.testing
 import pace.util
-from pace import fv3core
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
-def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
+def setup_dycore() -> Tuple[pace.fv3core.DynamicalCore, List[Any]]:
     backend = "numpy"
     layout = (3, 3)
-    config = fv3core.DynamicalCoreConfig(
+    config = pace.fv3core.DynamicalCoreConfig(
         layout=layout,
         npx=13,
         npy=13,
@@ -87,11 +88,13 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         quantity_factory=quantity_factory,
         communicator=communicator,
     )
+    grid_data = GridData.new_from_metric_terms(metric_terms)
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
     # test case perturbation. JRMS2006
     state = baroclinic_init.init_baroclinic_state(
-        metric_terms,
+        grid_data=grid_data,
+        quantity_factory=quantity_factory,
         adiabatic=config.adiabatic,
         hydrostatic=config.hydrostatic,
         moist_phys=config.moist_phys,
@@ -102,14 +105,15 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         grid_indexing=grid_indexing,
     )
 
-    dycore = fv3core.DynamicalCore(
+    dycore = pace.fv3core.DynamicalCore(
         comm=communicator,
-        grid_data=GridData.new_from_metric_terms(metric_terms),
+        grid_data=grid_data,
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         phis=state.phis,
         state=state,
+        timestep=timedelta(seconds=255),
     )
     # TODO compute from namelist
     bdt = config.dt_atmos
