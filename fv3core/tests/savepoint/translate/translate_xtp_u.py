@@ -86,7 +86,7 @@ class TranslateXTP_U(TranslateYTP_V):
         self.in_vars["data_vars"]["c"]["serialname"] = "ub"
         self.in_vars["data_vars"]["flux"]["serialname"] = "vb"
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
 
     def compute_from_storage(self, inputs):
         xtp_obj = XTP_U(

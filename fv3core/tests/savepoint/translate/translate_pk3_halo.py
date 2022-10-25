@@ -13,7 +13,7 @@ class TranslatePK3_Halo(TranslateDycoreFortranData2Py):
     ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = PK3Halo(self.stencil_factory)
+        self.compute_func = PK3Halo(self.stencil_factory)  # type: ignore
         self.in_vars["data_vars"] = {"pk3": {}, "delp": {}}
         self.in_vars["parameters"] = ["akap", "ptop"]
         self.out_vars = {"pk3": {"kend": grid.npz + 1}}

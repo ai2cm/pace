@@ -93,7 +93,7 @@ class GeneratedGridConfig(GridInitializer):
     stretch_factor: Optional[float] = 1.0
     lon_target: Optional[float] = 350.0
     lat_target: Optional[float] = -90.0
-    restart_path: Optional[bool] = None
+    restart_path: Optional[str] = None
 
     def get_grid(
         self,
@@ -160,7 +160,7 @@ class SerialboxGridConfig(GridInitializer):
         self,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
-    ) -> pace.stencils.testing.grid.Grid:
+    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
         ser = self._serializer(communicator)
         grid = TranslateGrid.new_from_serialized_data(
             ser, communicator.rank, self._namelist.layout, backend

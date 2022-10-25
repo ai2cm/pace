@@ -28,7 +28,7 @@ class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
         self.near_zero = 7e-17
         self.ignore_near_zero_errors["qtracers"] = True
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
 
     def compute(self, inputs):
         self.setup(inputs)
@@ -57,7 +57,7 @@ class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
             )
         )
         inputs["kord"] = abs(self.namelist.kord_tr)
-        self.compute_func = MapN_Tracer.MapNTracer(
+        self.compute_func = MapN_Tracer.MapNTracer(  # type: ignore
             self.stencil_factory,
             inputs.pop("kord"),
             inputs.pop("nq"),
