@@ -156,7 +156,7 @@ class DaceConfig:
             self.my_rank = 0
             self.rank_size = 1
             self.target_rank = 0
-            self.layout = [1, 1]
+            self.layout = (1, 1)
 
         set_distributed_caches(self)
 

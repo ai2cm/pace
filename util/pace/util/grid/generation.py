@@ -208,7 +208,7 @@ class MetricTerms:
         self,
         *,
         quantity_factory: util.QuantityFactory,
-        communicator: util.Communicator,
+        communicator: util.CubedSphereCommunicator,
         grid_type: int = 0,
     ):
         assert grid_type < 3
@@ -333,7 +333,7 @@ class MetricTerms:
         npx: int,
         npy: int,
         npz: int,
-        communicator: util.Communicator,
+        communicator: util.CubedSphereCommunicator,
         backend: str,
         grid_type: int = 0,
     ) -> "MetricTerms":
@@ -1278,7 +1278,7 @@ class MetricTerms:
         return self._edge_vect_n
 
     @property
-    def da_min(self) -> util.Quantity:
+    def da_min(self) -> float:
         """
         the minimum agrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1289,7 +1289,7 @@ class MetricTerms:
         return self._da_min
 
     @property
-    def da_max(self) -> util.Quantity:
+    def da_max(self) -> float:
         """
         the maximum agrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1300,7 +1300,7 @@ class MetricTerms:
         return self._da_max
 
     @property
-    def da_min_c(self) -> util.Quantity:
+    def da_min_c(self) -> float:
         """
         the minimum cgrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1311,7 +1311,7 @@ class MetricTerms:
         return self._da_min_c
 
     @property
-    def da_max_c(self) -> util.Quantity:
+    def da_max_c(self) -> float:
         """
         the maximum cgrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be

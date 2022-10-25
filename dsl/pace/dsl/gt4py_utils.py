@@ -53,13 +53,13 @@ def mark_untested(msg="This is not tested"):
 def make_storage_data(
     data: Field,
     shape: Optional[Tuple[int, ...]] = None,
-    origin: Tuple[int, int, int] = origin,
+    origin: Tuple[int, ...] = origin,
     *,
     backend: str,
     dtype: DTypes = np.float64,
-    mask: Optional[Tuple[bool, bool, bool]] = None,
-    start: Tuple[int, int, int] = (0, 0, 0),
-    dummy: Optional[Tuple[int, int, int]] = None,
+    mask: Optional[Tuple[bool, ...]] = None,
+    start: Tuple[int, ...] = (0, 0, 0),
+    dummy: Optional[Tuple[int, ...]] = None,
     axis: int = 2,
     max_dim: int = 3,
     read_only: bool = True,
@@ -99,21 +99,24 @@ def make_storage_data(
     if shape is None:
         shape = data.shape
 
-    if not mask:
+    if mask is None:
         if not read_only:
-            mask = (True, True, True)
+            default_mask: Tuple[bool, ...] = (True, True, True)
         else:
             if n_dims == 1:
                 if axis == 1:
                     # Convert J-fields to IJ-fields
-                    mask = (True, True, False)
+                    default_mask = (True, True, False)
                     shape = (1, shape[axis])
                 else:
-                    mask = tuple([i == axis for i in range(max_dim)])
+                    default_mask = tuple(
+                        [i == axis for i in range(max_dim)]
+                    )  # type: ignore
             elif dummy or axis != 2:
-                mask = (True, True, True)
+                default_mask = (True, True, True)
             else:
-                mask = (n_dims * (True,)) + ((max_dim - n_dims) * (False,))
+                default_mask = (n_dims * (True,)) + ((max_dim - n_dims) * (False,))
+        mask = default_mask
 
     if n_dims == 1:
         data = _make_storage_data_1d(
@@ -140,9 +143,9 @@ def make_storage_data(
 
 def _make_storage_data_1d(
     data: Field,
-    shape: Tuple[int, int, int],
-    start: Tuple[int, int, int] = (0, 0, 0),
-    dummy: Optional[Tuple[int, int, int]] = None,
+    shape: Tuple[int, ...],
+    start: Tuple[int, ...] = (0, 0, 0),
+    dummy: Optional[Tuple[int, ...]] = None,
     axis: int = 2,
     read_only: bool = True,
     *,
@@ -176,9 +179,9 @@ def _make_storage_data_1d(
 
 def _make_storage_data_2d(
     data: Field,
-    shape: Tuple[int, int, int],
-    start: Tuple[int, int, int] = (0, 0, 0),
-    dummy: Optional[Tuple[int, int, int]] = None,
+    shape: Tuple[int, ...],
+    start: Tuple[int, ...] = (0, 0, 0),
+    dummy: Optional[Tuple[int, ...]] = None,
     axis: int = 2,
     read_only: bool = True,
     *,
@@ -212,8 +215,8 @@ def _make_storage_data_2d(
 
 def _make_storage_data_3d(
     data: Field,
-    shape: Tuple[int, int, int],
-    start: Tuple[int, int, int] = (0, 0, 0),
+    shape: Tuple[int, ...],
+    start: Tuple[int, ...] = (0, 0, 0),
     *,
     backend: str,
 ) -> Field:
@@ -229,12 +232,12 @@ def _make_storage_data_3d(
 
 
 def make_storage_from_shape(
-    shape: Tuple[int, int, int],
-    origin: Tuple[int, int, int] = origin,
+    shape: Tuple[int, ...],
+    origin: Tuple[int, ...] = origin,
     *,
     backend: str,
     dtype: DTypes = np.float64,
-    mask: Optional[Tuple[bool, bool, bool]] = None,
+    mask: Optional[Tuple[bool, ...]] = None,
 ) -> Field:
     """Create a new gt4py storage of a given shape filled with zeros.
 
@@ -274,10 +277,10 @@ def make_storage_from_shape(
 
 def make_storage_dict(
     data: Field,
-    shape: Optional[Tuple[int, int, int]] = None,
-    origin: Tuple[int, int, int] = origin,
-    start: Tuple[int, int, int] = (0, 0, 0),
-    dummy: Optional[Tuple[int, int, int]] = None,
+    shape: Optional[Tuple[int, ...]] = None,
+    origin: Tuple[int, ...] = origin,
+    start: Tuple[int, ...] = (0, 0, 0),
+    dummy: Optional[Tuple[int, ...]] = None,
     names: Optional[List[str]] = None,
     axis: int = 2,
     *,
@@ -404,7 +407,7 @@ def moveaxis(array, source: int, destination: int):
     return xp.moveaxis(array, source, destination)
 
 
-def tile(array, reps: Union[int, Tuple[int]]):
+def tile(array, reps: Union[int, Tuple[int, ...]]):
     if isinstance(array, gt_storage.storage.Storage):
         array = array.data
     xp = cp if cp and type(array) is cp.ndarray else np
@@ -418,7 +421,7 @@ def squeeze(array, axis: Union[int, Tuple[int]] = None):
     return xp.squeeze(array, axis)
 
 
-def reshape(array, new_shape: Tuple[int]):
+def reshape(array, new_shape):
     if array.shape != new_shape:
         old_dims = len(array.shape)
         new_dims = len(new_shape)
