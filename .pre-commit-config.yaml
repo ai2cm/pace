@@ -14,34 +14,33 @@ repos:
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.812
     hooks:
-    # - id: mypy
-    #   name: mypy-fv3core
-    #   args: [
-    #       --config-file, setup.cfg,
-    #       --follow-imports, skip
-    #     ]
-    #   files: fv3core
-    #   exclude: |
-    #     (?x)^(
-    #     fv3core/pace/fv3core/stencils/fv_subgridz.py |
-    #     fv3core/tests/conftest.py
-    #     )$
-    # - id: mypy
-    #   name: mypy-util
-    #   args: [
-    #       --config-file, setup.cfg
-    #     ]
-    #   files: ^util
-    # - id: mypy
-    #   name: mypy-stencils
-    #   args: [
-    #       --config-file, setup.cfg
-    #     ]
-    #   files: stencils
-    #   exclude: |
-    #     (?x)^(
-    #     stencils/pace/stencils/testing/grid.py |
-    #     )$
+    - id: mypy
+      name: mypy-fv3core
+      args: [
+          --config-file, setup.cfg,
+        ]
+      files: fv3core
+      exclude: |
+        (?x)^(
+        fv3core/pace/fv3core/stencils/fv_subgridz.py |
+        fv3core/tests/conftest.py
+        )$
+    - id: mypy
+      name: mypy-util
+      args: [
+          --config-file, setup.cfg
+        ]
+      files: ^util
+    - id: mypy
+      name: mypy-stencils
+      args: [
+          --config-file, setup.cfg
+        ]
+      files: stencils
+      exclude: |
+        (?x)^(
+        stencils/pace/stencils/testing/grid.py |
+        )$
     - id: mypy
       name: mypy-driver
       args: [

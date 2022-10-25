@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, cast
 
 import pace.dsl.stencil
 import pace.fv3core
@@ -59,7 +59,15 @@ def setup_dycore() -> Tuple[pace.fv3core.DynamicalCore, List[Any]]:
     )
     mpi_comm = pace.util.MPIComm()
     partitioner = pace.util.TilePartitioner(config.layout)
-    communicator = pace.util.TileCommunicator(mpi_comm, partitioner)
+    # TODO: cleanup typing of tile vs cubed sphere communicators,
+    # currently both have a .tile attribute that reference a TileCommunicator
+    # instead both should have the methods specific to a TileCommunicator
+    # (to be put on the Communicator abstract base class) and
+    # the CubedSphere implementation should defer to the tile.
+    communicator = cast(
+        pace.util.CubedSphereCommunicator,
+        pace.util.TileCommunicator(mpi_comm, partitioner),
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         compilation_config=pace.dsl.stencil.CompilationConfig(
             communicator=communicator,
