@@ -282,7 +282,6 @@ class DynamicalCore:
             nested=nested,
             stretched_grid=stretched_grid,
             config=self.config.acoustic_dynamics,
-            pfull=self._pfull,
             phis=self._phis,
             wsd=self._wsd,
             state=state,

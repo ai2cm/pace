@@ -26,7 +26,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core._config import AcousticDynamicsConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
@@ -348,7 +348,6 @@ class AcousticDynamics:
         nested,
         stretched_grid,
         config: AcousticDynamicsConfig,
-        pfull: FloatFieldK,
         phis: FloatFieldIJ,
         wsd: FloatFieldIJ,
         state,  # [DaCe] hack to get around quantity as parameters for halo updates
@@ -410,8 +409,8 @@ class AcousticDynamics:
         assert not config.use_logp, "use_logp=True is not implemented"
         self._da_min = damping_coefficients.da_min
         self.grid_data = grid_data
-        self._ptop = self.grid_data.ptop
-        self._pfull = pfull
+        self._ptop = grid_data.ptop
+        self._pfull = grid_data.p
         self._wsd = wsd
         self._nk_heat_dissipation = get_nk_heat_dissipation(
             config.d_grid_shallow_water,
