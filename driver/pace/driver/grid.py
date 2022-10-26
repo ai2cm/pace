@@ -111,7 +111,9 @@ class GeneratedGridConfig(GridInitializer):
 
         horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
         if self.restart_path is not None:
-            vertical_data = VerticalGridData.from_restart(self.restart_path)
+            vertical_data = VerticalGridData.from_restart(
+                self.restart_path, quantity_factory=quantity_factory
+            )
         else:
             vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
         contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)

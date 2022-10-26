@@ -1826,8 +1826,8 @@ class MetricTerms:
         return area_cgrid
 
     def _set_hybrid_pressure_coefficients(self):
-        ptop = self.quantity_factory.zeros([], "mb")
-        ak = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "mb")
+        ptop = self.quantity_factory.zeros([], "Pa")
+        ak = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "Pa")
         bk = self.quantity_factory.zeros([util.Z_INTERFACE_DIM], "")
         pressure_coefficients = set_hybrid_pressure_coefficients(self._npz)
         ptop = pressure_coefficients.ptop

@@ -12,7 +12,7 @@ try:
     from pace.dsl.gt4py_utils import split_cartesian_into_storages
 except ImportError:
     split_cartesian_into_storages = None
-from pace.util.filesystem import get_fs
+from pace.util import Z_INTERFACE_DIM, get_fs
 
 from .generation import MetricTerms
 
@@ -145,7 +145,9 @@ class VerticalGridData:
         )
 
     @classmethod
-    def from_restart(cls, restart_path: str):
+    def from_restart(
+        cls, restart_path: str, quantity_factory: pace.util.QuantityFactory
+    ):
         fs = get_fs(restart_path)
         restart_files = fs.ls(restart_path)
         data_file = restart_files[
@@ -159,10 +161,12 @@ class VerticalGridData:
                 but no fv_core.res.nc in restart data file."""
             )
 
+        ak = quantity_factory.empty([Z_INTERFACE_DIM], units="Pa")
+        bk = quantity_factory.empty([Z_INTERFACE_DIM], units="")
         with fs.open(ak_bk_data_file, "rb") as f:
             ds = xr.open_dataset(f).isel(Time=0).drop_vars("Time")
-            ak = ds["ak"].values
-            bk = ds["bk"].values
+            ak.view[:] = ds["ak"].values
+            bk.view[:] = ds["bk"].values
 
         return cls(ak=ak, bk=bk)
 
@@ -428,7 +432,7 @@ class GridData:
     #     self._vertical_data.p_ref = value
 
     @property
-    def ak(self):
+    def ak(self) -> pace.util.Quantity:
         """
         constant used to define pressure at vertical interfaces,
         where p = ak + bk * p_ref
@@ -436,11 +440,11 @@ class GridData:
         return self._vertical_data.ak
 
     @ak.setter
-    def ak(self, value):
+    def ak(self, value: pace.util.Quantity):
         self._vertical_data.ak = value
 
     @property
-    def bk(self):
+    def bk(self) -> pace.util.Quantity:
         """
         constant used to define pressure at vertical interfaces,
         where p = ak + bk * p_ref
@@ -448,7 +452,7 @@ class GridData:
         return self._vertical_data.bk
 
     @bk.setter
-    def bk(self, value):
+    def bk(self, value: pace.util.Quantity):
         self._vertical_data.bk = value
 
     @property
