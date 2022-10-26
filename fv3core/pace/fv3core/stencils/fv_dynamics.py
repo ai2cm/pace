@@ -61,24 +61,6 @@ def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatFiel
         omga = delp / delz * w
 
 
-def get_pfull(
-    ak: pace.util.Quantity,
-    bk: pace.util.Quantity,
-    quantity_factory: pace.util.QuantityFactory,
-    p_ref: float,
-) -> pace.util.Quantity:
-    p_interface = ak.view[:] + bk.view[:] * p_ref
-    # pfull = (ph2 - ph1) / log(ph2 / ph1)
-    p_full = quantity_factory.zeros(
-        dims=[pace.util.Z_DIM],
-        units="Pa",
-    )
-    p_full.view[:] = (p_interface[1:] - p_interface[:-1]) / p_full.np.log(
-        p_interface[1:] / p_interface[:-1]
-    )
-    return p_full
-
-
 def fvdyn_temporaries(
     quantity_factory: pace.util.QuantityFactory,
 ) -> Mapping[str, Quantity]:
@@ -265,12 +247,7 @@ class DynamicalCore:
         self._bk = grid_data.bk
         self._phis = phis
         self._ptop = self.grid_data.ptop
-        self._pfull = get_pfull(
-            ak=self._ak,
-            bk=self._bk,
-            quantity_factory=quantity_factory,
-            p_ref=self.config.p_ref,
-        )
+        self._pfull = grid_data.p
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={

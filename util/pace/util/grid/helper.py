@@ -4,6 +4,7 @@ import pathlib
 import xarray as xr
 
 import pace.util
+from pace.util.constants import Z_INTERFACE_DIM
 
 
 # TODO: if we can remove translate tests in favor of checkpointer tests,
@@ -139,6 +140,8 @@ class VerticalGridData:
 
     def __post_init__(self):
         self._dp_ref = None
+        self._p = None
+        self._p_interface = None
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
@@ -177,7 +180,35 @@ class VerticalGridData:
         return 1e5
 
     @property
-    def dp_ref(self) -> pace.util.Quantity:
+    def p_interface(self) -> pace.util.Quantity:
+        if self._p_interface is None:
+            p_interface_data = self.ak.view[:] + self.bk.view[:] * self.p_ref
+            self._p_interface = pace.util.Quantity(
+                p_interface_data,
+                dims=[Z_INTERFACE_DIM],
+                units="Pa",
+                gt4py_backend=self.ak.gt4py_backend,
+            )
+        return self._p_interface
+
+    @property
+    def p(self) -> pace.util.Quantity:
+        if self._p is None:
+            p_data = (
+                self.p_interface.view[1:] - self.p_interface.view[:-1]
+            ) / self.p_interface.np.log(
+                self.p_interface.view[1:] / self.p_interface.view[:-1]
+            )
+            self._p = pace.util.Quantity(
+                p_data,
+                dims=[Z_DIM],
+                units="Pa",
+                gt4py_backend=self.p_interface.gt4py_backend,
+            )
+        return self._p
+
+    @property
+    def dp(self) -> pace.util.Quantity:
         if self._dp_ref is None:
             dp_ref_data = (
                 self.ak.view[1:]
@@ -478,6 +509,13 @@ class GridData:
         return self._vertical_data.p_ref
 
     @property
+    def p(self) -> pace.util.Quantity:
+        """
+        Reference pressure profile for Eulerian grid, defined at cell centers.
+        """
+        return self._vertical_data.p
+
+    @property
     def ak(self):
         """
         constant used to define pressure at vertical interfaces,
@@ -512,7 +550,7 @@ class GridData:
 
     @property
     def dp_ref(self) -> pace.util.Quantity:
-        return self._vertical_data.dp_ref
+        return self._vertical_data.dp
 
     @property
     def cosa(self):
