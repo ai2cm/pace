@@ -10,6 +10,7 @@ from pace.util.communicator import CubedSphereCommunicator
 from .. import _xarray as xr
 from ..filesystem import get_fs
 from ..quantity import Quantity
+from .convert import convert_to_numpy
 
 
 logger = logging.getLogger(__name__)
@@ -20,13 +21,13 @@ class _TimeChunkedVariable:
         self._data = np.zeros(
             (time_chunk_size, *initial.extent), dtype=initial.data.dtype
         )
-        self._data[0, ...] = np.asarray(initial.view[:])
+        self._data[0, ...] = convert_to_numpy(initial)
         self._dims = initial.dims
         self._units = initial.units
         self._i_time = 1
 
     def append(self, quantity: Quantity):
-        self._data[self._i_time, ...] = quantity.transpose(self._dims).view[:]
+        self._data[self._i_time, ...] = convert_to_numpy(quantity.transpose(self._dims))
         self._i_time += 1
 
     @property
@@ -75,7 +76,11 @@ class _ChunkedNetCDFWriter:
         else:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
-                data_vars[name] = chunked.data.data_array
+                data_vars[name] = xr.DataArray(
+                        convert_to_numpy(chunked.data),
+                        dims=chunked.data.dims,
+                        attrs=chunked.data.attrs,
+                    )
             ds = xr.Dataset(data_vars=data_vars)
             chunk_index = self._i_time // self._time_chunk_size
             chunk_path = str(
@@ -165,10 +170,21 @@ class NetCDFMonitor:
                     ds = xr.open_dataset(f)
                     ds = ds.load()
                 for name, quantity in state.items():
-                    ds[name] = quantity.data_array
+                    ds[name] = xr.DataArray(
+                        convert_to_numpy(quantity),
+                        dims=quantity.dims,
+                        attrs=quantity.attrs,
+                    )
             else:
                 ds = xr.Dataset(
-                    data_vars={name: value.data_array for name, value in state.items()}
+                    data_vars={
+                        name: xr.DataArray(
+                            convert_to_numpy(value),
+                            dims=value.dims,
+                            attrs=value.attrs,
+                        )
+                        for name, value in state.items()
+                    }
                 )
             with self._fs.open(constants_filename, "wb") as f:
                 ds.to_netcdf(f)

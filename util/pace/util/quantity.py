@@ -9,7 +9,6 @@ from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
 from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
-
 if cupy is None:
     import numpy as cupy
 
@@ -481,9 +480,7 @@ class Quantity:
 
     @property
     def data_array(self) -> _xarray.DataArray:
-        return _xarray.DataArray(
-            np.asarray(self.view[:]), dims=self.dims, attrs=self.attrs
-        )
+        return _xarray.DataArray(self.view[:], dims=self.dims, attrs=self.attrs)
 
     @property
     def np(self) -> NumpyModule:
