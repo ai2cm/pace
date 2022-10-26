@@ -1,5 +1,7 @@
-from typing import Iterable, Tuple, TypeVar
+import functools
+from typing import Iterable, TypeVar
 
+import numpy as np
 from typing_extensions import Protocol
 
 
@@ -17,7 +19,16 @@ class NumpyModule(Protocol):
     zeros: Allocator
     ones: Allocator
 
-    def rot90(self, m: Array, k: int = 1, axes: Tuple[int, int] = (0, 1)):
+    @functools.wraps(np.rot90)
+    def rot90(self, *args, **kwargs):
+        ...
+
+    @functools.wraps(np.sum)
+    def sum(self, *args, **kwargs):
+        ...
+
+    @functools.wraps(np.log)
+    def log(self, *args, **kwargs):
         ...
 
 

@@ -65,11 +65,12 @@ class DriverState:
 
     # TODO: the driver_config argument here isn't type hinted from
     # import due to a circular dependency. This can be fixed by refactoring
+    # for example by moving this method into some restart.py module
     @classmethod
     def load_state_from_restart(
         cls,
         restart_path: str,
-        driver_config: "pace.driver.DriverConfig",
+        driver_config,
         damping_coefficients: pace.util.grid.DampingCoefficients,
         driver_grid_data: pace.util.grid.DriverGridData,
         grid_data: pace.util.grid.GridData,

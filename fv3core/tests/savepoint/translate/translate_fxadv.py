@@ -20,7 +20,7 @@ class TranslateFxAdv(TranslateDycoreFortranData2Py):
         vtinfo = grid.y3d_domain_dict()
         vtinfo["serialname"] = "vt"
         self.stencil_factory = stencil_factory
-        self.compute_func = FiniteVolumeFluxPrep(
+        self.compute_func = FiniteVolumeFluxPrep(  # type: ignore
             self.stencil_factory,
             self.grid.grid_data,
         )

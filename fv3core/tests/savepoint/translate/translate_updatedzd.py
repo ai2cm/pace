@@ -1,6 +1,7 @@
 import numpy as np
 
 import pace.dsl
+import pace.fv3core
 import pace.fv3core.stencils.updatedzd
 import pace.util
 from pace.fv3core.stencils import d_sw
@@ -49,7 +50,7 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
         self.out_vars["ws"]["kstart"] = grid.npz
         self.out_vars["ws"]["kend"] = None
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = pace.fv3core.DynamicalCoreConfig.from_namelist(namelist)
         self._subset = get_subset_func(
             self.grid.grid_indexing,
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],

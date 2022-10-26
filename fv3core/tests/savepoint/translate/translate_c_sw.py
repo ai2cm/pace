@@ -74,7 +74,7 @@ class TranslateC_SW(TranslateDycoreFortranData2Py):
         cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(
             grid, namelist, stencil_factory
         )
-        self.compute_func = cgrid_shallow_water_lagrangian_dynamics
+        self.compute_func = cgrid_shallow_water_lagrangian_dynamics  # type: ignore
         self.in_vars["data_vars"] = {
             "delp": {},
             "pt": {},
@@ -226,7 +226,7 @@ class TranslateVorticityTransport_Cgrid(TranslateDycoreFortranData2Py):
                 cgrid_sw_lagrangian_dynamics, *args, **kwargs
             )
 
-        self.compute_func = compute_func
+        self.compute_func = compute_func  # type: ignore
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},
