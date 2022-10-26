@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional, Set
 
 import fsspec
 import numpy as np
-
 from pace.util.communicator import CubedSphereCommunicator
+from pace.dsl.gt4py_utils import asarray
 
 from .. import _xarray as xr
 from ..filesystem import get_fs
@@ -20,7 +20,7 @@ class _TimeChunkedVariable:
         self._data = np.zeros(
             (time_chunk_size, *initial.extent), dtype=initial.data.dtype
         )
-        self._data[0, ...] = initial.view[:]
+        self._data[0, ...] = asarray(initial.view[:])
         self._dims = initial.dims
         self._units = initial.units
         self._i_time = 1
