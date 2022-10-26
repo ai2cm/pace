@@ -87,10 +87,11 @@ class UpdateGeopotentialHeightOnCGrid:
         stencil_factory: StencilFactory,
         quantity_factory: pace.util.QuantityFactory,
         area: pace.util.Quantity,
+        dp_ref: pace.util.Quantity,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self._area = area
-        largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
+        self._dp_ref = dp_ref
         self._gz_x = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
         self._gz_y = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
         full_origin = grid_indexing.origin_full()
@@ -122,7 +123,6 @@ class UpdateGeopotentialHeightOnCGrid:
 
     def __call__(
         self,
-        dp_ref: FloatFieldK,
         zs: FloatFieldIJ,
         ut: FloatField,
         vt: FloatField,
@@ -150,7 +150,7 @@ class UpdateGeopotentialHeightOnCGrid:
         self._fill_corners_y_stencil(self._gz_y, self._gz_y)
 
         self._update_dz_c(
-            dp_ref,
+            self._dp_ref,
             zs,
             self._area,
             ut,

@@ -1,6 +1,5 @@
 from typing import Dict, Mapping, Optional
 
-import numpy as np
 from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
@@ -77,25 +76,6 @@ def zero_data(
             with horizontal(region[3:-3, 3:-3]):
                 heat_source = 0.0
                 diss_estd = 0.0
-
-
-# NOTE in Fortran these are columns
-def dp_ref_compute(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    phis: FloatFieldIJ,
-    dp_ref: FloatField,
-    zs: FloatField,
-    rgrav: float,
-):
-    with computation(PARALLEL), interval(0, -1):
-        dp_ref = ak[1] - ak + (bk[1] - bk) * 1.0e5
-    with computation(PARALLEL), interval(...):
-        zs = phis * rgrav
-
-
-def get_dp_ref(ak: pace.util.Quantity, bk: pace.util.Quantity) -> np.ndarray:
-    return ak[1:] - ak[:-1] + (bk[1:] - bk[:-1]) * 1.0e5
 
 
 def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
@@ -472,22 +452,18 @@ class AcousticDynamics:
         if not config.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
-            self._dp_ref = quantity_factory.zeros([Z_DIM], units="Pa")
-            self._dp_ref.view[:] = get_dp_ref(
-                grid_data.ak.view[:], grid_data.bk.view[:]
-            )
+            self._dp_ref = grid_data.dp_ref
             self._zs = quantity_factory.zeros([X_DIM, Y_DIM], units="m")
             self._zs.data[:] = phis.data / constants.GRAV
 
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,
-                quantity_factory,
-                damping_coefficients,
-                grid_data,
-                grid_type,
-                config.hord_tm,
-                self._dp_ref,
-                column_namelist,
+                quantity_factory=quantity_factory,
+                damping_coefficients=damping_coefficients,
+                grid_data=grid_data,
+                grid_type=grid_type,
+                hord_tm=config.hord_tm,
+                column_namelist=column_namelist,
             )
             self.riem_solver3 = RiemannSolver3(
                 stencil_factory,
@@ -563,7 +539,10 @@ class AcousticDynamics:
 
         self.update_geopotential_height_on_c_grid = (
             updatedzc.UpdateGeopotentialHeightOnCGrid(
-                stencil_factory, quantity_factory=quantity_factory, area=grid_data.area
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                area=grid_data.area,
+                dp_ref=grid_data.dp_ref,
             )
         )
 
@@ -811,7 +790,7 @@ class AcousticDynamics:
                     )
             if not self.config.hydrostatic:
                 self.update_geopotential_height_on_c_grid(
-                    self._dp_ref, self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
+                    self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
                 )
                 self.riem_solver_c(
                     dt2,
@@ -946,13 +925,13 @@ class AcousticDynamics:
                 # TODO: Pass through ks, or remove, inconsistent representation vs
                 # Fortran.
                 self._rayleigh_damping(
-                    state.u,
-                    state.v,
-                    state.w,
-                    self._dp_ref,
-                    self._pfull,
-                    dt_acoustic_substep,
-                    self._ptop,
+                    u=state.u,
+                    v=state.v,
+                    w=state.w,
+                    dp=self._dp_ref,
+                    pfull=self._pfull,
+                    dt=dt_acoustic_substep,
+                    ptop=self._ptop,
                 )
 
             if it != n_split - 1:

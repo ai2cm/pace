@@ -17,7 +17,6 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
     ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
-            "dp0": {},  # column var
             "surface_height": {"serialname": "zs"},
             "height": {"kend": grid.npz + 1},
             "courant_number_x": grid.x3d_compute_domain_y_dict(),
@@ -60,8 +59,6 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        dp0 = self.grid.quantity_factory.zeros([pace.util.Z_DIM], units="Pa")
-        dp0.data[:] = inputs.pop("dp0")
         self.updatedzd = pace.fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
             self.stencil_factory,
             self.grid.quantity_factory,
@@ -69,7 +66,6 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
             self.grid.grid_data,
             self.grid.grid_type,
             self.namelist.hord_tm,
-            dp_ref=dp0,
             column_namelist=d_sw.get_column_namelist(
                 self.namelist, quantity_factory=self.grid.quantity_factory
             ),

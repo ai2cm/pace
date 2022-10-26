@@ -12,7 +12,7 @@ try:
     from pace.dsl.gt4py_utils import split_cartesian_into_storages
 except ImportError:
     split_cartesian_into_storages = None
-from pace.util.filesystem import get_fs
+from pace.util import Z_DIM, get_fs
 
 from .generation import MetricTerms
 
@@ -137,6 +137,9 @@ class VerticalGridData:
     where p = ak + bk * p_ref
     """
 
+    def __post_init__(self):
+        self._dp_ref = None
+
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
         return cls(
@@ -165,6 +168,29 @@ class VerticalGridData:
             bk = ds["bk"].values
 
         return cls(ak=ak, bk=bk)
+
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa)
+        """
+        return 1e5
+
+    @property
+    def dp_ref(self) -> pace.util.Quantity:
+        if self._dp_ref is None:
+            dp_ref_data = (
+                self.ak.view[1:]
+                - self.ak.view[:-1]
+                + (self.bk.view[1:] - self.bk.view[:-1]) * self.p_ref
+            )
+            self._dp_ref = pace.util.Quantity(
+                dp_ref_data,
+                dims=[Z_DIM],
+                units="Pa",
+                gt4py_backend=self.ak.gt4py_backend,
+            )
+        return self._dp_ref
 
     @property
     def ptop(self) -> float:
@@ -443,18 +469,13 @@ class GridData:
     def edge_n(self):
         return self._horizontal_data.edge_n
 
-    # Ajda
-    # @property
-    # def p_ref(self) -> float:
-    #     """
-    #     reference pressure (Pa) used to define pressure at vertical interfaces,
-    #     where p = ak + bk * p_ref
-    #     """
-    #     return self._vertical_data.p_ref
-
-    # @p_ref.setter
-    # def p_ref(self, value):
-    #     self._vertical_data.p_ref = value
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa) used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.p_ref
 
     @property
     def ak(self):
@@ -488,6 +509,10 @@ class GridData:
     @ptop.setter
     def ptop(self, value):
         self._vertical_data.ptop = value
+
+    @property
+    def dp_ref(self) -> pace.util.Quantity:
+        return self._vertical_data.dp_ref
 
     @property
     def cosa(self):

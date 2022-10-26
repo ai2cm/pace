@@ -209,7 +209,6 @@ class UpdateHeightOnDGrid:
         grid_data: GridData,
         grid_type: int,
         hord_tm: int,
-        dp_ref: pace.util.Quantity,
         column_namelist,
     ):
         orchestrate(
@@ -222,10 +221,10 @@ class UpdateHeightOnDGrid:
         self._column_namelist = column_namelist
         if any(column_namelist["damp_vt"].view[:] <= 1e-5):
             raise NotImplementedError("damp <= 1e-5 in column_namelist is untested")
-        self._dp0 = dp_ref
+        self._dp_ref = grid_data.dp_ref
         self._allocate_temporary_storages(quantity_factory)
         self._gk, self._beta, self._gamma = cubic_spline_interpolation_constants(
-            dp0=dp_ref, quantity_factory=quantity_factory
+            dp0=grid_data.dp_ref, quantity_factory=quantity_factory
         )
 
         self._interpolate_to_layer_interface = stencil_factory.from_origin_domain(
