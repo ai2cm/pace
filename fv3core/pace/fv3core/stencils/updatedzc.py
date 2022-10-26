@@ -91,7 +91,14 @@ class UpdateGeopotentialHeightOnCGrid:
     ):
         grid_indexing = stencil_factory.grid_indexing
         self._area = area
-        self._dp_ref = dp_ref
+        # TODO: this is needed because GridData.dp_ref does not have access
+        # to a QuantityFactory, we should add a way to perform operations on
+        # Quantity and persist the QuantityFactory choices
+        # e.g. by adding a quantity.factory
+        # attribute, or by implementing basic math like slicing, addition, etc.
+        # here it's needed to ensure we have a buffer point after the compute domain
+        self._dp_ref = quantity_factory.zeros(dp_ref.dims, units=dp_ref.units)
+        self._dp_ref.view[:] = dp_ref.view[:]
         self._gz_x = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
         self._gz_y = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m**2/s**2")
         full_origin = grid_indexing.origin_full()
