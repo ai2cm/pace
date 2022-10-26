@@ -1,7 +1,7 @@
 import dataclasses
 import warnings
 from typing import Dict, Iterable, Sequence, Tuple, Union, cast
-from pace.dsl.gt4py_utils import asarray
+
 import numpy as np
 
 from . import _xarray, constants
@@ -481,7 +481,9 @@ class Quantity:
 
     @property
     def data_array(self) -> _xarray.DataArray:
-        return _xarray.DataArray(asarray(self.view[:]), dims=self.dims, attrs=self.attrs)
+        return _xarray.DataArray(
+            np.asarray(self.view[:]), dims=self.dims, attrs=self.attrs
+        )
 
     @property
     def np(self) -> NumpyModule:
