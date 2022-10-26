@@ -9,6 +9,7 @@ from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
 from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
+
 if cupy is None:
     import numpy as cupy
 

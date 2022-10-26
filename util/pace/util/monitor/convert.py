@@ -1,6 +1,7 @@
 import numpy as np
-from ..quantity import Quantity
+
 from .._optional_imports import cupy
+from ..quantity import Quantity
 
 
 def convert_to_numpy(quantity: Quantity) -> np.ndarray:

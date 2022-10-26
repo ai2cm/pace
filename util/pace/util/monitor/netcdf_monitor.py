@@ -77,10 +77,10 @@ class _ChunkedNetCDFWriter:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
                 data_vars[name] = xr.DataArray(
-                        convert_to_numpy(chunked.data),
-                        dims=chunked.data.dims,
-                        attrs=chunked.data.attrs,
-                    )
+                    convert_to_numpy(chunked.data),
+                    dims=chunked.data.dims,
+                    attrs=chunked.data.attrs,
+                )
             ds = xr.Dataset(data_vars=data_vars)
             chunk_index = self._i_time // self._time_chunk_size
             chunk_path = str(
