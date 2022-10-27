@@ -27,7 +27,14 @@ def get_subset_func(
     j_end = origin[1] + domain[1] + n_halo[1][1]
 
     def subset(data):
-        return data[i_start:i_end, j_start:j_end, :]
+        if len(dims) == 3:
+            return data[i_start:i_end, j_start:j_end, :]
+        elif len(dims) == 2:
+            return data[i_start:i_end, j_start:j_end]
+        else:
+            raise NotImplementedError(
+                "Only 2D and 3D subsets are supported, got dims: {}".format(dims)
+            )
 
     return subset
 

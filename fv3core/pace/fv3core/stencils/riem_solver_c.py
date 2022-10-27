@@ -76,7 +76,8 @@ def precompute(
         # (1), giving us
 
         # \bar p* = \delta p* / \delta log p*
-        pm = (peg[0, 0, 1] - peg) / (log(peg[0, 0, 1]) - log(peg))
+        # note log(b) - log(a) = log(b/a)
+        pm = (peg[0, 0, 1] - peg) / (log(peg[0, 0, 1] / peg))
 
 
 def finalize(
