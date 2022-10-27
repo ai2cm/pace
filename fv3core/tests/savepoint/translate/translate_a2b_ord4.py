@@ -45,7 +45,7 @@ class TranslateA2B_Ord4(TranslateDycoreFortranData2Py):
         self.in_vars["data_vars"] = {"wk": {}, "vort": {}, "delpc": {}, "nord_col": {}}
         self.in_vars["parameters"] = ["dt"]
         self.out_vars: Dict[str, Any] = {"wk": {}, "vort": {}}
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
         self.compute_obj = A2B_Ord4Compute(stencil_factory)
 

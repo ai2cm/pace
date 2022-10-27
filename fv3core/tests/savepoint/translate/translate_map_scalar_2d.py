@@ -15,7 +15,7 @@ class TranslateMapScalar_2d(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = MapSingleFactory(stencil_factory)
+        self.compute_func = MapSingleFactory(stencil_factory)  # type: ignore
         self.in_vars["data_vars"] = {
             "q1": {"serialname": "pt"},
             "pe1": {
@@ -40,7 +40,7 @@ class TranslateMapScalar_2d(TranslateDycoreFortranData2Py):
         self.write_vars = ["qs"]
         self.nj = grid.njd
         self.nk = grid.npz
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):

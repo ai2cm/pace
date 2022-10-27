@@ -7,7 +7,7 @@ import cftime
 from .. import _xarray as xr
 from .. import constants, utils
 from .._optional_imports import cupy, zarr
-from ..partitioner import CubedSpherePartitioner, subtile_slice
+from ..partitioner import Partitioner, subtile_slice
 from .convert import to_numpy
 
 
@@ -42,7 +42,7 @@ class ZarrMonitor:
     def __init__(
         self,
         store: Union[str, "zarr.storage.MutableMapping"],
-        partitioner: CubedSpherePartitioner,
+        partitioner: Partitioner,
         mode: str = "w",
         mpi_comm=DummyComm(),
     ):

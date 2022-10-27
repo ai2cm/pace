@@ -93,7 +93,7 @@ class GeneratedGridConfig(GridInitializer):
     stretch_factor: Optional[float] = 1.0
     lon_target: Optional[float] = 350.0
     lat_target: Optional[float] = -90.0
-    restart_path: Optional[bool] = None
+    restart_path: Optional[str] = None
 
     def get_grid(
         self,
@@ -111,7 +111,9 @@ class GeneratedGridConfig(GridInitializer):
 
         horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
         if self.restart_path is not None:
-            vertical_data = VerticalGridData.from_restart(self.restart_path)
+            vertical_data = VerticalGridData.from_restart(
+                self.restart_path, quantity_factory=quantity_factory
+            )
         else:
             vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
         contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)
@@ -160,7 +162,7 @@ class SerialboxGridConfig(GridInitializer):
         self,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
-    ) -> pace.stencils.testing.grid.Grid:
+    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
         ser = self._serializer(communicator)
         grid = TranslateGrid.new_from_serialized_data(
             ser, communicator.rank, self._namelist.layout, backend

@@ -27,7 +27,7 @@ def test_check_communicator_valid(
     size: int, use_minimal_caching: bool, run_mode: RunMode
 ):
     partitioner = CubedSpherePartitioner(
-        TilePartitioner((sqrt(size / 6), (sqrt(size / 6))))
+        TilePartitioner((int(sqrt(size / 6)), int((sqrt(size / 6)))))
     )
     comm = unittest.mock.MagicMock()
     comm.Get_size.return_value = size
@@ -85,7 +85,7 @@ def test_get_decomposition_info_from_comm(
     rank: int, size: int, is_compiling: bool, equivalent: int
 ):
     partitioner = CubedSpherePartitioner(
-        TilePartitioner((sqrt(size / 6), sqrt(size / 6)))
+        TilePartitioner((int(sqrt(size / 6)), int(sqrt(size / 6))))
     )
     comm = unittest.mock.MagicMock()
     comm.Get_rank.return_value = rank

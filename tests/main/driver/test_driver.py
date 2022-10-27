@@ -6,7 +6,7 @@ import pytest
 
 import pace.driver
 import pace.dsl
-from pace.driver import CreatesComm, DriverConfig
+from pace.driver import CreatesCommSelector, DriverConfig, NullCommConfig
 from pace.driver.performance.report import (
     TimeReport,
     gather_hit_counts,
@@ -47,28 +47,15 @@ def get_driver_config(
         initialization=initialization_config,
         performance_config=unittest.mock.MagicMock(),
         grid_config=unittest.mock.MagicMock(),
-        comm_config=NullCommConfig(layout),
+        comm_config=CreatesCommSelector(
+            config=NullCommConfig(rank=0, total_ranks=6), type="null"
+        ),
         diagnostics_config=unittest.mock.MagicMock(
             output_frequency=frequency, output_initial_state=output_initial_state
         ),
         dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
-
-
-class NullCommConfig(CreatesComm):
-    def __init__(self, layout):
-        self.layout = layout
-
-    def get_comm(self):
-        return NullComm(
-            rank=0,
-            total_ranks=6 * self.layout[0] * self.layout[1],
-            fill_value=0.0,
-        )
-
-    def cleanup(self, comm):
-        pass
 
 
 @pytest.mark.parametrize(

@@ -7,4 +7,4 @@ from pace.stencils.testing.conftest import *  # noqa: F403,F401
 from . import translate
 
 
-pace.stencils.testing.conftest.translate = translate
+pace.stencils.testing.conftest.translate = translate  # type: ignore
