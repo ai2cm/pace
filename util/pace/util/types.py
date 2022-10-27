@@ -35,6 +35,10 @@ class NumpyModule(Protocol):
     def sin(self, *args, **kwargs):
         ...
 
+    @functools.wraps(np.asarray)
+    def asarray(self, *args, **kwargs):
+        ...
+
 
 class AsyncRequest(Protocol):
     """Define the result of an over-the-network capable communication API"""
