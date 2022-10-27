@@ -32,10 +32,10 @@ class TranslateNH_P_Grad(TranslateDycoreFortranData2Py):
             "delp": {},
         }
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
 
     def compute(self, inputs):
-        self.compute_func = NH_P_Grad.NonHydrostaticPressureGradient(
+        self.compute_func = NH_P_Grad.NonHydrostaticPressureGradient(  # type: ignore
             self.stencil_factory, self.grid.grid_data, self.namelist.grid_type
         )
         self.make_storage_data_input_vars(inputs)

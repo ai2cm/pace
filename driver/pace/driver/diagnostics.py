@@ -86,7 +86,7 @@ class DiagnosticsConfig:
                 fs.makedirs(self.path)
             if self.output_format == "zarr":
                 store = zarr_storage.DirectoryStore(path=self.path)
-                monitor = pace.util.ZarrMonitor(
+                monitor: pace.util.Monitor = pace.util.ZarrMonitor(
                     store=store,
                     partitioner=communicator.partitioner,
                     mpi_comm=communicator.comm,

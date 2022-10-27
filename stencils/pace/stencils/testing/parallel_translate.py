@@ -20,7 +20,15 @@ class ParallelTranslate:
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}
 
-    def __init__(self, rank_grids, namelist, stencil_factory):
+    def __init__(self, rank_grids, namelist, stencil_factory, *args, **kwargs):
+        if len(args) > 0:
+            raise TypeError(
+                "received {} positional arguments, expected 0".format(len(args))
+            )
+        if len(kwargs) > 0:
+            raise TypeError(
+                "received {} keyword arguments, expected 0".format(len(kwargs))
+            )
         if not hasattr(rank_grids, "__getitem__"):
             rank_grid = rank_grids
         else:

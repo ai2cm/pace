@@ -5,7 +5,7 @@ from typing import Dict, Protocol, Union
 import numpy as np
 import xarray as xr
 
-from .grid import Grid
+from .grid import Grid  # type: ignore
 
 
 def dataset_to_dict(ds: xr.Dataset) -> Dict[str, Union[np.ndarray, float, int]]:
