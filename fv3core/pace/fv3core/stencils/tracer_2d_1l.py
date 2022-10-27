@@ -62,15 +62,15 @@ def flux_compute(
         sin_sg2 (in):
         sin_sg3 (in):
         sin_sg4 (in):
-        xfx (out):
-        yfx (out):
+        xfx (out): x-direction area flux
+        yfx (out): y-direction area flux
     """
     with computation(PARALLEL), interval(...):
         xfx = flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx)
         yfx = flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx)
 
 
-def cmax_multiply_by_frac(
+def divide_fluxes_by_n_substeps(
     cxd: FloatField,
     xfx: FloatField,
     mfxd: FloatField,
@@ -80,7 +80,7 @@ def cmax_multiply_by_frac(
     n_split: int,
 ):
     """
-    Multiply all inputs in-place by 1.0 / n_split.
+    Divide all inputs in-place by the number of substeps n_split.
 
     Args:
         cxd (inout):
@@ -238,8 +238,8 @@ class TracerAdvection:
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._cmax_multiply_by_frac = stencil_factory.from_origin_domain(
-            cmax_multiply_by_frac,
+        self._divide_fluxes_by_n_substeps = stencil_factory.from_origin_domain(
+            divide_fluxes_by_n_substeps,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
@@ -279,12 +279,13 @@ class TracerAdvection:
     def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:
-            tracers (inout):
-            dp1 (in):
-            mfxd (inout):
-            mfyd (inout):
-            cxd (inout):
-            cyd (inout):
+            tracers (inout): tracers to advect according to fluxes during
+                acoustic substeps
+            dp1 (in): pressure thickness of atmospheric layers before acoustic substeps
+            mfxd (inout): total mass flux in x-direction over acoustic substeps
+            mfyd (inout): total mass flux in y-direction over acoustic substeps
+            cxd (inout): accumulated courant number in x-direction
+            cyd (inout): accumulated courant number in y-direction
         """
         # TODO: remove unused mdt argument
         # DaCe parsing issue
@@ -306,6 +307,7 @@ class TracerAdvection:
             self.grid_data.sin_sg2,
             self.grid_data.sin_sg3,
             self.grid_data.sin_sg4,
+            # TODO: rename xfx/yfx to "area flux"
             self._tmp_xfx,
             self._tmp_yfx,
         )
@@ -342,7 +344,7 @@ class TracerAdvection:
         # that, make n_split a column as well
 
         if n_split > 1.0:
-            self._cmax_multiply_by_frac(
+            self._divide_fluxes_by_n_substeps(
                 cxd,
                 self._tmp_xfx,
                 mfxd,
@@ -358,6 +360,8 @@ class TracerAdvection:
 
         for it in range(n_split):
             last_call = it == n_split - 1
+            # TODO: rename to reflect advancing pressure forward over
+            # tracer substep
             self._dp_fluxadjustment(
                 dp1,
                 mfxd,
@@ -377,6 +381,7 @@ class TracerAdvection:
                     x_mass_flux=mfxd,
                     y_mass_flux=mfyd,
                 )
+                # TODO: rename to something about applying fluxes
                 self._q_adjust(
                     q,
                     dp1,
@@ -387,5 +392,6 @@ class TracerAdvection:
                 )
             if not last_call:
                 self._tracers_halo_updater.update()
-                # use variable assignment to avoid a data copy
+                # we can't use variable assignment to avoid a data copy
+                # because of current dace limitations
                 self._swap_dp(dp1, dp2)

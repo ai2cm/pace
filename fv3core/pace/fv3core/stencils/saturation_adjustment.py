@@ -587,6 +587,9 @@ def satadjust(
     last_step: bool,
 ):
     """
+    Documented in Zhou, Harris and Chen (2022)
+    https://repository.library.noaa.gov/view/noaa/44636.
+
     Args:
         peln (in):
         qv (inout):
@@ -606,9 +609,10 @@ def satadjust(
         hs (in):
         pkz (out):
         sdt (in):
-        zvir (in):
+        zvir (in): epsilon parameter in virtual temperature
         fac_i2s (in):
-        do_qa (in):
+        do_qa (in): enables the cloud fraction scheme accounting for subgrid
+            variability in cloud fraction
         consv_te (in):
         c_air (in):
         c_vap (in):
@@ -617,8 +621,8 @@ def satadjust(
         fac_smlt (in):
         fac_l2r (in):
         fac_imlt (in):
-        d0_vap (in):
-        lv00 (in):
+        d0_vap (in): Cvapor - Cliquid, used for Clausius-Clapeyron
+        lv00 (in): latent heating of vaporization, HLV - d0_vap * TICE
         fac_v2l (in):
         fac_l2v (in):
         last_step (in):
@@ -993,6 +997,10 @@ class SatAdjust3d:
         kmp: int,
     ):
         """
+        Fast phase change as part of GFDL microphysics.
+
+        Grid-scale condensation.
+
         Args:
             te (out):
             qvapor (inout):
@@ -1003,7 +1011,7 @@ class SatAdjust3d:
             qgraupel (inout):
             qcld (out):
             hs (in):
-            peln (in): only read if hydrostartc, otherwise unused
+            peln (in): only read if hydrostatic, otherwise unused
             delp (in):
             delz (inout): If nonhydrostatic delz is only in, not out
             q_con (out):
@@ -1021,16 +1029,23 @@ class SatAdjust3d:
         # TODO: Maybe remove hydrostatic code
         sdt = 0.5 * mdt  # half remapping time step
         # define conversion scalar / factor
-        fac_i2s = 1.0 - math.exp(-mdt / self._config.tau_i2s)
-        fac_v2l = 1.0 - math.exp(-sdt / self._config.tau_v2l)
-        fac_r2g = 1.0 - math.exp(-mdt / self._config.tau_r2g)
-        fac_l2r = 1.0 - math.exp(-mdt / self._config.tau_l2r)
+        # ice to snow
+        fac_ice_to_snow = 1.0 - math.exp(-mdt / self._config.tau_i2s)
+        # vapor to liquid
+        fac_vapor_to_liquid = 1.0 - math.exp(-sdt / self._config.tau_v2l)
+        # rain to graupel
+        fac_rain_to_graupel = 1.0 - math.exp(-mdt / self._config.tau_r2g)
+        # liquid to rain
+        fac_liquid_to_rain = 1.0 - math.exp(-mdt / self._config.tau_l2r)
 
-        fac_l2v = 1.0 - math.exp(-sdt / self._config.tau_l2v)
-        fac_l2v = min(self._config.sat_adj0, fac_l2v)
+        # liquid to vapor
+        fac_liquid_to_vapor = 1.0 - math.exp(-sdt / self._config.tau_l2v)
+        fac_liquid_to_vapor = min(self._config.sat_adj0, fac_liquid_to_vapor)
 
-        fac_imlt = 1.0 - math.exp(-sdt / self._config.tau_imlt)
-        fac_smlt = 1.0 - math.exp(-mdt / self._config.tau_smlt)
+        # time scale for ice melting (i2r)
+        fac_ice_to_rain = 1.0 - math.exp(-sdt / self._config.tau_imlt)
+        # snow melting (s2r)
+        fac_snow_to_rain = 1.0 - math.exp(-mdt / self._config.tau_smlt)
 
         # define heat capacity of dry air and water vapor based on hydrostatical
         # property
@@ -1067,19 +1082,19 @@ class SatAdjust3d:
             pkz,
             sdt,
             r_vir,
-            fac_i2s,
+            fac_ice_to_snow,
             do_qa,
             fast_mp_consv,
             c_air,
             c_vap,
             mdt,
-            fac_r2g,
-            fac_smlt,
-            fac_l2r,
-            fac_imlt,
+            fac_rain_to_graupel,
+            fac_snow_to_rain,
+            fac_liquid_to_rain,
+            fac_ice_to_rain,
             d0_vap,
             lv00,
-            fac_v2l,
-            fac_l2v,
+            fac_vapor_to_liquid,
+            fac_liquid_to_vapor,
             last_step,
         )

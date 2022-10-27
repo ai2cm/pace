@@ -1049,9 +1049,16 @@ class AcousticDynamics:
             # TODO: move dependence on da_min into init of hyperdiffusion class
             da_min: float = self._get_da_min()
             cd = constants.CNST_0P20 * da_min
+            # we want to diffuse the heat source from damping before we apply it,
+            # so that we don't reinforce the same grid-scale patterns we're trying
+            # to damp
             self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
                 delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)
+                # TODO: it looks like state.pkz is being used as a temporary here,
+                # and overwritten at the start of remapping. See if we can make it
+                # an internal temporary of this stencil.
+                # this is really just applying the heating, rename it appropriately
                 self._compute_pkz_tempadjust(
                     state.delp,
                     state.delz,
