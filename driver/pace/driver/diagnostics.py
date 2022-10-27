@@ -10,6 +10,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace.dsl.dace.orchestration import dace_inhibitor
+from pace.util.constants import RGRAV
 
 from .state import DriverState
 
@@ -48,6 +49,7 @@ class DiagnosticsConfig:
             output_format is "netcdf"
         names: state variables to save as diagnostics
         derived_names: derived diagnostics to save
+        level_select: save a horizontal or veritcal slice of a 3D state
     """
 
     path: Optional[str] = None
@@ -55,6 +57,7 @@ class DiagnosticsConfig:
     time_chunk_size: int = 1
     names: List[str] = dataclasses.field(default_factory=list)
     derived_names: List[str] = dataclasses.field(default_factory=list)
+    level_select: List[str] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
         if (len(self.names) > 0 or len(self.derived_names) > 0) and self.path is None:
@@ -103,6 +106,7 @@ class DiagnosticsConfig:
                 monitor=monitor,
                 names=self.names,
                 derived_names=self.derived_names,
+                level_select=self.level_select,
             )
         return diagnostics
 
@@ -115,6 +119,7 @@ class MonitorDiagnostics(Diagnostics):
         monitor: pace.util.Monitor,
         names: List[str],
         derived_names: List[str],
+        level_select: List[str],
     ):
         """
         Args:
@@ -124,6 +129,7 @@ class MonitorDiagnostics(Diagnostics):
         """
         self.names = names
         self.derived_names = derived_names
+        self.level_select = level_select
         self.monitor = monitor
 
     @dace_inhibitor
@@ -136,7 +142,9 @@ class MonitorDiagnostics(Diagnostics):
                 quantity = getattr(state.physics_state, name)
             monitor_state[name] = quantity
         derived_state = self._get_derived_state(state)
+        level_select = self._get_level_select_state(state)
         monitor_state.update(derived_state)
+        monitor_state.update(level_select)
         self.monitor.store(monitor_state)
 
     def _get_derived_state(self, state: DriverState):
@@ -153,6 +161,9 @@ class MonitorDiagnostics(Diagnostics):
                 else:
                     warnings.warn(f"{name} is not a supported diagnostic variable.")
         return output
+
+    def _get_level_select_state(self, state: DriverState):
+        pass
 
     def store_grid(self, grid_data: pace.util.grid.GridData):
         zarr_grid = {
@@ -196,7 +207,8 @@ def _compute_column_integral(
         )
     k_slice = slice(q_in.origin[2], q_in.origin[2] + q_in.extent[2])
     column_integral = pace.util.Quantity(
-        q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
+        RGRAV
+        * q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
         dims=tuple(q_in.dims[:2]) + tuple(q_in.dims[3:]),
         origin=q_in.metadata.origin[0:2],
         extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),
