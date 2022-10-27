@@ -155,7 +155,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
             dims=[pace.util.X_DIM, pace.util.Y_DIM],
             units="m",
         )
-        phis.data[:] = inputs["phis"]
+        phis.data[:] = phis.np.asarray(inputs["phis"])
         acoustic_dynamics = dyn_core.AcousticDynamics(
             comm=communicator,
             stencil_factory=self.stencil_factory,

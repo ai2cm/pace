@@ -453,7 +453,7 @@ class AcousticDynamics:
             # then converted to lower dimensional
             self._dp_ref = grid_data.dp_ref
             self._zs = quantity_factory.zeros([X_DIM, Y_DIM], units="m")
-            self._zs.data[:] = phis.data / constants.GRAV
+            self._zs.data[:] = self._zs.asarray(phis.data / constants.GRAV)
 
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,

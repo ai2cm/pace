@@ -39,7 +39,7 @@ class TranslateDel6VtFlux(TranslateDycoreFortranData2Py):
         nord_col = self.grid.quantity_factory.zeros(
             dims=[pace.util.Z_DIM], units="unknown"
         )
-        nord_col.data[:] = inputs.pop("nord_w")
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_w"))
         self.compute_func = delnflux.DelnFluxNoSG(  # type: ignore
             self.stencil_factory,
             self.grid.damping_coefficients,
