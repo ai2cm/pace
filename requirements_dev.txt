@@ -3,6 +3,7 @@ pytest-subtests
 pytest-regressions
 pytest-profiling
 pytest-cov
+nbmake
 mpi4py
 xarray
 zarr
