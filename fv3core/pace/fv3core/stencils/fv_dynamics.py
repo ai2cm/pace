@@ -199,8 +199,8 @@ class DynamicalCore:
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
         self.call_checkpointer = checkpointer is not None
-        if not self.call_checkpointer:
-            self.checkpointer = pace.util.NullCheckpointer()
+        if checkpointer is None:
+            self.checkpointer: pace.util.Checkpointer = pace.util.NullCheckpointer()
         else:
             self.checkpointer = checkpointer
         nested = False

@@ -287,9 +287,9 @@ class DivergenceDamping:
         stretched_grid: bool,
         dddmp,
         d4_bg,
-        nord: pace.util.Quantity,
+        nord: int,
         grid_type,
-        nord_col: FloatFieldK,
+        nord_col: pace.util.Quantity,
         d2_bg: FloatFieldK,
     ):
         orchestrate(

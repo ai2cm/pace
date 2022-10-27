@@ -250,7 +250,7 @@ class SerialboxInit(Initializer):
         self,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
-    ) -> pace.stencils.testing.grid.Grid:
+    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
         ser = self._serializer(communicator)
         grid = TranslateGrid.new_from_serialized_data(
             ser, communicator.rank, self._namelist.layout, backend
@@ -376,7 +376,7 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> None:
     and updates the driver state with values.
     """
 
-    ptop = state.grid_data.ak[0]
+    ptop = state.grid_data.ak.view[0]
     pe = state.dycore_state.pe
     peln = state.dycore_state.peln
     delp = state.dycore_state.delp

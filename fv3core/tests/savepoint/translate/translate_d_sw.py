@@ -23,7 +23,7 @@ class TranslateD_SW(TranslateDycoreFortranData2Py):
             config=dycore_config.acoustic_dynamics.d_grid_shallow_water,
             quantity_factory=self.grid.quantity_factory,
         )
-        self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
+        self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(  # type: ignore
             stencil_factory=self.stencil_factory,
             quantity_factory=self.grid.quantity_factory,
             grid_data=self.grid.grid_data,
@@ -101,7 +101,7 @@ class TranslateUbKE(TranslateDycoreFortranData2Py):
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         self.stencil_factory = stencil_factory
         ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             ubke, externals=ax_offsets, origin=origin, domain=domain
         )
 
@@ -148,7 +148,7 @@ class TranslateVbKE(TranslateDycoreFortranData2Py):
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         self.stencil_factory = stencil_factory
         ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             vbke, externals=ax_offsets, origin=origin, domain=domain
         )
 
@@ -181,7 +181,7 @@ class TranslateFluxCapacitor(TranslateDycoreFortranData2Py):
         for outvar in ["cx", "cy", "xflux", "yflux"]:
             self.out_vars[outvar] = self.in_vars["data_vars"][outvar]
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             d_sw.flux_capacitor,
             origin=grid.full_origin(),
             domain=grid.domain_shape_full(),
@@ -209,7 +209,7 @@ class TranslateHeatDiss(TranslateDycoreFortranData2Py):
             "diss_est": grid.compute_dict(),
             "dw": grid.compute_dict(),
         }
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute_from_storage(self, inputs):
@@ -248,7 +248,7 @@ class TranslateWdivergence(TranslateDycoreFortranData2Py):
         }
         self.out_vars = {"q": {"serialname": "w"}}
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             d_sw.flux_adjust,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),

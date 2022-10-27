@@ -17,7 +17,10 @@ def copy_temporaries(obj, max_depth: int) -> dict:
             attr = None
         if isinstance(attr, (gt4py.storage.storage.Storage, pace.util.Quantity)):
             temporaries[attr_name] = copy.deepcopy(np.asarray(attr.data))
-        elif attr.__class__.__module__.split(".")[0] in ("fv3core", "pace"):
+        elif attr.__class__.__module__.split(".")[0] in (  # type: ignore
+            "fv3core",
+            "pace",
+        ):
             if max_depth > 0:
                 sub_temporaries = copy_temporaries(attr, max_depth - 1)
                 if len(sub_temporaries) > 0:

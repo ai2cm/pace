@@ -37,7 +37,7 @@ class TranslateDelnFlux(TranslateDycoreFortranData2Py):
             dims=[pace.util.Z_DIM], units="unknown"
         )
         damp_c.data[:] = inputs.pop("damp_c")
-        self.compute_func = delnflux.DelnFlux(
+        self.compute_func = delnflux.DelnFlux(  # type: ignore
             self.stencil_factory,
             quantity_factory=self.grid.quantity_factory,
             damping_coefficients=self.grid.damping_coefficients,

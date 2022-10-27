@@ -157,7 +157,7 @@ class DriverConfig:
 
     def get_grid(
         self,
-        communicator: pace.util.Communicator,
+        communicator: pace.util.CubedSphereCommunicator,
         quantity_factory: Optional[pace.util.QuantityFactory] = None,
     ) -> Tuple[
         pace.util.grid.DampingCoefficients,
@@ -186,7 +186,7 @@ class DriverConfig:
 
     def get_driver_state(
         self,
-        communicator: pace.util.Communicator,
+        communicator: pace.util.CubedSphereCommunicator,
         damping_coefficients: pace.util.grid.DampingCoefficients,
         driver_grid_data: pace.util.grid.DriverGridData,
         grid_data: pace.util.grid.GridData,
@@ -216,9 +216,7 @@ class DriverConfig:
                     )
                 )
                 stencil_factory = pace.dsl.StencilFactory(
-                    config=self.stencil_config,
-                    grid_indexing=grid_indexing,
-                    comm=communicator,
+                    config=self.stencil_config, grid_indexing=grid_indexing
                 )
 
         return self.initialization.get_driver_state(

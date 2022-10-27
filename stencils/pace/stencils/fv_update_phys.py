@@ -110,7 +110,7 @@ class ApplyPhysicsToDycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, comm.partitioner, comm.rank, namelist, grid_info
+            stencil_factory, comm.partitioner.tile, comm.rank, namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             state, stencil_factory, grid_data, order=namelist.c2l_ord, comm=comm

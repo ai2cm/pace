@@ -287,7 +287,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
         self.stencil_factory = stencil_factory
-        self.namelist: DynamicalCoreConfig = namelist
+        self.namelist: DynamicalCoreConfig = DynamicalCoreConfig.from_namelist(namelist)
 
     def state_from_inputs(self, inputs):
         input_storages = super().state_from_inputs(inputs)

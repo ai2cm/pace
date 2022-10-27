@@ -29,36 +29,22 @@ def get_center_vector(
     big_number = 1.0e8
 
     if grid_type < 3:
-        if False:  # ifdef OLD_VECT
-            vector1 = (
-                xyz_gridpoints[1:, :-1, :]
-                + xyz_gridpoints[1:, 1:, :]
-                - xyz_gridpoints[:-1, :-1, :]
-                - xyz_gridpoints[:-1, 1:, :]
-            )
-            vector2 = (
-                xyz_gridpoints[:-1, 1:, :]
-                + xyz_gridpoints[1:, 1:, :]
-                - xyz_gridpoints[:-1, :-1, :]
-                - xyz_gridpoints[1:, :-1, :]
-            )
-        else:
-            center_points = xyz_midpoint(
-                xyz_gridpoints[:-1, :-1, :],
-                xyz_gridpoints[1:, :-1, :],
-                xyz_gridpoints[:-1, 1:, :],
-                xyz_gridpoints[1:, 1:, :],
-            )
+        center_points = xyz_midpoint(
+            xyz_gridpoints[:-1, :-1, :],
+            xyz_gridpoints[1:, :-1, :],
+            xyz_gridpoints[:-1, 1:, :],
+            xyz_gridpoints[1:, 1:, :],
+        )
 
-            p1 = xyz_midpoint(xyz_gridpoints[:-1, :-1, :], xyz_gridpoints[:-1, 1:, :])
-            p2 = xyz_midpoint(xyz_gridpoints[1:, :-1, :], xyz_gridpoints[1:, 1:, :])
-            p3 = np.cross(p2, p1)
-            vector1 = normalize_xyz(np.cross(center_points, p3))
+        p1 = xyz_midpoint(xyz_gridpoints[:-1, :-1, :], xyz_gridpoints[:-1, 1:, :])
+        p2 = xyz_midpoint(xyz_gridpoints[1:, :-1, :], xyz_gridpoints[1:, 1:, :])
+        p3 = np.cross(p2, p1)
+        vector1 = normalize_xyz(np.cross(center_points, p3))
 
-            p1 = xyz_midpoint(xyz_gridpoints[:-1, :-1, :], xyz_gridpoints[1:, :-1, :])
-            p2 = xyz_midpoint(xyz_gridpoints[:-1, 1:, :], xyz_gridpoints[1:, 1:, :])
-            p3 = np.cross(p2, p1)
-            vector2 = normalize_xyz(np.cross(center_points, p3))
+        p1 = xyz_midpoint(xyz_gridpoints[:-1, :-1, :], xyz_gridpoints[1:, :-1, :])
+        p2 = xyz_midpoint(xyz_gridpoints[:-1, 1:, :], xyz_gridpoints[1:, 1:, :])
+        p3 = np.cross(p2, p1)
+        vector2 = normalize_xyz(np.cross(center_points, p3))
 
         # fill ghost on ec1 and ec2:
         _fill_halo_corners(vector1, big_number, nhalo, tile_partitioner, rank)
