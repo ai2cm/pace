@@ -8,7 +8,7 @@ from .. import _xarray as xr
 from .. import constants, utils
 from .._optional_imports import cupy, zarr
 from ..partitioner import CubedSpherePartitioner, subtile_slice
-from .convert import convert_to_numpy
+from .convert import to_numpy
 
 
 logger = logging.getLogger("pace.util")
@@ -242,7 +242,7 @@ class _ZarrVariableWriter:
             f"assigning data from subtile slice {from_slice} to "
             f"target slice {target_slice}"
         )
-        self.array[target_slice] = convert_to_numpy(quantity)[from_slice]
+        self.array[target_slice] = to_numpy(quantity.view[:])[from_slice]
         self.i_time += 1
 
     def _get_attrs(self, quantity):

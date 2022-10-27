@@ -10,7 +10,7 @@ from pace.util.communicator import CubedSphereCommunicator
 from .. import _xarray as xr
 from ..filesystem import get_fs
 from ..quantity import Quantity
-from .convert import convert_to_numpy
+from .convert import to_numpy
 
 
 logger = logging.getLogger(__name__)
@@ -21,13 +21,13 @@ class _TimeChunkedVariable:
         self._data = np.zeros(
             (time_chunk_size, *initial.extent), dtype=initial.data.dtype
         )
-        self._data[0, ...] = convert_to_numpy(initial)
+        self._data[0, ...] = to_numpy(initial.view[:])
         self._dims = initial.dims
         self._units = initial.units
         self._i_time = 1
 
     def append(self, quantity: Quantity):
-        self._data[self._i_time, ...] = convert_to_numpy(quantity.transpose(self._dims))
+        self._data[self._i_time, ...] = to_numpy(quantity.transpose(self._dims).view[:])
         self._i_time += 1
 
     @property
@@ -77,7 +77,7 @@ class _ChunkedNetCDFWriter:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
                 data_vars[name] = xr.DataArray(
-                    convert_to_numpy(chunked.data),
+                    to_numpy(chunked.data.view[:]),
                     dims=chunked.data.dims,
                     attrs=chunked.data.attrs,
                 )
@@ -171,7 +171,7 @@ class NetCDFMonitor:
                     ds = ds.load()
                 for name, quantity in state.items():
                     ds[name] = xr.DataArray(
-                        convert_to_numpy(quantity),
+                        to_numpy(quantity.view[:]),
                         dims=quantity.dims,
                         attrs=quantity.attrs,
                     )
@@ -179,7 +179,7 @@ class NetCDFMonitor:
                 ds = xr.Dataset(
                     data_vars={
                         name: xr.DataArray(
-                            convert_to_numpy(value),
+                            to_numpy(value.view[:]),
                             dims=value.dims,
                             attrs=value.attrs,
                         )
