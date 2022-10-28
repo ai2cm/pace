@@ -25,7 +25,6 @@ from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM, Timer
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
-from pace.util.quantity import Quantity
 
 
 logger = logging.getLogger(__name__)
@@ -43,27 +42,29 @@ def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatFiel
         pkz (in):
         dp1 (in):
         q_con (in):
-        pt (out):
+        pt (out): temperature when input, "potential density temperature" when output
     """
+    # TODO: why and how is pt being adjusted? update docstring and/or name
+    # TODO: split pt into two variables for different in/out meanings
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
-def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
+def omega_from_w(delp: FloatField, delz: FloatField, w: FloatField, omega: FloatField):
     """
     Args:
-        delp (in):
-        delz (in):
-        w (in):
-        omga (out):
+        delp (in): vertical layer thickness in Pa
+        delz (in): vertical layer thickness in m
+        w (in): vertical wind in m/s
+        omga (out): vertical wind in Pa/s
     """
     with computation(PARALLEL), interval(...):
-        omga = delp / delz * w
+        omega = delp / delz * w
 
 
 def fvdyn_temporaries(
     quantity_factory: pace.util.QuantityFactory,
-) -> Mapping[str, Quantity]:
+) -> Mapping[str, pace.util.Quantity]:
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.zeros(
@@ -262,8 +263,8 @@ class DynamicalCore:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._set_omega_stencil = stencil_factory.from_origin_domain(
-            set_omega,
+        self._omega_from_w = stencil_factory.from_origin_domain(
+            omega_from_w,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
@@ -462,6 +463,7 @@ class DynamicalCore:
             raise NotImplementedError("Hydrostatic is not implemented")
         if __debug__:
             log_on_rank_0("FV Setup")
+
         self._fv_setup_stencil(
             state.qvapor,
             state.qliquid,
@@ -522,6 +524,9 @@ class DynamicalCore:
                 timestep=self._timestep / self._k_split,
             )
 
+            # 1 is shallow water model, don't need vertical remapping
+            # 2 and 3 are also simple baroclinic models that don't need
+            # vertical remapping. > 4 implies this is a full physics model
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
                 # where those are given in atmosphere.F90 by:
@@ -573,6 +578,8 @@ class DynamicalCore:
                         self._timestep,
                     )
                     self._checkpoint_remapping_out(state)
+                # TODO: can we pull this block out of the loop intead of
+                # using an if-statement?
                 if last_step:
                     da_min: float = self._get_da_min()
                     self.post_remap(
@@ -585,14 +592,16 @@ class DynamicalCore:
             is_root_rank=self.comm_rank == 0,
         )
 
+    # TODO: flatten the methods here for clarity
     def _dyn(
         self,
         state: DycoreState,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
         n_map,
         timestep: float,  # time to step forward by
         timer: pace.util.Timer,
     ):
+        # TODO: why are we copying delp to dp1? what is dp1?
         self._copy_stencil(
             state.delp,
             self._dp1,
@@ -620,6 +629,8 @@ class DynamicalCore:
                     self._timestep / self._k_split,
                 )
                 self._checkpoint_tracer_advection_out(state)
+        else:
+            raise NotImplementedError("z_tracer=False is not implemented")
 
     def post_remap(
         self,
@@ -627,10 +638,16 @@ class DynamicalCore:
         is_root_rank: bool,
         da_min: float,
     ):
+        """
+        Compute diagnostic omega as required for physics, and
+        apply hyperdiffusion on it.
+        """
         if not self.config.hydrostatic:
             if __debug__:
                 log_on_rank_0("Omega")
-            self._set_omega_stencil(
+            # TODO: GFDL should implement the "vulcan omega" update,
+            # use hydrostatic omega instead of this conversion
+            self._omega_from_w(
                 state.delp,
                 state.delz,
                 state.w,
@@ -665,6 +682,12 @@ class DynamicalCore:
 
         if __debug__:
             log_on_rank_0("CubedToLatLon")
+        # convert d-grid x-wind and y-wind to
+        # cell-centered zonal and meridional winds
+        # TODO: make separate variables for the internal-temporary
+        # usage of ua and va, and rename state.ua and state.va
+        # to reflect that they are cell center
+        # zonal and meridional wind
         self._cubed_to_latlon(
             state.u,
             state.v,

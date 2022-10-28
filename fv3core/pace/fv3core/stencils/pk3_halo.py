@@ -59,10 +59,10 @@ class PK3Halo:
         self._pe_tmp = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
 
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
-        """Update pressure (pk3) in halo region
+        """Update pressure raised to the kappa (pk3) in halo region.
 
         Args:
-            pk3: Interface pressure raised to power of kappa using constant kappa
+            pk3: 3D interface pressure raised to power of kappa using constant kappa
             delp: Vertical delta in pressure
             ptop: The pressure level at the top of atmosphere
             akap: Poisson constant (KAPPA)

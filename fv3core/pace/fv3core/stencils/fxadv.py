@@ -38,6 +38,7 @@ def main_uc_vc_contra(
             # for C-grid, v must be regridded to lie at the same point as u
             v = 0.25 * (vc[-1, 0, 0] + vc + vc[-1, 1, 0] + vc[0, 1, 0])
             uc_contra = contravariant(uc, v, cosa_u, rsin_u)
+        # TODO: investigate whether this region operation is necessary
         with horizontal(
             region[:, j_start - 1 : j_start + 1], region[:, j_end : j_end + 2]
         ):
@@ -56,6 +57,15 @@ def uc_contra_y_edge(
     uc_contra: FloatField,
 ):
     """
+    On the edges, the definition of contravariant C-grid wind is ambiguous,
+    so we use the average normal vector as the new normal vector.
+
+    This uses the upstream value of the metric term sin_sg (on both sides)
+    instead of some kind of average to modify the rsin2 term used in the
+    covariant -> contravariant conversion.
+
+    ucontra = uc / sin(alpha) at the edges
+
     Args:
         uc (in):
         sin_sg1 (in):
@@ -202,6 +212,9 @@ def uc_contra_corners(
         uc_contra_copy (in): the covariant u-wind on ??? grid
         vc_contra (in):
     """
+    # TODO: derive why there's a 0.25 and not 1/3rd factor below, based on the
+    # system being solved as documented above
+    # use Kramer's rule to solve the 2x2 matrix instead of Gaussian elimination
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -458,22 +471,20 @@ def fxadv_fluxes_stencil(
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        prod = dt * uc_contra
         with horizontal(region[local_is : local_ie + 2, :]):
-            if prod > 0:
-                crx = prod * rdxa[-1, 0]
-                x_area_flux = dy * prod * sin_sg3[-1, 0]
+            if uc_contra > 0:
+                crx = dt * uc_contra * rdxa[-1, 0]
+                x_area_flux = dy * dt * uc_contra * sin_sg3[-1, 0]
             else:
-                crx = prod * rdxa
-                x_area_flux = dy * prod * sin_sg1
-        prod = dt * vc_contra
+                crx = dt * uc_contra * rdxa
+                x_area_flux = dy * dt * uc_contra * sin_sg1
         with horizontal(region[:, local_js : local_je + 2]):
-            if prod > 0:
-                cry = prod * rdya[0, -1]
-                y_area_flux = dx * prod * sin_sg4[0, -1]
+            if vc_contra > 0:
+                cry = dt * vc_contra * rdya[0, -1]
+                y_area_flux = dx * dt * vc_contra * sin_sg4[0, -1]
             else:
-                cry = prod * rdya
-                y_area_flux = dx * prod * sin_sg2
+                cry = dt * vc_contra * rdya
+                y_area_flux = dx * dt * vc_contra * sin_sg2
 
 
 class FiniteVolumeFluxPrep:
@@ -570,6 +581,8 @@ class FiniteVolumeFluxPrep:
         and and compute finite volume transport on the D-grid (e.g.Putman and Lin 2007),
         this module prepares terms such as parts of equations 7 and 13 in Putnam and
         Lin, 2007, that get consumed by fvtp2d and ppm methods.
+
+        Described in sections 3.2 and 4.2 of the FV3 documentation.
 
         Args:
             uc (in): covariant x-velocity on the C-grid

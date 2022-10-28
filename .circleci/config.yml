@@ -64,9 +64,12 @@ commands:
       - run:
           name: save gt4py_version.txt
           command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+      - run:
+          name: save week.txt
+          command: date +"week_%U_of_%Y" > week.txt
       - restore_cache:
           keys:
-            - v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}
+            - v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ checksum "week.txt"}}
   save_gt_cache:
     description: "Save .gt_cache"
     parameters:
@@ -74,7 +77,7 @@ commands:
         type: string
     steps:
       - save_cache:
-          key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}
+          key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}-{{ checksum "week.txt"}}
           paths:
             - .gt_cache
   make_savepoints:
@@ -357,22 +360,16 @@ jobs:
           name: Install Submodules
           command: git submodule update --init
       - setup_environment_mpi
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache:
-          keys:
-            - v1-gt_cache_driver-{{ checksum "gt4py_version.txt" }}
+      - restore_gt_cache:
+          key: v1-gt_cache_driver
       - run:
           name: run tests
           command: |
             . venv/bin/activate
             cd driver
             GT_CACHE_ROOT=$(pwd)/.gt_cache MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
-      - save_cache:
-          key: v1-gt_cache_driver-{{ checksum "gt4py_version.txt" }}
-          paths:
-            - .gt_cache
+      - save_gt_cache:
+          key: v1-gt_cache_driver
 
   test_driver_orch_cpu:
     docker:
