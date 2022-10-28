@@ -60,13 +60,15 @@ def zero_data(
 ):
     """
     Args:
-        mfxd (out):
-        mfyd (out):
-        cxd (out):
-        cyd (out):
-        heat_source (out):
-        diss_estd (out):
-        first_timestep (in):
+        mfxd (out): mass flux in x direction
+        mfyd (out): mass flux in y direction
+        cxd (out): courant number in x direction
+        cyd (out): courant number in y direction
+        heat_source (out): heat accumulated from diffusion of kinetic energy
+            gets applied at the end of all acoustic steps
+        diss_estd (out): how much energy is dissipated, is mainly captured
+            to send to the stochastic physics (in contrast to heat_source)
+        first_timestep (in): is this the first acoustic timestep?
     """
     with computation(PARALLEL), interval(...):
         mfxd = 0.0
@@ -94,7 +96,15 @@ def dp_ref_compute(
         zs = phis * rgrav
 
 
-def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
+def gz_from_surface_height_and_thicknesses(
+    zs: FloatFieldIJ, delz: FloatField, gz: FloatField
+):
+    """
+    Args:
+        zs (in): surface height
+        delz (in): layer thickness
+        gz (out): geopotential height
+    """
     with computation(BACKWARD):
         with interval(-1, None):
             gz[0, 0, 0] = zs
@@ -102,7 +112,15 @@ def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
             gz[0, 0, 0] = gz[0, 0, 1] - delz
 
 
-def set_pem(delp: FloatField, pem: FloatField, ptop: float):
+def interface_pressure_from_toa_pressure_and_thickness(
+    delp: FloatField, pem: FloatField, ptop: float
+):
+    """
+    Args:
+        delp (in): pressure thickness of atmospheric layer
+        pem (out): interface pressure
+        ptop (in): pressure at top of atmosphere
+    """
     with computation(FORWARD):
         with interval(0, 1):
             pem[0, 0, 0] = ptop
@@ -125,32 +143,39 @@ def p_grad_c_stencil(
     gz: FloatField,
     dt2: float,
 ):
-    """Update C-grid winds from the pressure gradient force
+    """
+    Update C-grid winds from the backwards-in-time pressure gradient force
 
     When this is run the C-grid winds have almost been completely
     updated by computing the momentum equation terms, but the pressure
     gradient force term has not yet been applied. This stencil completes
     the equation and Arakawa C-grid winds have been advected half a timestep
-    upon completing this stencil..
+    upon completing this stencil.
 
-     Args:
+    Args:
         rdxc (in):
         rdyc (in):
-        uc (inout): x-velocity on the C-grid
-        vc (inout): y-velocity on the C-grid
+        uc (inout): x-velocity on the C-grid, has been updated due to advection
+            but not yet due to pressure gradient force
+        vc (inout): y-velocity on the C-grid, has been updated due to advection
+            but not yet due to pressure gradient force
         delpc (in): vertical delta in pressure
-        pkc (in):  pressure if non-hydrostatic,
+        pkc (in): pressure if non-hydrostatic,
             (edge pressure)**(moist kappa) if hydrostatic
         gz (in):  height of the model grid cells (m)
         dt2 (in): half a model timestep (for C-grid update) in seconds
     """
     from __externals__ import hydrostatic
 
+    # TODO: reference derivation in SJ Lin 1997 paper,
+    # FV3 documentation section 6.6 (?)
+
     with computation(PARALLEL), interval(...):
         if __INLINED(hydrostatic):
             wk = pkc[0, 0, 1] - pkc
         else:
             wk = delpc
+        # wk is pressure gradient
         uc = uc + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
             (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
             + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)
@@ -592,15 +617,17 @@ class AcousticDynamics:
             config.nord,
         )
 
-        self._set_gz = stencil_factory.from_origin_domain(
-            set_gz,
+        self._gz_from_surface_height_and_thickness = stencil_factory.from_origin_domain(
+            gz_from_surface_height_and_thicknesses,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._set_pem = stencil_factory.from_origin_domain(
-            set_pem,
-            origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
-            domain=grid_indexing.domain_compute(add=(2, 2, 0)),
+        self._interface_pressure_from_toa_pressure_and_thickness = (
+            stencil_factory.from_origin_domain(
+                interface_pressure_from_toa_pressure_and_thickness,
+                origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
+                domain=grid_indexing.domain_compute(add=(2, 2, 0)),
+            )
         )
 
         self._p_grad_c = stencil_factory.from_origin_domain(
@@ -797,7 +824,7 @@ class AcousticDynamics:
             if not self.config.hydrostatic:
                 self._halo_updaters.w.start()
                 if it == 0:
-                    self._set_gz(
+                    self._gz_from_surface_height_and_thickness(
                         self._zs,
                         state.delz,
                         self._gz,
@@ -808,7 +835,7 @@ class AcousticDynamics:
 
             if it == n_split - 1 and end_step:
                 if self.config.use_old_omega:
-                    self._set_pem(
+                    self._interface_pressure_from_toa_pressure_and_thickness(
                         state.delp,
                         self._pem,
                         self._ptop,
@@ -838,9 +865,14 @@ class AcousticDynamics:
             )
             self._checkpoint_csw(state, tag="Out")
 
+            # TODO: Computing the pressure gradient outside of C_SW was originally done
+            # so that we could transpose into a vertical-first memory ordering for the
+            # gz computation, now that we have gt4py we should pull this into C_SW.
             if self.config.nord > 0:
                 self._halo_updaters.divgd.start()
             if not self.config.hydrostatic:
+                # TODO: is there some way we can avoid aliasing gz and zh, so that
+                # gz is always a geopotential and zh is always a height?
                 if it == 0:
                     self._halo_updaters.gz.wait()
                     self._copy_stencil(
@@ -923,6 +955,8 @@ class AcousticDynamics:
             # if self.namelist.d_ext > 0:
             #    raise 'Unimplemented namelist option d_ext > 0'
 
+            # TODO: should the dycore have hydrostatic and non-hydrostatic modes,
+            # or would we make a new class for the non-hydrostatic mode?
             if not self.config.hydrostatic:
                 # without explicit arg names, numpy does not run
                 self.update_height_on_d_grid(
@@ -958,6 +992,7 @@ class AcousticDynamics:
                 self._halo_updaters.zh.start()
                 self._halo_updaters.pkc.start()
                 if remap_step:
+                    # TODO: can this be moved to the start of the remapping routine?
                     self._edge_pe_stencil(state.pe, state.delp, self._ptop)
                 if self.config.use_logp:
                     raise NotImplementedError(
@@ -1007,14 +1042,23 @@ class AcousticDynamics:
                 if self.config.grid_type < 4:
                     self._halo_updaters.interface_uc__vc.interface()
 
+        # we are here
+
         if self._do_del2cubed:
             self._halo_updaters.heat_source.update()
             # TODO: move dependence on da_min into init of hyperdiffusion class
             da_min: float = self._get_da_min()
             cd = constants.CNST_0P20 * da_min
+            # we want to diffuse the heat source from damping before we apply it,
+            # so that we don't reinforce the same grid-scale patterns we're trying
+            # to damp
             self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
                 delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)
+                # TODO: it looks like state.pkz is being used as a temporary here,
+                # and overwritten at the start of remapping. See if we can make it
+                # an internal temporary of this stencil.
+                # this is really just applying the heating, rename it appropriately
                 self._compute_pkz_tempadjust(
                     state.delp,
                     state.delz,

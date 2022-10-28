@@ -77,7 +77,7 @@ def precompute(
             # interface pk is using constant akap
             pk3 = exp(constants.KAPPA * peln)
     with computation(PARALLEL), interval(...):
-        gm = 1.0 / (1.0 - cappa)
+        gm = 1.0 / (1.0 - cappa)  # gamma, cp/cv
         dm = dm * constants.RGRAV
     with computation(PARALLEL), interval(0, -1):
         pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
@@ -99,6 +99,8 @@ def finalize(
     last_call: bool,
 ):
     """
+    Updates auxilary pressure values
+
     Args:
         zs (in):
         dz (in):
@@ -138,7 +140,15 @@ def finalize(
 class RiemannSolver3:
     """
     Fortran subroutine Riem_Solver3
+
+    Like RiemannSolverC, but for the d-grid.
+
+    Difference is that this uses the advanced values for the d-grid full timestep,
+    while RiemannSolverC uses the half time stepped c-grid w, delp, and gz.
     """
+
+    # TODO: rename to something like NonhydrostaticVerticalSolver
+    # since this is not a riemann solver
 
     def __init__(self, stencil_factory: StencilFactory, config: RiemannConfig):
         grid_indexing = stencil_factory.grid_indexing
@@ -238,7 +248,26 @@ class RiemannSolver3:
         """
         # TODO: wsd is named wsr at the sim1_solver level, consolidate names
 
+        # TODO: propagate variable renaming for these into stencils here and
+        # in Sim1Solver
+        # temporaries:
+        # dm is delta mass, including condensates
+        # cp2 is cappa copied into a 2d variable, copied for vectorization reasons
+        #     we should be able to remove this as gt4py optimizes automatically
+        # pem is hydrostatic edge pressure
+        # peln2 is peln copied into a 2d variable, copied for vectorization reasons
+        #     we should be able to remove this as gt4py optimizes automatically
+        # peg is hydrostatic pressure entirely due to gas phase
+        #       (with condensates removed)
+        # pelng is log of peg
+        # pk3 is p**kappa
+        # pm is layer-mean hydrostatic pressure due to gas phase
+        #       (with condensates removed)
+        # gm2 is gamma (cp/cv)
+        # dz2 is delz
+
         peln1 = math.log(ptop)
+        # ptk = ptop ** kappa
         ptk = math.exp(constants.KAPPA * peln1)
 
         self._precompute_stencil(

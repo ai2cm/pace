@@ -366,6 +366,8 @@ class UpdateHeightOnDGrid:
         self._interpolate_to_layer_interface(
             y_area_flux, self._y_area_flux_interface, self._gk, self._beta, self._gamma
         )
+
+        # compute fluxes
         self.finite_volume_transport(
             height,
             self._crx_interface,
@@ -378,6 +380,7 @@ class UpdateHeightOnDGrid:
 
         # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
         # only compute for k-levels where this is true
+        # compute diffusive component of fluxes
         self.delnflux(
             height,
             self._height_x_diffusive_flux,

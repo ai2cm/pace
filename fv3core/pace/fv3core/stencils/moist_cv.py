@@ -253,13 +253,18 @@ def fv_setup(
         qgraupel (in):
         q_con (out):
         cvm (out):
-        pkz (out):
+        pkz (out): p^(cappa)
         pt (in):
-        cappa (out):
+        cappa (out): Rd / Cp
         delp (in):
         delz (in):
         dp1 (out):
     """
+    # without moist_cappa, we use a constant heat capacity for everything
+    # variable heat capacity takes into account the mixing ratios of condensates
+    # this is more accurate
+
+    # TODO: what is being set up here, and how? update docstring
     with computation(PARALLEL), interval(...):
         from __externals__ import moist_phys
 
@@ -273,6 +278,12 @@ def fv_setup(
                 cappa
                 * log(constants.RDG * delp * pt * (1.0 + dp1) * (1.0 - q_con) / delz)
             )
+            # TODO: find documentation reference
+            # (1.0 + dp1) * (1.0 - q_con) takes out condensate mass,
+            # described in more detail in fv3 docs
+            # condensates don't obey ideal gas law so they must be taken out
         else:
             dp1 = 0
             pkz = exp(constants.KAPPA * log(constants.RDG * delp * pt / delz))
+            # cell mean pressure based on ideal gas law, raised to cappa
+            # exponential log structure is faster on most processors

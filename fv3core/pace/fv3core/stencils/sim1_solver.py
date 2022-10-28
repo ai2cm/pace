@@ -25,16 +25,22 @@ def sim1_solver(
     p_fac: float,
 ):
     """
-    w (inout):
-    dm (in):
-    gm (in):
-    dz (inout):
-    ptr (in):
-    pm (in):
-    pe (out):
-    pem (in):
-    wsr (in):
-    cp3 (in):
+    Tridiagonal solve for w and dz, handles pressure gradient force and sound waves
+    in the vertical.
+
+    Documented in Chapter 7.1 of the FV3 dynamical core documentation.
+
+    Args:
+        w (inout):
+        dm (in):
+        gm (in):
+        dz (inout):
+        ptr (in):
+        pm (in):
+        pe (out): nonhydrostatic perturbation pressure defined on interfaces
+        pem (in):
+        wsr (in):
+        cp3 (in):
     """
     with computation(PARALLEL), interval(0, -1):
         pe = exp(gm * log(-dm / dz * constants.RDGAS * ptr)) - pm
@@ -154,6 +160,8 @@ class Sim1Solver:
         system for sound waves to compute nonhydrostatic terms for
         vertical velocity and pressure perturbations.
 
+        Chapter 7 of the FV3 documentation
+
         Args:
           dt (in): timstep in seconds of solver
           gm (in): ?? 1 / (1 - cappa)
@@ -167,6 +175,9 @@ class Sim1Solver:
           ptr (in): potential temperature
           wsr (in): vertical velocity of the lowest level
         """
+
+        # TODO: email Lucas about any remaining variable naming here
+
         t1g = 2.0 * dt * dt
         rdt = 1.0 / dt
         self._compute_sim1_solve(

@@ -162,7 +162,7 @@ class HyperdiffusionDamping:
 
     def __call__(self, qdel: FloatField, cd: float):
         """
-        Perform hyperdiffusion damping/filtering
+        Perform hyperdiffusion damping/filtering.
 
         Args:
             qdel (inout): Variable to be filtered

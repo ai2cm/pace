@@ -18,7 +18,7 @@ from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import GridData
 
 
-def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
+def zero_delpc_ptc(delpc: FloatField, ptc: FloatField):
     """
     Args:
         delpc (out):
@@ -48,9 +48,14 @@ def divergence_corner(
     divg_d: FloatField,
 ):
     """Calculate divg on d-grid.
+
+    Computed in order to damp the divergence, the damping is applied
+    at the end of d_sw directly to the winds
+    Described in detail in chapter 8 (?) of the FV3 docs
+
     Args:
-        u (in): x-velocity
-        v (in): y-velocity
+        u (in): x-velocity on d-grid
+        v (in): y-velocity on d-grid
         ua (in): x-velocity on a
         va (in): y-velocity on a
         dxc (in): grid spacing in x-direction
@@ -64,7 +69,7 @@ def divergence_corner(
         cos_sg3 (in): grid cos(sg3)
         cos_sg4 (in): grid cos(sg4)
         rarea_c (in): inverse cell areas on c-grid
-        divg_d (out): divergence on d-grid
+        divg_d (out): divergence on d-grid (cell corners)
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -75,6 +80,9 @@ def divergence_corner(
             * 0.5
             * (sin_sg4[0, -1] + sin_sg2)
         )
+        """c-grid (?) contravariant component of the wind in the x-direction"""
+        # TODO: refactor this into a call to contravariant()
+        # TODO: add reference to FV3 documentation on divergence damping
 
         vf = (
             (v - 0.25 * (ua[-1, 0, 0] + ua) * (cos_sg3[-1, 0] + cos_sg1))
@@ -157,13 +165,18 @@ def geoadjust_ut(
     dt2: float,
 ):
     """
+    take c-grid contravariant wind to compute the 1st order upwind flux
     Args:
-        ut (out):
+        ut (out): c-grid contravariant u * dx as input, as output
+            includes metric terms (dt2*dy*sin_sg) needed to compute fluxes,
+            "volume flux" (?)
         dy (in):
         sin_sg3 (in):
         sin_sg1 (in):
         dt2 (in):
     """
+    # TODO: describe what ut (out) is as a word or description, and propagate
+    # it to the rest of the code using it
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (
             dt2 * ut * dy * sin_sg3[-1, 0] if ut > 0 else dt2 * ut * dy * sin_sg1
@@ -216,7 +229,7 @@ def fill_corners_delp_pt_w(
         w_out = fill_corners_func(w_in)
 
 
-def compute_nonhydro_fluxes_x(
+def compute_nonhydrostatic_fluxes_x(
     delp: FloatField,
     pt: FloatField,
     utc: FloatField,
@@ -226,14 +239,17 @@ def compute_nonhydro_fluxes_x(
     fx2: FloatField,
 ):
     """
+    Computes scalar fluxes
     Args:
         delp (in):
         pt (in):
-        utc (in):
+        utc (in): metric and wind speed term of the first-order upwind flux
         w (in):
-        fx (out):
-        fx1 (out):
-        fx2 (out):
+        fx (out): heat (entropy) flux, first-order upwind flux of delp
+            in units per second
+        fx1 (out): first-order upwind flux of delp in units per second
+        fx2 (out): flux of veritcal momentum, first-order upwind flux of w
+            in units per second
     """
     with computation(PARALLEL), interval(...):
         fx1 = delp[-1, 0, 0] if utc > 0.0 else delp
@@ -277,6 +293,9 @@ def transportdelp_update_vorticity_and_kineticenergy(
 ):
     """Transport delp then update vorticity and kinetic energy
 
+    steps delpc, ptc, wc.
+    Diagnostically computes ke, vorticity for the start of the timestep
+
     Args:
         delp (in): what is transported
         pt (in): pressure
@@ -287,7 +306,7 @@ def transportdelp_update_vorticity_and_kineticenergy(
         delpc (out): updated delp
         ptc (out): updated pt
         wc (out): updated w
-        ke (out): kinetic energy
+        ke (out): kinetic energy, computed with an upstream bias to avoid an instability
         vort (out): vorticity
         ua (in): u wind on A-grid
         va (in): v wind on A-grid
@@ -314,6 +333,7 @@ def transportdelp_update_vorticity_and_kineticenergy(
     with computation(PARALLEL), interval(...):
         compile_assert(grid_type < 3)
         # additional assumption (not grid.nested)
+        # corresponds to x fluxes function, but for y-direction
         fy1 = delp[0, -1, 0] if vtc > 0.0 else delp
         fy = pt[0, -1, 0] if vtc > 0.0 else pt
         fy2 = w[0, -1, 0] if vtc > 0.0 else w
@@ -352,14 +372,14 @@ def circulation_cgrid(
     dyc: FloatFieldIJ,
     vort_c: FloatField,
 ):
-    """Update vort_c.
+    """Diagnostically compute vort_c.
 
     Args:
         uc (in): x-velocity on C-grid
         vc (in): y-velocity on C-grid
         dxc (in): grid spacing in x-dir
         dyc (in): grid spacing in y-dir
-        vort_c (out): C-grid vorticity
+        vort_c (out): C-grid relative vorticity
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -381,7 +401,7 @@ def circulation_cgrid(
 def absolute_vorticity(vort: FloatField, fC: FloatFieldIJ, rarea_c: FloatFieldIJ):
     """
     Args:
-        vort (out):
+        vort (out): absolute vorticity
         fC (in):
         rarea_c (in):
     """
@@ -435,10 +455,10 @@ def update_y_velocity(
 ):
     """
     Args:
-        vorticity (in):
+        vorticity (in): absolute vorticity
         ke (in):
         velocity (in):
-        velocity_c (out):
+        velocity_c (out): velocity update in y-direction
         cosa (in):
         sina (in):
         rdyc (in):
@@ -449,11 +469,15 @@ def update_y_velocity(
         compile_assert(grid_type < 3)
         # additional assumption: not __INLINED(spec.grid.nested)
 
+        # first-order upwind voriticity flux
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina
         with horizontal(region[:, j_start], region[:, j_end + 1]):
             tmp_flux = dt2 * velocity
 
         flux = vorticity[0, 0, 0] if tmp_flux > 0.0 else vorticity[1, 0, 0]
+        # forward-stepped y velocity
+        # time derivative of vector horizontal wind is equal to curl of vorticity
+        # try to line up with Chapter 5 & 6 of the FV3 documentation
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
@@ -502,13 +526,19 @@ class CGridShallowWaterDynamics:
             origin=origin_halo1,
             backend=stencil_factory.backend,
         )
+        """
+        pressure thickness on c-grid forward step
+        """
         self.ptc = utils.make_storage_from_shape(
             grid_indexing.max_shape,
             origin=origin_halo1,
             backend=stencil_factory.backend,
         )
-        self._initialize_delpc_ptc = stencil_factory.from_dims_halo(
-            initialize_delpc_ptc,
+        """
+        potential temperature on c-grid forward step
+        """
+        self._zero_delpc_ptc = stencil_factory.from_dims_halo(
+            zero_delpc_ptc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             compute_halos=(3, 3),
         )
@@ -561,7 +591,7 @@ class CGridShallowWaterDynamics:
         )
 
         self._compute_nonhydro_fluxes_x_stencil = stencil_factory.from_dims_halo(
-            compute_nonhydro_fluxes_x,
+            compute_nonhydrostatic_fluxes_x,
             compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
             compute_halos=(1, 1),
         )
@@ -623,6 +653,11 @@ class CGridShallowWaterDynamics:
         """
         C-grid shallow water routine.
         Advances C-grid winds by half a time step.
+
+        Also advances delp and pt half a timestep, get computed
+        in order to compute the pressure gradient force, since we need that
+        on the half-step for D_SW.
+
         Args:
             delp (in): D-grid vertical delta in pressure
             pt (inout): D-grid potential temperature (only halos get updated)
@@ -636,11 +671,13 @@ class CGridShallowWaterDynamics:
             ut (out): u * dx
             vt (out): v * dy
             divgd (out): D-grid horizontal divergence
+                Computed in order to damp the divergence, the damping is applied
+                at the end of d_sw directly to the winds
             omga (out): Vertical pressure velocity
             dt2 (in): Half a model timestep in seconds
         """
         # TODO: omga is called "wc" inside stencils, consolidate the naming
-        self._initialize_delpc_ptc(
+        self._zero_delpc_ptc(
             self.delpc,
             self.ptc,
         )
@@ -664,6 +701,9 @@ class CGridShallowWaterDynamics:
                 self.grid_data.rarea_c,
                 divgd,
             )
+
+        # TODO: what does "geoadjust" mean?
+        # TODO: merge geoadjust routines into compute_nonhydro_fluxes, if possible
         self._geoadjust_ut(
             ut,
             self.grid_data.dy,
@@ -681,6 +721,8 @@ class CGridShallowWaterDynamics:
 
         # TODO(eddied): We pass the same fields 2x to avoid GTC validation errors
         self._fill_corners_x_delp_pt_w_stencil(delp, pt, w, delp, pt, w)
+        # TODO: why is there only a "x" version of this? Is the "y" verison folded
+        # into the next routine?
         self._compute_nonhydro_fluxes_x_stencil(
             delp, pt, ut, w, self._tmp_fx, self._tmp_fx1, self._tmp_fx2
         )
@@ -716,6 +758,8 @@ class CGridShallowWaterDynamics:
             self.grid_data.cos_sg4,
             dt2,
         )
+        # TODO: we can merge circulation cgrid and absolute vorticty
+        # into a single stencil
         self._circulation_cgrid(
             uc,
             vc,
