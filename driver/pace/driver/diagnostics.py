@@ -79,7 +79,7 @@ class DiagnosticsConfig:
             output_format is "netcdf"
         names: state variables to save as diagnostics
         derived_names: derived diagnostics to save
-        level_select: save a horizontal or veritcal slice of a 3D state
+        z_select: save a veritcal slice of a 3D state
     """
 
     path: Optional[str] = None
