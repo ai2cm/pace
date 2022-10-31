@@ -445,17 +445,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Test grid generation
-          command: jupyter run examples/notebooks/grid_generation.ipynb
-      - run:
-          name: Test initial condition definition
-          command: jupyter run examples/notebooks/initial_condition_definition.ipynb
-      - run:
-          name: Test stencil definition
-          command: jupyter run examples/notebooks/stencil_definition.ipynb
-      - run:
-          name: Test tracer advection
-          command: jupyter run examples/notebooks/tracer_advection.ipynb
+          name: Test notebooks
+          command: make test_notebooks
 
 workflows:
   version: 2

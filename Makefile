@@ -134,6 +134,9 @@ test_savepoint:  ## top level savepoint tests
 	TARGET=dycore $(MAKE) get_test_data
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/savepoint"
 
+test_notebooks:  ## tests for jupyter notebooks, must be run in correct Python environment
+	pytest --nbmake "examples/notebooks"
+
 test_mpi_54rank:
 	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank
 
