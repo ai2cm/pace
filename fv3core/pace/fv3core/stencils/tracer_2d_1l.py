@@ -1,7 +1,6 @@
 import math
 from typing import Dict
 
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
@@ -14,29 +13,7 @@ from pace.fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
-@gtscript.function
-def flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx):
-    from __externals__ import local_ie, local_is, local_je, local_js
-
-    with horizontal(region[local_is : local_ie + 2, local_js - 3 : local_je + 4]):
-        xfx = (
-            cx * dxa[-1, 0] * dy * sin_sg3[-1, 0] if cx > 0 else cx * dxa * dy * sin_sg1
-        )
-    return xfx
-
-
-@gtscript.function
-def flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx):
-    from __externals__ import local_ie, local_is, local_je, local_js
-
-    with horizontal(region[local_is - 3 : local_ie + 4, local_js : local_je + 2]):
-        yfx = (
-            cy * dya[0, -1] * dx * sin_sg4[0, -1] if cy > 0 else cy * dya * dx * sin_sg2
-        )
-    return yfx
-
-
-def flux_compute(
+def get_area_flux(
     cx: FloatField,
     cy: FloatField,
     dxa: FloatFieldIJ,
@@ -47,13 +24,13 @@ def flux_compute(
     sin_sg2: FloatFieldIJ,
     sin_sg3: FloatFieldIJ,
     sin_sg4: FloatFieldIJ,
-    xfx: FloatField,
-    yfx: FloatField,
+    x_area_flux: FloatField,
+    y_area_flux: FloatField,
 ):
     """
     Args:
-        cx (in):
-        cy (in):
+        cx (in): Courant number in x-direction
+        cy (in): Courant number in y-direction
         dxa (in):
         dya (in):
         dx (in):
@@ -62,21 +39,33 @@ def flux_compute(
         sin_sg2 (in):
         sin_sg3 (in):
         sin_sg4 (in):
-        xfx (out): x-direction area flux
-        yfx (out): y-direction area flux
+        x_area_flux (out): x-direction area flux
+        y_area_flux (out): y-direction area flux
     """
+    from __externals__ import local_ie, local_is, local_je, local_js
+
     with computation(PARALLEL), interval(...):
-        xfx = flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx)
-        yfx = flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx)
+        with horizontal(region[local_is : local_ie + 2, local_js - 3 : local_je + 4]):
+            x_area_flux = (
+                cx * dxa[-1, 0] * dy * sin_sg3[-1, 0]
+                if cx > 0
+                else cx * dxa * dy * sin_sg1
+            )
+        with horizontal(region[local_is - 3 : local_ie + 4, local_js : local_je + 2]):
+            y_area_flux = (
+                cy * dya[0, -1] * dx * sin_sg4[0, -1]
+                if cy > 0
+                else cy * dya * dx * sin_sg2
+            )
 
 
 def divide_fluxes_by_n_substeps(
     cxd: FloatField,
     xfx: FloatField,
-    mfxd: FloatField,
+    x_mass_flux: FloatField,
     cyd: FloatField,
     yfx: FloatField,
-    mfyd: FloatField,
+    y_mass_flux: FloatField,
     n_split: int,
 ):
     """
@@ -85,19 +74,19 @@ def divide_fluxes_by_n_substeps(
     Args:
         cxd (inout):
         xfx (inout):
-        mfxd (inout):
+        x_mass_flux (inout):
         cyd (inout):
         yfx (inout):
-        mfyd (inout):
+        y_mass_flux (inout):
     """
     with computation(PARALLEL), interval(...):
         frac = 1.0 / n_split
         cxd = cxd * frac
         xfx = xfx * frac
-        mfxd = mfxd * frac
+        x_mass_flux = x_mass_flux * frac
         cyd = cyd * frac
         yfx = yfx * frac
-        mfyd = mfyd * frac
+        y_mass_flux = y_mass_flux * frac
 
 
 def cmax_stencil1(cx: FloatField, cy: FloatField, cmax: FloatField):
@@ -112,49 +101,52 @@ def cmax_stencil2(
         cmax = max(abs(cx), abs(cy)) + 1.0 - sin_sg5
 
 
-def dp_fluxadjustment(
-    dp1: FloatField,
-    mfx: FloatField,
-    mfy: FloatField,
+def apply_mass_flux(
+    dp_initial: FloatField,
+    x_mass_flux: FloatField,
+    y_mass_flux: FloatField,
     rarea: FloatFieldIJ,
-    dp2: FloatField,
+    dp_final: FloatField,
 ):
     """
     Args:
-        dp1 (in):
+        dp_initial (in): initial pressure thickness of layer (Pa)
         mfx (in):
         mfy (in):
-        rarea (in):
-        dp2 (out):
+        rarea (in): 1 / area
+        dp_final (out): final pressure thickness of layer (Pa)
     """
     with computation(PARALLEL), interval(...):
-        dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
+        dp_final = (
+            dp_initial
+            + (x_mass_flux - x_mass_flux[1, 0, 0] + y_mass_flux - y_mass_flux[0, 1, 0])
+            * rarea
+        )
 
 
-@gtscript.function
-def adjustment(q, dp1, fx, fy, rarea, dp2):
-    return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
-
-
-def q_adjust(
+def apply_q_flux(
     q: FloatField,
-    dp1: FloatField,
-    fx: FloatField,
-    fy: FloatField,
+    dp_initial: FloatField,
+    q_x_flux: FloatField,
+    q_y_flux: FloatField,
     rarea: FloatFieldIJ,
-    dp2: FloatField,
+    dp_final: FloatField,
 ):
     """
     Args:
-        q (inout):
-        dp1 (in):
-        fx (in):
-        fy (in):
-        rarea (in):
-        dp2 (in):
+        q (inout): tracer
+        dp_initial (in): initial pressure thickness of layer (Pa)
+        q_x_flux (in): x-direction flux of q
+        q_y_flux (in): y-direction flux of q
+        rarea (in): 1 / area
+        dp_final (in): final pressure thickness, after mass fluxes which occur
+            simultaneously with q fluxes (Pa)
     """
     with computation(PARALLEL), interval(...):
-        q = adjustment(q, dp1, fx, fy, rarea, dp2)
+        q = (
+            q * dp_initial
+            + (q_x_flux - q_x_flux[1, 0, 0] + q_y_flux - q_y_flux[0, 1, 0]) * rarea
+        ) / dp_final
 
 
 # Simple stencil replacing:
@@ -194,24 +186,21 @@ class TracerAdvection:
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
         self.grid_data = grid_data
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
-        origin = grid_indexing.origin_compute()
 
-        self._tmp_xfx = quantity_factory.zeros(
+        self._x_area_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_yfx = quantity_factory.zeros(
+        self._y_area_flux = quantity_factory.zeros(
             [X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_fx = quantity_factory.zeros(
+        self._q_x_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_fy = quantity_factory.zeros(
+        self._q_y_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
         self._tmp_dp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._tmp_dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
-        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
 
         ax_offsets = grid_indexing.axis_offsets(
             grid_indexing.origin_full(), grid_indexing.domain_full()
@@ -229,7 +218,7 @@ class TracerAdvection:
         )
 
         self._flux_compute = stencil_factory.from_origin_domain(
-            flux_compute,
+            get_area_flux,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
@@ -240,14 +229,14 @@ class TracerAdvection:
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._dp_fluxadjustment = stencil_factory.from_origin_domain(
-            dp_fluxadjustment,
+        self._apply_mass_flux = stencil_factory.from_origin_domain(
+            apply_mass_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
         )
-        self._q_adjust = stencil_factory.from_origin_domain(
-            q_adjust,
+        self._apply_q_flux = stencil_factory.from_origin_domain(
+            apply_q_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
@@ -273,15 +262,21 @@ class TracerAdvection:
         )
 
     def __call__(
-        self, tracers: Dict[str, pace.util.Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt
+        self,
+        tracers: Dict[str, pace.util.Quantity],
+        dp1,
+        x_mass_flux,
+        y_mass_flux,
+        cxd,
+        cyd,
     ):
         """
         Args:
             tracers (inout): tracers to advect according to fluxes during
                 acoustic substeps
             dp1 (in): pressure thickness of atmospheric layers before acoustic substeps
-            mfxd (inout): total mass flux in x-direction over acoustic substeps
-            mfyd (inout): total mass flux in y-direction over acoustic substeps
+            x_mass_flux (inout): total mass flux in x-direction over acoustic substeps
+            y_mass_flux (inout): total mass flux in y-direction over acoustic substeps
             cxd (inout): accumulated courant number in x-direction
             cyd (inout): accumulated courant number in y-direction
         """
@@ -305,9 +300,8 @@ class TracerAdvection:
             self.grid_data.sin_sg2,
             self.grid_data.sin_sg3,
             self.grid_data.sin_sg4,
-            # TODO: rename xfx/yfx to "area flux"
-            self._tmp_xfx,
-            self._tmp_yfx,
+            self._x_area_flux,
+            self._y_area_flux,
         )
 
         # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -344,11 +338,11 @@ class TracerAdvection:
         if n_split > 1.0:
             self._divide_fluxes_by_n_substeps(
                 cxd,
-                self._tmp_xfx,
-                mfxd,
+                self._x_area_flux,
+                x_mass_flux,
                 cyd,
-                self._tmp_yfx,
-                mfyd,
+                self._y_area_flux,
+                y_mass_flux,
                 n_split,
             )
 
@@ -358,12 +352,10 @@ class TracerAdvection:
 
         for it in range(n_split):
             last_call = it == n_split - 1
-            # TODO: rename to reflect advancing pressure forward over
-            # tracer substep
-            self._dp_fluxadjustment(
+            self._apply_mass_flux(
                 dp1,
-                mfxd,
-                mfyd,
+                x_mass_flux,
+                y_mass_flux,
                 self.grid_data.rarea,
                 dp2,
             )
@@ -372,19 +364,19 @@ class TracerAdvection:
                     q,
                     cxd,
                     cyd,
-                    self._tmp_xfx,
-                    self._tmp_yfx,
-                    self._tmp_fx,
-                    self._tmp_fy,
-                    x_mass_flux=mfxd,
-                    y_mass_flux=mfyd,
+                    self._x_area_flux,
+                    self._y_area_flux,
+                    self._q_x_flux,
+                    self._q_y_flux,
+                    x_mass_flux=x_mass_flux,
+                    y_mass_flux=y_mass_flux,
                 )
                 # TODO: rename to something about applying fluxes
-                self._q_adjust(
+                self._apply_q_flux(
                     q,
                     dp1,
-                    self._tmp_fx,
-                    self._tmp_fy,
+                    self._q_x_flux,
+                    self._q_y_flux,
                     self.grid_data.rarea,
                     dp2,
                 )

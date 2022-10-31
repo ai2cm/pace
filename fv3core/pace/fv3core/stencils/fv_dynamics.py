@@ -530,12 +530,11 @@ class DynamicalCore:
                     self._checkpoint_tracer_advection_in(state)
                     self.tracer_advection(
                         self.tracers,
-                        self._dp1,
-                        state.mfxd,
-                        state.mfyd,
-                        state.cxd,
-                        state.cyd,
-                        self._timestep / self._k_split,
+                        dp1=self._dp1,
+                        x_mass_flux=state.mfxd,
+                        y_mass_flux=state.mfyd,
+                        cxd=state.cxd,
+                        cyd=state.cyd,
                     )
                     self._checkpoint_tracer_advection_out(state)
             else:

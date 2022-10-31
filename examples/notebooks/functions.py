@@ -1044,7 +1044,6 @@ def run_advection_step_with_reset(
         tracer_advection_data["mfyd"],
         tracer_advection_data["crx"],
         tracer_advection_data["cry"],
-        timestep,
     )
 
     tracer_advection_data["delp"] = cp.deepcopy(tracer_advection_data_initial["delp"])

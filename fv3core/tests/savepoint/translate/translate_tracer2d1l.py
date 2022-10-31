@@ -33,7 +33,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             "cxd": grid.x3d_compute_domain_y_dict(),
             "cyd": grid.y3d_compute_domain_x_dict(),
         }
-        self._base.in_vars["parameters"] = ["nq", "mdt"]
+        self._base.in_vars["parameters"] = ["nq"]
         self._base.out_vars = self._base.in_vars["data_vars"]
         self.stencil_factory = stencil_factory
         self.namelist = namelist
@@ -71,10 +71,16 @@ class TranslateTracer2D1L(ParallelTranslate):
             communicator,
             inputs["tracers"],
         )
-        self.tracer_advection(**inputs)
+        x_mass_flux = inputs.pop("mfxd")
+        y_mass_flux = inputs.pop("mfyd")
+        self.tracer_advection(
+            x_mass_flux=x_mass_flux, y_mass_flux=y_mass_flux, **inputs
+        )
         inputs[
             "tracers"
         ] = all_tracers  # some aren't advected, still need to be validated
+        inputs["mfxd"] = x_mass_flux
+        inputs["mfyd"] = y_mass_flux
         # need to convert tracers dict to [x, y, z, n_tracer] array before subsetting
         outputs = self._base.slice_output(inputs)
         outputs["tracers"] = self.subset_output("tracers", outputs["tracers"])
