@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import warnings
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import pace.driver
 import pace.dsl
@@ -37,80 +37,30 @@ class Diagnostics(abc.ABC):
 
 
 @dataclasses.dataclass
-class LevelSelectItem:
+class ZSelect:
     level: int
     names: List[str]
 
-
-@dataclasses.dataclass
-class LevelSelect:
-    axis: str
-    select: LevelSelectItem
-
-    @classmethod
-    def from_yaml(cls, yaml_dict: Dict[str, Any]) -> "LevelSelect":
-        axis = yaml_dict["axis"]
-        if axis not in [
-            "x",
-            "y",
-            "z",
-            "x_interface",
-            "y_interface",
-            "z_interface",
-        ]:
-            raise ValueError(
-                f"Invalid level select axis {axis}, should be x, y, z, \
-                    x_interface, y_interface, or z_interface"
-            )
-        select = LevelSelectItem(level=yaml_dict["level"], names=yaml_dict["names"])
-        return cls(axis=axis, select=select)
-
     def slice_data(self, state: DycoreState):
         output = {}
-        for name in self.select.names:
+        for name in self.names:
             if name not in state.__dict__.keys():
                 raise ValueError(f"Invalid state variable {name} for level select")
-            if getattr(state, name).dims != (
-                ("x", "y", "z") or ("x_interface", "y_interface", "z_interface")
+            assert len(getattr(state, name).dims) > 2
+            if getattr(state, name).dims[2] != (
+                pace.util.Z_DIM or pace.util.Z_INTERFACE_DIM
             ):
                 raise ValueError(
-                    "Only state variables with dims (x, y, z) or \
-                        (x_interface, y_interface, z_interface) can be selected"
+                    "z_select only works for state variables with a z dimension"
                 )
-            var_name = f"{name}_{self.axis}{self.select.level}"
-            if self.axis in ["x", "x_interface"]:
-                output[var_name] = pace.util.Quantity(
-                    getattr(state, name).data[self.select.level, :, :],
-                    dims=getattr(state, name).dims[1:],
-                    origin=getattr(state, name).origin[1:],
-                    extent=getattr(state, name).extent[1:],
-                    units=getattr(state, name).units,
-                )
-            elif self.axis in ["y", "y_interface"]:
-                output[var_name] = pace.util.Quantity(
-                    getattr(state, name).data[:, self.select.level, :],
-                    dims=(
-                        getattr(state, name).dims[0],
-                        getattr(state, name).dims[2],
-                    ),
-                    origin=(
-                        getattr(state, name).origin[0],
-                        getattr(state, name).origin[2],
-                    ),
-                    extent=(
-                        getattr(state, name).extent[0],
-                        getattr(state, name).extent[2],
-                    ),
-                    units=getattr(state, name).units,
-                )
-            elif self.axis in ["z", "z_interface"]:
-                output[var_name] = pace.util.Quantity(
-                    getattr(state, name).data[:, :, self.select.level],
-                    dims=getattr(state, name).dims[0:2],
-                    origin=getattr(state, name).origin[0:2],
-                    extent=getattr(state, name).extent[0:2],
-                    units=getattr(state, name).units,
-                )
+            var_name = f"{name}_z{self.level}"
+            output[var_name] = pace.util.Quantity(
+                getattr(state, name).data[:, :, self.level],
+                dims=getattr(state, name).dims[0:2],
+                origin=getattr(state, name).origin[0:2],
+                extent=getattr(state, name).extent[0:2],
+                units=getattr(state, name).units,
+            )
         return output
 
 
@@ -136,7 +86,7 @@ class DiagnosticsConfig:
     time_chunk_size: int = 1
     names: List[str] = dataclasses.field(default_factory=list)
     derived_names: List[str] = dataclasses.field(default_factory=list)
-    level_select: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    z_select: List[ZSelect] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
         if (len(self.names) > 0 or len(self.derived_names) > 0) and self.path is None:
@@ -181,14 +131,11 @@ class DiagnosticsConfig:
                     "output_format must be one of 'zarr' or 'netcdf', "
                     f"got {self.output_format}"
                 )
-            level_select_list = []
-            for item in self.level_select:
-                level_select_list.append(LevelSelect.from_yaml(item))
             diagnostics = MonitorDiagnostics(
                 monitor=monitor,
                 names=self.names,
                 derived_names=self.derived_names,
-                level_select=level_select_list,
+                z_select=self.z_select,
             )
         return diagnostics
 
@@ -201,7 +148,7 @@ class MonitorDiagnostics(Diagnostics):
         monitor: pace.util.Monitor,
         names: List[str],
         derived_names: List[str],
-        level_select: List[LevelSelect],
+        z_select: List[ZSelect],
     ):
         """
         Args:
@@ -211,7 +158,7 @@ class MonitorDiagnostics(Diagnostics):
         """
         self.names = names
         self.derived_names = derived_names
-        self.level_select = level_select
+        self.z_select = z_select
         self.monitor = monitor
 
     @dace_inhibitor
@@ -224,7 +171,7 @@ class MonitorDiagnostics(Diagnostics):
                 quantity = getattr(state.physics_state, name)
             monitor_state[name] = quantity
         derived_state = self._get_derived_state(state)
-        level_select_state = self._get_level_select_state(state.dycore_state)
+        level_select_state = self._get_z_select_state(state.dycore_state)
         monitor_state.update(derived_state)
         monitor_state.update(level_select_state)
         self.monitor.store(monitor_state)
@@ -244,11 +191,11 @@ class MonitorDiagnostics(Diagnostics):
                     warnings.warn(f"{name} is not a supported diagnostic variable.")
         return output
 
-    def _get_level_select_state(self, state: DycoreState):
-        level_select_state = {}
-        for level_select in self.level_select:
-            level_select_state.update(level_select.slice_data(state))
-        return level_select_state
+    def _get_z_select_state(self, state: DycoreState):
+        z_select_state = {}
+        for zselect in self.z_select:
+            z_select_state.update(zselect.slice_data(state))
+        return z_select_state
 
     def store_grid(self, grid_data: pace.util.grid.GridData):
         zarr_grid = {
