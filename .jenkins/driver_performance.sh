@@ -15,6 +15,7 @@ source ${VIRTUALENV}/bin/activate
 BUILDENV_DIR=$PACE_DIR/buildenv
 . ${BUILDENV_DIR}/schedulerTools.sh
 
+mkdir -p ${PACE_DIR}/test_perf
 cd $PACE_DIR/test_perf
 cat << EOF > run.daint.slurm
 #!/bin/bash
@@ -36,16 +37,5 @@ srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ra
 EOF
 launch_job run.daint.slurm 3600
 
-cat << EOF > results.py
-import json
-import os
-import numpy as np
-for x in os.listdir():
-    if x.endswith(".json"):
-        f = open(x)
-        data = json.load(f)
-        for rank in range(6):
-            print(f"Rank {rank}, mainloop average time: {np.mean(data['times']['mainloop']['times'][rank][1:])}")
-EOF
-python results.py
+python ${JENKINS_DIR}/print_performance_number.py
 cp *.json driver.out /project/s1053/performance/fv3core_performance/dace_gpu

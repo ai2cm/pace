@@ -21,14 +21,13 @@ class Profiler:
         return self._enabled
 
 
-class NullProfiler(Profiler):
+class NullProfiler:
     """A profiler class which does not actually profile anything.
 
     Meant to be used in place of an optional profiler.
     """
 
     def __init__(self):
-        super().__init__()
         self.profiler = None
         self._enabled = False
 
