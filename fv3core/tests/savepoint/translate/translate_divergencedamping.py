@@ -44,11 +44,11 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
         nord_col = self.grid.quantity_factory.zeros(
             dims=[pace.util.Z_DIM], units="unknown"
         )
-        nord_col.data[:] = inputs.pop("nord_col")
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_col"))
         d2_bg = self.grid.quantity_factory.zeros(
             dims=[pace.util.Z_DIM], units="unknown"
         )
-        d2_bg.data[:] = inputs.pop("d2_bg")
+        d2_bg.data[:] = d2_bg.np.asarray(inputs.pop("d2_bg"))
         self.divdamp = DivergenceDamping(
             self.stencil_factory,
             self.grid.quantity_factory,
