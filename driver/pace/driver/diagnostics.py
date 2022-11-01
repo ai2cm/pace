@@ -41,7 +41,7 @@ class ZSelect:
     level: int
     names: List[str]
 
-    def slice_data(self, state: DycoreState):
+    def select_data(self, state: DycoreState):
         output = {}
         for name in self.names:
             if name not in state.__dict__.keys():
@@ -195,7 +195,7 @@ class MonitorDiagnostics(Diagnostics):
     def _get_z_select_state(self, state: DycoreState):
         z_select_state = {}
         for zselect in self.z_select:
-            z_select_state.update(zselect.slice_data(state))
+            z_select_state.update(zselect.select_data(state))
         return z_select_state
 
     def store_grid(self, grid_data: pace.util.grid.GridData):
