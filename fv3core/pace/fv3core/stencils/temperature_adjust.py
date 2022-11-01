@@ -21,7 +21,7 @@ def compute_pkz_tempadjust(
     Args:
         delp (in): Pressure thickness of atmosphere layers
         delz (in): Vertical thickness of atmosphere layers
-        cappa (in): Power to raise pressure to
+        cappa (in): R/Cp
         heat_source (in): heat source from vorticity damping implied by
             energy conservation
         pt (inout): Air potential temperature

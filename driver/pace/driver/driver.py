@@ -157,7 +157,7 @@ class DriverConfig:
 
     def get_grid(
         self,
-        communicator: pace.util.Communicator,
+        communicator: pace.util.CubedSphereCommunicator,
         quantity_factory: Optional[pace.util.QuantityFactory] = None,
     ) -> Tuple[
         pace.util.grid.DampingCoefficients,
@@ -186,7 +186,7 @@ class DriverConfig:
 
     def get_driver_state(
         self,
-        communicator: pace.util.Communicator,
+        communicator: pace.util.CubedSphereCommunicator,
         damping_coefficients: pace.util.grid.DampingCoefficients,
         driver_grid_data: pace.util.grid.DriverGridData,
         grid_data: pace.util.grid.GridData,
@@ -216,9 +216,7 @@ class DriverConfig:
                     )
                 )
                 stencil_factory = pace.dsl.StencilFactory(
-                    config=self.stencil_config,
-                    grid_indexing=grid_indexing,
-                    comm=communicator,
+                    config=self.stencil_config, grid_indexing=grid_indexing
                 )
 
         return self.initialization.get_driver_state(
@@ -394,6 +392,7 @@ class Driver:
             self.comm = global_comm
             stencil_compare_comm = None
         self.performance_collector = self.config.performance_config.build(self.comm)
+        self.profiler = self.config.performance_config.build_profiler()
         with self.performance_collector.total_timer.clock("initialization"):
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -598,10 +597,15 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_collector.total_timer.clock("total"):
+            self.profiler.enable()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
+            )
+            self.profiler.dump_stats(
+                f"{self.config.performance_config.experiment_name}_\
+                {self.comm.Get_rank()}.prof"
             )
 
     def _step_dynamics(

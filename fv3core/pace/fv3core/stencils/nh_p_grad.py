@@ -15,7 +15,7 @@ def set_k0_and_calc_wk(
     Args:
         pp (inout):
         pk3 (inout):
-        wk (out):
+        wk (out): delta (pressure to the kappa) computed on corners
     """
     with computation(PARALLEL):
         with interval(0, 1):
@@ -56,7 +56,7 @@ def calc_u(
                 + (gz[0, 0, 0] - gz[1, 0, 1]) * (pk3[0, 0, 1] - pk3[1, 0, 0])
             )
         )
-        # nonhydrostatic contribution
+        # hydrostatic + nonhydrostatic contribution
         u[0, 0, 0] = (
             u[0, 0, 0]
             + du[0, 0, 0]
@@ -99,7 +99,7 @@ def calc_v(
                 + (gz[0, 0, 0] - gz[0, 1, 1]) * (pk3[0, 0, 1] - pk3[0, 1, 0])
             )
         )
-        # nonhydrostatic contribution
+        # hydrostatic + nonhydrostatic contribution
         v[0, 0, 0] = (
             v[0, 0, 0]
             + dv[0, 0, 0]
@@ -114,7 +114,15 @@ def calc_v(
 
 class NonHydrostaticPressureGradient:
     """
-    Fortran name is nh_p_grad
+    Apply nonhydrostatic pressure gradient force in the horizontal.
+
+    Fully implicit with beta = 0.
+
+    Documented in Lin 97, Section 6.6 of FV3 documentation.
+
+    Fortran name is nh_p_grad.
+
+    TODO: should implement split pgrad
     """
 
     def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, grid_type):
@@ -193,9 +201,9 @@ class NonHydrostaticPressureGradient:
         accounting for both the hydrostatic and nonhydrostatic contributions.
 
         Args:
-            u (inout): U wind
-            v (inout): V wind
-            pp (inout): Pressure, gets updated to B-grid
+            u (inout): wind in x-direction
+            v (inout): wind in y-direction
+            pp (inout): pressure, gets updated to B-grid
             gz (inout): height of the model grid cells, gets updated to B-grid
             pk3 (inout): gets updated to B-grid
             delp (in): vertical delta in pressure
@@ -208,6 +216,10 @@ class NonHydrostaticPressureGradient:
 
         ptk = ptop ** akap
         top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk
+
+        # TODO: make it clearer that each of these a2b outputs is updated
+        # instead of the output being put in tmp_wk1, possibly by removing
+        # the second argument and using a temporary instead?
 
         self.a2b_k1(pp, self._tmp_wk1)
         self.a2b_k1(pk3, self._tmp_wk1)

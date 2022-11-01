@@ -32,6 +32,20 @@ def p_weighted_average_domain(vel, dp0):
 
 @gtscript.function
 def xy_flux(gz_x, gz_y, xfx, yfx):
+    """
+    Compute first-order upwind fluxes of gz in x and y directions.
+
+    Args:
+        gz_x: gz with corners copied to perform derivatives in x-direction
+        gz_y: gz with corners copied to perform derivatives in y-direction
+        xfx (out): contravariant c-grid u-wind interpolated to layer interfaces,
+            including metric terms to make it a "volume flux"
+        yfx (out): contravariant c-grid v-wind interpolated to layer interfaces
+
+    Returns:
+        fx: first-order upwind x-flux of gz
+        fy: first-order upwind y-flux of gz
+    """
     fx = xfx * (gz_x[-1, 0, 0] if xfx > 0.0 else gz_x)
     fy = yfx * (gz_y[0, -1, 0] if yfx > 0.0 else gz_y)
     return fx, fy
@@ -56,8 +70,30 @@ def update_dz_c(
     *,
     dt: float,
 ):
+    """
+    Step dz forward on c-grid
+    Eusures gz is monotonically increasing in z at the end
+    Args:
+        dp_ref:
+        zs:
+        area:
+        ut:
+        vt:
+        gz:
+        gz_x: gz with corners copied to perform derivatives in x-direction
+        gz_y: gz with corners copied to perform derivatives in y-direction
+        ws: lagrangian (parcel-following) surface vertical wind implied by
+            lowest-level gz change note that a parcel moving horizontally
+            across terrain will be moving in the vertical (eqn 5.5 in documentation)
+        dt:
+    """
+
+    # there's some complexity due to gz being defined on interfaces
+    # have to interpolate winds to layer interfaces first, using higher-order
+    # cubic spline interpolation
     with computation(PARALLEL):
         with interval(0, 1):
+            # TODO: inline some or all of these functions
             xfx = p_weighted_average_top(ut, dp_ref)
             yfx = p_weighted_average_top(vt, dp_ref)
         with interval(1, -1):
@@ -66,10 +102,12 @@ def update_dz_c(
         with interval(-1, None):
             xfx = p_weighted_average_bottom(ut, dp_ref)
             yfx = p_weighted_average_bottom(vt, dp_ref)
+    # xfx/yfx are now ut/vt interpolated to layer interfaces
     with computation(PARALLEL), interval(...):
         fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
         # TODO: check if below gz is ok, or if we need gz_y to pass this
-        gz = (gz_y * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
+        # probably okay with gz, only compute domain
+        gz = (gz * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
             area + xfx - xfx[1, 0, 0] + yfx - yfx[0, 1, 0]
         )
     with computation(FORWARD), interval(-1, None):
@@ -138,10 +176,14 @@ class UpdateGeopotentialHeightOnCGrid:
             zs: surface height in m
             ut: horizontal wind (TODO: covariant or contravariant?)
             vt: horizontal wind (TODO: covariant or contravariant?)
-            gz: geopotential height (TODO: on cell mid levels or interfaces?)
+            gz: geopotential height on model interfaces
             ws: surface vertical wind implied by horizontal motion over topography
-            dt: timestep over which to evolve the geopotential height
+            dt: timestep over which to evolve the geopotential height, in seconds
         """
+
+        # TODO: is this advecting gz, and if so can we name it that?
+        # Can we reduce duplication of advection logic with other stencils?
+
         # TODO: use a tmp variable inside the update_dz_c stencil instead of
         # _gz_x and _gz_y stencil to skip the copies and corner-fill stencils
         # once regions bug is fixed

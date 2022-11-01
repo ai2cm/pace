@@ -934,6 +934,8 @@ class DelnFlux:
     """
     Fortran name is deln_flux
     The test class is DelnFlux
+
+    This class computes the fluxes for damping and also applies them.
     """
 
     def __init__(
@@ -1032,6 +1034,8 @@ class DelnFlux:
         # Original code:
         # if d2 is None:
         #     d2 = self._d2
+        # fx2 and fy2 are local variables containing the diffusive flux, which
+        # gets added to the base flux below
         if d2 is None:
             self.delnflux_nosg(q, self._fx2, self._fy2, self._damp, self._d2, mass)
         else:
@@ -1055,6 +1059,10 @@ class DelnFluxNoSG:
     This contains the mechanics of del6_vt and some of deln_flux from
     the Fortran code, since they are very similar routines. The test class
     is Del6VtFlux
+
+    SG stands for signsg
+
+    This class only computes damping fluxes, and does not apply them.
     """
 
     def __init__(
@@ -1210,14 +1218,15 @@ class DelnFluxNoSG:
         Computes flux fields which would apply del-n damping to q,
         where n is set by nord.
 
-        TODO: confirm what these args are.
+        Can compute diffusion at 2nd, 4th, 6th-order but expresses it as a flux
+        so that it's conservative. Doesn't apply those fluxes in this object.
 
         Args:
-            q (in): Field for which to calculate damped fluxes
-            fx2 (out): ? x-flux on A grid to be damped
-            fy2 (out): ? y-flux on A grid to be damped
+            q (in): Field for which to calculate damping fluxes
+            fx2 (out): x-flux on A grid to apply damping to q
+            fy2 (out): y-flux on A grid to apply damping to q
             damp_c (in): damping coefficient for q
-            d2 (out): ? a damped copy of the q field
+            d2 (out): higher-order damped version of q
             mass (unused): if given, apply d2 damping (does not use this as input)
         """
 

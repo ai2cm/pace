@@ -12,7 +12,7 @@ class TranslateLastStep(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = stencil_factory.from_origin_domain(
+        self.compute_func = stencil_factory.from_origin_domain(  # type: ignore
             moist_cv.moist_pt_last_step,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),

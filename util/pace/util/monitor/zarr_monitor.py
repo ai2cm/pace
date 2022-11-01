@@ -7,7 +7,8 @@ import cftime
 from .. import _xarray as xr
 from .. import constants, utils
 from .._optional_imports import cupy, zarr
-from ..partitioner import CubedSpherePartitioner, subtile_slice
+from ..partitioner import Partitioner, subtile_slice
+from .convert import to_numpy
 
 
 logger = logging.getLogger("pace.util")
@@ -41,7 +42,7 @@ class ZarrMonitor:
     def __init__(
         self,
         store: Union[str, "zarr.storage.MutableMapping"],
-        partitioner: CubedSpherePartitioner,
+        partitioner: Partitioner,
         mode: str = "w",
         mpi_comm=DummyComm(),
     ):
@@ -241,21 +242,7 @@ class _ZarrVariableWriter:
             f"assigning data from subtile slice {from_slice} to "
             f"target slice {target_slice}"
         )
-        try:
-            self.array[target_slice] = quantity.view[:][from_slice]
-        except ValueError as err:
-            if err.args[0] == "object __array__ method not producing an array":
-                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
-            else:
-                raise err
-        except TypeError as err:
-            if err.args[0].startswith(
-                "Implicit conversion to a NumPy array is not allowed."
-            ):
-                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
-            else:
-                raise err
-
+        self.array[target_slice] = to_numpy(quantity.view[:])[from_slice]
         self.i_time += 1
 
     def _get_attrs(self, quantity):

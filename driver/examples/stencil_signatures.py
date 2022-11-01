@@ -53,9 +53,9 @@ def report_stencils(obj, file: Optional[TextIO]):
 if __name__ == "__main__":
     with open("configs/baroclinic_c12.yaml", "r") as f:
         driver_config = pace.driver.DriverConfig.from_dict(yaml.safe_load(f))
-    driver = pace.driver.Driver(
-        config=driver_config,
-        comm=pace.util.null_comm.NullComm(rank=0, total_ranks=6),
+    driver_config.comm_config = pace.driver.CreatesCommSelector(
+        config=pace.driver.NullCommConfig(rank=0, total_ranks=6), type="null"
     )
+    driver = pace.driver.Driver(config=driver_config)
     with open("stencil_report.txt", "w") as f:
         report_stencils(driver.dycore, file=f)

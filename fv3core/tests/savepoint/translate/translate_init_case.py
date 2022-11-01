@@ -12,7 +12,7 @@ import pace.util
 import pace.util as fv3util
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
 from pace.stencils.testing import ParallelTranslateBaseSlicing
-from pace.stencils.testing.grid import TRACER_DIM
+from pace.stencils.testing.grid import TRACER_DIM  # type: ignore
 from pace.util.grid import MetricTerms
 
 
@@ -157,7 +157,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors = {}
         for var in ["u", "v"]:
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute_sequential(self, *args, **kwargs):
@@ -266,7 +266,7 @@ class TranslateInitPreJab(TranslateDycoreFortranData2Py):
             "eta": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
             "eta_v": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
         }
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
@@ -328,7 +328,7 @@ class TranslateJablonowskiBaroclinic(TranslateDycoreFortranData2Py):
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
 
         self.max_error = 1e-13
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
@@ -410,7 +410,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateDycoreFortranData2Py):
         self.out_vars = {}
         for var in ["delz", "delp", "ps", "peln"]:
             self.out_vars[var] = self.in_vars["data_vars"][var]
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):

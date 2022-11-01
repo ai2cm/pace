@@ -29,7 +29,7 @@ class TranslateDelnFlux(TranslateDycoreFortranData2Py):
         if "mass" not in inputs:
             inputs["mass"] = None
         self.make_storage_data_input_vars(inputs)
-        self.compute_func = delnflux.DelnFlux(
+        self.compute_func = delnflux.DelnFlux(  # type: ignore
             self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,

@@ -17,9 +17,7 @@ repos:
     - id: mypy
       name: mypy-fv3core
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg,
         ]
       files: fv3core
       exclude: |
@@ -30,17 +28,13 @@ repos:
     - id: mypy
       name: mypy-util
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg
         ]
       files: ^util
     - id: mypy
       name: mypy-stencils
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg
         ]
       files: stencils
       exclude: |
@@ -50,9 +44,7 @@ repos:
     - id: mypy
       name: mypy-driver
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg
         ]
       files: driver
       exclude: |
@@ -62,17 +54,13 @@ repos:
     - id: mypy
       name: mypy-physics
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg
         ]
       files: physics
     - id: mypy
       name: mypy-dsl
       args: [
-          --no-strict-optional,
-          --ignore-missing-imports,
-          --follow-imports, skip  # needed so we only test enabled files
+          --config-file, setup.cfg
         ]
       files: dsl
       exclude: |

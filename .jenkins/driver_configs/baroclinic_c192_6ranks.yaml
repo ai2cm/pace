@@ -1,6 +1,6 @@
 stencil_config:
   compilation_config:
-    backend: gt:gpu
+    backend: dace:gpu
     rebuild: false
     validate_args: true
     format_source: false
@@ -15,11 +15,12 @@ diagnostics_config:
     - pt
 output_initial_state: true
 performance_config:
-  collect_performance: false
+  collect_performance: true
+  experiment_name: c192_baroclinic
 nx_tile: 192
 nz: 79
 dt_atmos: 200
-minutes: 4
+minutes: 60
 layout:
   - 1
   - 1

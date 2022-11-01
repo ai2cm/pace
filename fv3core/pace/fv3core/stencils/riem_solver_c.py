@@ -31,16 +31,22 @@ def precompute(
         w3 (in):
         w (out):
         gz (in):
-        dm (out):
+        dm (out): delta mass, mass of gridcell per unit area
         q_con (in):
-        pem (out):
+        pem (out): total hydrostatic pressure defined on interface
+            (including condensate)
         dz (out):
-        gm (out):
-        pm (out):
+        gm (out): gamma parameter, Cp/Cv, used to compute pressure gradient force
+            using potential temperature and ideal gas law
+        pm (out): hydrostatic cell mean pressure, derivation in documentation
+            (Chapter 4? 7?)
+            TODO: identify chapter reference, will be sent by Lucas
     """
     with computation(PARALLEL), interval(...):
         dm = delpc
         w = w3
+    # peg is hydrostatic pressure defined on interface with condensate mass removed
+    # pem is total hydrostatic pressure defined on interface (including condensate)
     with computation(FORWARD):
         with interval(0, 1):
             pem = ptop
@@ -54,7 +60,24 @@ def precompute(
         gm = 1.0 / (1.0 - cappa)
         dm /= constants.GRAV
     with computation(PARALLEL), interval(0, -1):
-        pm = (peg[0, 0, 1] - peg) / log(peg[0, 0, 1] / peg)
+        # (1) From \partial p*/\partial z = -\rho g, we can separate and integrate
+        # over a layer to get
+        # \delta p* = -\bar\rho g \delta z = -\bar p* g\delta z / (R_d T_v)
+        # (using the ideal gas law)
+        # which we can solve for cell-mean pressure to get
+        # \bar p* = - \delta p* \frac{R_d T_v}{g \delta z}
+
+        # (2) From the hydrostatic balance, use the ideal gas law first to get
+        # \partial p* / \partial z = - \frac{p* g}{R_d T_v}. Separating and integrating
+        # yields
+        # \delta log p* = - \frac{g\delta z}{R_d T_v}
+
+        # The RHS of the final expression in (2) is the reciprocal of the fraction in
+        # (1), giving us
+
+        # \bar p* = \delta p* / \delta log p*
+        # note log(b) - log(a) = log(b/a)
+        pm = (peg[0, 0, 1] - peg) / (log(peg[0, 0, 1] / peg))
 
 
 def finalize(
@@ -67,10 +90,15 @@ def finalize(
     ptop: float,
 ):
     """
+    Enforce vertical boundary conditions.
+
+    The top of atmosphere pressure is constant.
+    At bottom of domain, the height should be equal to hs, the surface elevation.
+
     Args:
-        pe2 (in):
-        pem (in):
-        hs (in):
+        pe2 (in): nonhydrostatic perturbation pressure defined on interfaces
+        pem (in): total hydrostatic pressure defined on interface (including condensate)
+        hs (in): surface elevation
         dz (in):
         pef (out):
         gz (out):
@@ -90,6 +118,13 @@ def finalize(
 class RiemannSolverC:
     """
     Fortran subroutine Riem_Solver_C
+
+    Semi-implicit solver for pressure, vertical velocity, and dz (not a Riemann solver)
+
+    accounts for:
+    Vertically-propagating sound wave and straining terms
+    vertical non-hydrostatic pressure gradient force
+    change in layer interface heights due to straining/compression by sound waves
     """
 
     def __init__(self, stencil_factory: StencilFactory, p_fac):
@@ -154,7 +189,7 @@ class RiemannSolverC:
            dt2 (in): acoustic timestep in seconds
            cappa (in): ???
            ptop (in): pressure at top of atmosphere
-           hs (in): ???
+           hs (in): surface height in m
            ws (in): vertical velocity of the lowest level
            ptc (in): potential temperature
            q_con (in): total condensate mixing ratio
@@ -163,6 +198,22 @@ class RiemannSolverC:
            pef (out): full hydrostatic pressure
            w3 (in): vertical velocity
         """
+
+        # TODO: integrate these notes into comments/code, double-check:
+        """
+        pe:interface full hydrostatic pressure, pe=pem at last_call
+        pkc: (ppe, pe2 from SIM1_solver) interface non-hydrostatic
+            pressure perturbation
+        pem: interface full hydrostatic pressure, pem(i,k) = pem(i,k-1) + dm(i,k-1)
+        peln2=log(pem)
+        peg: as pem but without condensation,
+            peg(i,k) = peg(i,k-1) + dm(i,k-1)*(1.-q_con(i,j,k-1))
+        pm2: layer-mean full hydrostatic pressure without condensation
+        pk3: interface pk with constant akap (p**k),
+            pk3(i,j,k) = exp(akap*peln2(i,k))
+        pe2: calculated from SIM1_sol
+        """
+
         # TODO: this class is extremely similar in structure to RiemannSolver3,
         # can or should they be merged?
         self._precompute_stencil(
@@ -192,4 +243,5 @@ class RiemannSolverC:
             ptc,
             ws,
         )
+        # pe is nonhydrostatic perturbation pressure defined on interfaces
         self._finalize_stencil(self._pe, self._pem, hs, self._dz, pef, gz, ptop)

@@ -36,7 +36,7 @@ class TranslateDel6VtFlux(TranslateDycoreFortranData2Py):
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        self.compute_func = delnflux.DelnFluxNoSG(
+        self.compute_func = delnflux.DelnFluxNoSG(  # type: ignore
             self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,

@@ -42,7 +42,7 @@ class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):
         for qvar in utils.tracer_variables:
             self.ignore_near_zero_errors[qvar] = True
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

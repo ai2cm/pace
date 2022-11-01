@@ -33,6 +33,7 @@ class DycoreState:
             "intent": "inout",
         }
     )
+    # TODO: move a-grid winds to temporary internal storage
     ua: pace.util.Quantity = field(
         metadata={
             "name": "eastward_wind",
@@ -268,6 +269,10 @@ class DycoreState:
             "intent": "inout",
         }
     )
+    """
+    how much energy is dissipated, is mainly captured
+    to send to the stochastic physics (in contrast to heat_source)
+    """
     phis: pace.util.Quantity = field(
         metadata={
             "name": "surface_geopotential",
@@ -327,7 +332,7 @@ class DycoreState:
                     extent=sizer.get_extent(dims),
                     gt4py_backend=backend,
                 )
-        state = cls(**dict_state)
+        state = cls(**dict_state)  # type: ignore
         return state
 
     @classmethod

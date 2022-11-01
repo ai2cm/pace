@@ -38,7 +38,7 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
         self.max_error = 1.4e-10
         self.divdamp: Optional[DivergenceDamping] = None
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
 
     def compute_from_storage(self, inputs):
         self.divdamp = DivergenceDamping(

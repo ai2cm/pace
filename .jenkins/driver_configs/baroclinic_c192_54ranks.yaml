@@ -1,6 +1,6 @@
 stencil_config:
   compilation_config:
-    backend: gt:gpu
+    backend: dace:gpu
     rebuild: false
     validate_args: true
     format_source: false
@@ -19,7 +19,7 @@ performance_config:
 nx_tile: 192
 nz: 79
 dt_atmos: 200
-minutes: 4
+minutes: 60
 layout:
   - 3
   - 3
