@@ -48,4 +48,23 @@ def test_zselect_raises_error_if_not_3d(tmpdir):
             backend="numpy",
         )
         state = DycoreState.init_zeros(quantity_factory)
-        result.z_select[0].slice_data(state)
+        result.z_select[0].select_data(state)
+
+
+def test_zselect_raises_error_if_3rd_dim_not_z(tmpdir):
+    with pytest.raises(ValueError):
+        config = pace.driver.DiagnosticsConfig(
+            path=tmpdir,
+            z_select=[pace.driver.diagnostics.ZSelect(level=0, names=["foo"])],
+        )
+        result = config.diagnostics_factory(unittest.mock.MagicMock())
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer=pace.util.SubtileGridSizer(
+                nx=12, ny=12, nz=79, n_halo=3, extra_dim_lengths={}
+            ),
+            backend="numpy",
+        )
+        state = DycoreState.init_zeros(quantity_factory)
+        foo = quantity_factory.zeros(dims=["z", "x", "y"], units="-")
+        state.foo = foo
+        result.z_select[0].select_data(state)

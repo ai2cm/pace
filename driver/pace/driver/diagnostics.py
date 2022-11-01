@@ -51,8 +51,8 @@ class ZSelect:
                 pace.util.Z_DIM or pace.util.Z_INTERFACE_DIM
             ):
                 raise ValueError(
-                    f"z_select only works for state variables with a z dimension. \
-                        {name} does not have a z dimension"
+                    f"z_select only works for state variables with dimension (x, y, z). \
+                        \n {name} has dimension {getattr(state, name).dims}"
                 )
             var_name = f"{name}_z{self.level}"
             output[var_name] = pace.util.Quantity(
