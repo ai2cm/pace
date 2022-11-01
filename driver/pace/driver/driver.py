@@ -392,6 +392,7 @@ class Driver:
             self.comm = global_comm
             stencil_compare_comm = None
         self.performance_collector = self.config.performance_config.build(self.comm)
+        self.profiler = self.config.performance_config.build_profiler()
         with self.performance_collector.total_timer.clock("initialization"):
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -596,10 +597,15 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_collector.total_timer.clock("total"):
+            self.profiler.enable()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
+            )
+            self.profiler.dump_stats(
+                f"{self.config.performance_config.experiment_name}_\
+                {self.comm.Get_rank()}.prof"
             )
 
     def _step_dynamics(
