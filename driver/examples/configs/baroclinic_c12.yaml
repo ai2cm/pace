@@ -33,6 +33,10 @@ diagnostics_config:
     - qrain
     - qsnow
     - qgraupel
+  z_select:
+    - level: 65
+      names:
+        - pt
 dycore_config:
   a_imp: 1.0
   beta: 0.

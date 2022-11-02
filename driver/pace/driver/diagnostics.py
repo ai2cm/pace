@@ -10,6 +10,8 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace.dsl.dace.orchestration import dace_inhibitor
+from pace.fv3core.initialization.dycore_state import DycoreState
+from pace.util.constants import RGRAV
 
 from .state import DriverState
 
@@ -34,6 +36,35 @@ class Diagnostics(abc.ABC):
         ...
 
 
+@dataclasses.dataclass
+class ZSelect:
+    level: int
+    names: List[str]
+
+    def select_data(self, state: DycoreState):
+        output = {}
+        for name in self.names:
+            if name not in state.__dict__.keys():
+                raise ValueError(f"Invalid state variable {name} for level select")
+            assert len(getattr(state, name).dims) > 2
+            if getattr(state, name).dims[2] != (
+                pace.util.Z_DIM or pace.util.Z_INTERFACE_DIM
+            ):
+                raise ValueError(
+                    f"z_select only works for state variables with dimension (x, y, z). \
+                        \n {name} has dimension {getattr(state, name).dims}"
+                )
+            var_name = f"{name}_z{self.level}"
+            output[var_name] = pace.util.Quantity(
+                getattr(state, name).data[:, :, self.level],
+                dims=getattr(state, name).dims[0:2],
+                origin=getattr(state, name).origin[0:2],
+                extent=getattr(state, name).extent[0:2],
+                units=getattr(state, name).units,
+            )
+        return output
+
+
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
     """
@@ -48,6 +79,7 @@ class DiagnosticsConfig:
             output_format is "netcdf"
         names: state variables to save as diagnostics
         derived_names: derived diagnostics to save
+        z_select: save a veritcal slice of a 3D state
     """
 
     path: Optional[str] = None
@@ -55,6 +87,7 @@ class DiagnosticsConfig:
     time_chunk_size: int = 1
     names: List[str] = dataclasses.field(default_factory=list)
     derived_names: List[str] = dataclasses.field(default_factory=list)
+    z_select: List[ZSelect] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
         if (len(self.names) > 0 or len(self.derived_names) > 0) and self.path is None:
@@ -103,6 +136,7 @@ class DiagnosticsConfig:
                 monitor=monitor,
                 names=self.names,
                 derived_names=self.derived_names,
+                z_select=self.z_select,
             )
         return diagnostics
 
@@ -115,6 +149,7 @@ class MonitorDiagnostics(Diagnostics):
         monitor: pace.util.Monitor,
         names: List[str],
         derived_names: List[str],
+        z_select: List[ZSelect],
     ):
         """
         Args:
@@ -124,6 +159,7 @@ class MonitorDiagnostics(Diagnostics):
         """
         self.names = names
         self.derived_names = derived_names
+        self.z_select = z_select
         self.monitor = monitor
 
     @dace_inhibitor
@@ -136,7 +172,9 @@ class MonitorDiagnostics(Diagnostics):
                 quantity = getattr(state.physics_state, name)
             monitor_state[name] = quantity
         derived_state = self._get_derived_state(state)
+        level_select_state = self._get_z_select_state(state.dycore_state)
         monitor_state.update(derived_state)
+        monitor_state.update(level_select_state)
         self.monitor.store(monitor_state)
 
     def _get_derived_state(self, state: DriverState):
@@ -153,6 +191,12 @@ class MonitorDiagnostics(Diagnostics):
                 else:
                     warnings.warn(f"{name} is not a supported diagnostic variable.")
         return output
+
+    def _get_z_select_state(self, state: DycoreState):
+        z_select_state = {}
+        for zselect in self.z_select:
+            z_select_state.update(zselect.select_data(state))
+        return z_select_state
 
     def store_grid(self, grid_data: pace.util.grid.GridData):
         zarr_grid = {
@@ -196,7 +240,8 @@ def _compute_column_integral(
         )
     k_slice = slice(q_in.origin[2], q_in.origin[2] + q_in.extent[2])
     column_integral = pace.util.Quantity(
-        q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
+        RGRAV
+        * q_in.np.sum(q_in.data[:, :, k_slice] * delp.data[:, :, k_slice], axis=2),
         dims=tuple(q_in.dims[:2]) + tuple(q_in.dims[3:]),
         origin=q_in.metadata.origin[0:2],
         extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),

@@ -3,6 +3,7 @@ from ._capture_stream import capture_stream
 from ._corners import fill_scalar_corners
 from ._exceptions import InvalidQuantityError, OutOfBoundsError
 from ._legacy_restart import open_restart
+from ._profiler import NullProfiler, Profiler
 from ._timing import NullTimer, Timer
 from ._xarray import to_dataset
 from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
