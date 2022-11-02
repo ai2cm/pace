@@ -17,7 +17,10 @@ class TranslateUpdateDzC(TranslateDycoreFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         update_gz_on_c_grid = updatedzc.UpdateGeopotentialHeightOnCGrid(
-            self.stencil_factory, grid.area
+            self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
+            area=grid.grid_data.area,
+            dp_ref=grid.grid_data.dp_ref,
         )
 
         def compute(**kwargs):
@@ -26,7 +29,6 @@ class TranslateUpdateDzC(TranslateDycoreFortranData2Py):
 
         self.compute_func = compute  # type: ignore
         self.in_vars["data_vars"] = {
-            "dp_ref": {"serialname": "dp0"},
             "zs": {},
             "ut": {"serialname": "utc"},
             "vt": {"serialname": "vtc"},

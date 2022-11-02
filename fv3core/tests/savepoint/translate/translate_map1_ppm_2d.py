@@ -36,7 +36,9 @@ class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = MapSingleFactory(stencil_factory)  # type: ignore
+        self.compute_func = MapSingleFactory(  # type: ignore
+            stencil_factory, grid.quantity_factory
+        )
         self.in_vars["data_vars"] = {
             "q1": {"serialname": "var_in"},
             "pe1": {"istart": 3, "iend": grid.ie - 2, "axis": 1},

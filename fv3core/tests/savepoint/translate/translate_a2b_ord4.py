@@ -50,8 +50,13 @@ class TranslateA2B_Ord4(TranslateDycoreFortranData2Py):
         self.compute_obj = A2B_Ord4Compute(stencil_factory)
 
     def compute_from_storage(self, inputs):
+        nord_col = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_col"))
         divdamp = DivergenceDamping(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,
             self.grid.nested,
@@ -60,9 +65,8 @@ class TranslateA2B_Ord4(TranslateDycoreFortranData2Py):
             self.namelist.d4_bg,
             self.namelist.nord,
             self.namelist.grid_type,
-            inputs["nord_col"],
-            inputs["nord_col"],
+            nord_col,
+            nord_col,
         )
-        del inputs["nord_col"]
         self.compute_obj(divdamp, **inputs)
         return inputs

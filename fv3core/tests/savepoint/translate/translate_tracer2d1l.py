@@ -56,6 +56,7 @@ class TranslateTracer2D1L(ParallelTranslate):
         )
         transport = pace.fv3core.stencils.fvtp2d.FiniteVolumeTransport(
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
@@ -64,6 +65,7 @@ class TranslateTracer2D1L(ParallelTranslate):
 
         self.tracer_advection = pace.fv3core.stencils.tracer_2d_1l.TracerAdvection(
             self.stencil_factory,
+            self.grid.quantity_factory,
             transport,
             self.grid.grid_data,
             communicator,

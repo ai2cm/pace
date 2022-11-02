@@ -1,10 +1,11 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM
 
 
 ZVIR = constants.RVGAS / constants.RDGAS - 1.0
@@ -334,17 +335,13 @@ class AdjustNegativeTracerMixingRatio:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         check_negative: bool,
         hydrostatic: bool,
     ):
         grid_indexing = stencil_factory.grid_indexing
-        shape_ij = grid_indexing.domain_full(add=(1, 1, 0))[:2]
-        self._sum1 = utils.make_storage_from_shape(
-            shape_ij, origin=(0, 0), backend=stencil_factory.backend
-        )
-        self._sum2 = utils.make_storage_from_shape(
-            shape_ij, origin=(0, 0), backend=stencil_factory.backend
-        )
+        self._sum1 = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
+        self._sum2 = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
         if check_negative:
             raise NotImplementedError(
                 "Unimplemented namelist value check_negative=True"
@@ -419,7 +416,8 @@ class AdjustNegativeTracerMixingRatio:
         )
         # TODO - optimisation: those could be merged into one stencil. To keep
         # the physical meaning we could keep the structure as @gtstencil.function
-        # TODO: can sum1 and sum2 be removed as API fields and used as temporaries?
+        # TODO: when gt4py supports 2D temporaries, refactor sum1 and sum2 to internal
+        # stencil temporaries
         self._fillq(qgraupel, delp, self._sum1, self._sum2)
         self._fillq(qrain, delp, self._sum1, self._sum2)
         self._fix_water_vapor_down(qvapor, delp)

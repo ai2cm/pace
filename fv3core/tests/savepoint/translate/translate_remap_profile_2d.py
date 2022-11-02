@@ -62,7 +62,14 @@ class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
         j1 = 0
         j2 = 0
         self.compute_func = profile.RemapProfile(
-            self.stencil_factory, inputs["kord"], inputs["iv"], i1, i2, j1, j2
+            self.stencil_factory,
+            self.grid.quantity_factory,
+            inputs["kord"],
+            inputs["iv"],
+            i1,
+            i2,
+            j1,
+            j2,
         )
         self.make_storage_data_input_vars(inputs)
         if "qs" not in inputs:

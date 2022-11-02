@@ -149,6 +149,7 @@ class DycoreToPhysics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         dycore_config: fv3core.DynamicalCoreConfig,
         do_dry_convective_adjust: bool,
         dycore_only: bool,
@@ -173,6 +174,7 @@ class DycoreToPhysics:
         if self._do_dry_convective_adjustment:
             self._fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
                 stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
                 nwat=dycore_config.nwat,
                 fv_sg_adj=dycore_config.fv_sg_adj,
                 n_sponge=dycore_config.n_sponge,

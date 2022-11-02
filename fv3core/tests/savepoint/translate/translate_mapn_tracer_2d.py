@@ -59,12 +59,13 @@ class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
         inputs["kord"] = abs(self.namelist.kord_tr)
         self.compute_func = MapN_Tracer.MapNTracer(  # type: ignore
             self.stencil_factory,
-            inputs.pop("kord"),
-            inputs.pop("nq"),
-            inputs.pop("i1"),
-            inputs.pop("i2"),
-            inputs.pop("j1"),
-            inputs.pop("j2"),
+            quantity_factory=self.grid.quantity_factory,
+            kord=inputs.pop("kord"),
+            nq=inputs.pop("nq"),
+            i1=inputs.pop("i1"),
+            i2=inputs.pop("i2"),
+            j1=inputs.pop("j1"),
+            j2=inputs.pop("j2"),
             fill=self.namelist.fill,
             tracers=inputs["tracers"],
         )

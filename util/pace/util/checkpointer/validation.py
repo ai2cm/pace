@@ -129,10 +129,15 @@ class ValidationCheckpointer(Checkpointer):
                     expected[expected_not_zero],
                     rtol=var_thresholds[varname].relative,
                     atol=0.0,
+                    err_msg=varname,
                 )
 
             if not np.isnan(atol):
                 np.testing.assert_allclose(
-                    output, expected, atol=var_thresholds[varname].absolute, rtol=0.0
+                    output,
+                    expected,
+                    atol=var_thresholds[varname].absolute,
+                    rtol=0.0,
+                    err_msg=varname,
                 )
         self._n_calls[savepoint_name] += 1

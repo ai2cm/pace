@@ -13,7 +13,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
 import pace.util
 from pace.dsl.dace.orchestration import orchestrate
@@ -25,7 +24,7 @@ from pace.fv3core.stencils.map_single import MapSingle
 from pace.fv3core.stencils.mapn_tracer import MapNTracer
 from pace.fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.util import Quantity
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM, Quantity
 
 
 # TODO: Should this be set here or in global_constants?
@@ -289,6 +288,7 @@ class LagrangianToEulerian:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         config: RemappingConfig,
         area_64,
         nq,
@@ -312,7 +312,6 @@ class LagrangianToEulerian:
         if hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
 
-        shape_kplus = grid_indexing.domain_full(add=(0, 0, 1))
         self._t_min = 184.0
         self._nq = nq
         # do_omega = hydrostatic and last_step # TODO pull into inputs
@@ -322,20 +321,15 @@ class LagrangianToEulerian:
             grid_indexing.domain[2] + 1,
         )
 
-        backend = stencil_factory.backend
-        self._pe1 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._pe2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._dp2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._pn2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._pe0 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._pe3 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._pe2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._pn2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._pe0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._pe3 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
 
-        self._gz: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute(), backend=backend
-        )
-        self._cvm: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute(), backend=backend
-        )
+        self._gz = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2 s^-2")
+        self._cvm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
         self._kord_tm = abs(config.kord_tm)
         self._kord_wz = config.kord_wz
@@ -345,7 +339,7 @@ class LagrangianToEulerian:
 
         self.kmp = grid_indexing.domain[2] - 1
         for k in range(pfull.shape[0]):
-            if pfull[k] > 10.0e2:
+            if pfull.view[k] > 10.0e2:
                 self.kmp = k
                 break
 
@@ -368,6 +362,7 @@ class LagrangianToEulerian:
 
         self._map_single_pt = MapSingle(
             stencil_factory,
+            quantity_factory,
             self._kord_tm,
             1,
             grid_indexing.isc,
@@ -378,6 +373,7 @@ class LagrangianToEulerian:
 
         self._mapn_tracer = MapNTracer(
             stencil_factory,
+            quantity_factory,
             abs(config.kord_tr),
             nq,
             grid_indexing.isc,
@@ -390,6 +386,7 @@ class LagrangianToEulerian:
 
         self._map_single_w = MapSingle(
             stencil_factory,
+            quantity_factory,
             self._kord_wz,
             -2,
             grid_indexing.isc,
@@ -400,6 +397,7 @@ class LagrangianToEulerian:
 
         self._map_single_delz = MapSingle(
             stencil_factory,
+            quantity_factory,
             self._kord_wz,
             1,
             grid_indexing.isc,
@@ -432,6 +430,7 @@ class LagrangianToEulerian:
 
         self._map_single_u = MapSingle(
             stencil_factory,
+            quantity_factory,
             self._kord_mt,
             -1,
             grid_indexing.isc,
@@ -452,6 +451,7 @@ class LagrangianToEulerian:
 
         self._map_single_v = MapSingle(
             stencil_factory,
+            quantity_factory,
             self._kord_mt,
             -1,
             grid_indexing.isc,

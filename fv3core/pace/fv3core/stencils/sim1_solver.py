@@ -130,7 +130,14 @@ class Sim1Solver:
     # TODO: implement MOIST_CAPPA=false
 
     def __init__(
-        self, stencil_factory: StencilFactory, p_fac, istart, iend, jstart, jend, nk
+        self,
+        stencil_factory: StencilFactory,
+        p_fac: float,
+        istart,
+        iend,
+        jstart,
+        jend,
+        nk,
     ):
         self._pfac = p_fac
         nic = iend - istart + 1

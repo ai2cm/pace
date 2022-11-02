@@ -12,13 +12,14 @@ from gt4py.gtscript import (
     log,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core._config import RiemannConfig
 from pace.fv3core.stencils.sim1_solver import Sim1Solver
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 @typing.no_type_check
@@ -137,6 +138,8 @@ def finalize(
             zh = zh[0, 0, 1] - dz
 
 
+# TODO: rename to something like NonhydrostaticVerticalSolver
+# since this is not a riemann solver
 class RiemannSolver3:
     """
     Fortran subroutine Riem_Solver3
@@ -147,10 +150,12 @@ class RiemannSolver3:
     while RiemannSolverC uses the half time stepped c-grid w, delp, and gz.
     """
 
-    # TODO: rename to something like NonhydrostaticVerticalSolver
-    # since this is not a riemann solver
-
-    def __init__(self, stencil_factory: StencilFactory, config: RiemannConfig):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+        config: RiemannConfig,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         self._sim1_solve = Sim1Solver(
             stencil_factory,
@@ -169,19 +174,18 @@ class RiemannSolver3:
         if config.a_imp <= 0.999:
             raise NotImplementedError("a_imp <= 0.999 is not implemented")
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                grid_indexing.max_shape,
-                origin=grid_indexing.origin_compute(),
-                backend=stencil_factory.backend,
-            )
-
-        self._tmp_dm = make_storage()
-        self._tmp_pe_init = make_storage()
-        self._tmp_pm = make_storage()
-        self._tmp_pem = make_storage()
-        self._tmp_peln_run = make_storage()
-        self._tmp_gm = make_storage()
+        self._tmp_dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="kg")
+        self._tmp_pe_init = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
+        )
+        self._tmp_pm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._tmp_pem = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
+        )
+        self._tmp_peln_run = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="log(Pa)"
+        )
+        self._tmp_gm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
 
         riemorigin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(0, 0, 1))

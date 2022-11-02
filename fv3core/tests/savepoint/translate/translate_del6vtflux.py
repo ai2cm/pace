@@ -22,7 +22,7 @@ class TranslateDel6VtFlux(TranslateDycoreFortranData2Py):
             "fx2": grid.x3d_domain_dict(),
             "fy2": grid.y3d_domain_dict(),
             "damp_c": {"serialname": "damp4"},
-            "nord_column": {"serialname": "nord_w"},
+            "nord_w": {},
         }
         self.in_vars["parameters"] = []
         self.out_vars = {
@@ -36,11 +36,15 @@ class TranslateDel6VtFlux(TranslateDycoreFortranData2Py):
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
+        nord_col = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_w"))
         self.compute_func = delnflux.DelnFluxNoSG(  # type: ignore
             self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
-            inputs.pop("nord_column"),
+            nord_col,
         )
         self.compute_func(**inputs)
         return self.slice_output(inputs)

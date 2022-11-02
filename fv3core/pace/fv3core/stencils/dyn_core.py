@@ -1,4 +1,4 @@
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
@@ -12,7 +12,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.fv3core.stencils.d_sw as d_sw
 import pace.fv3core.stencils.nh_p_grad as nh_p_grad
@@ -27,7 +26,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core._config import AcousticDynamicsConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
@@ -79,21 +78,6 @@ def zero_data(
             with horizontal(region[3:-3, 3:-3]):
                 heat_source = 0.0
                 diss_estd = 0.0
-
-
-# NOTE in Fortran these are columns
-def dp_ref_compute(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    phis: FloatFieldIJ,
-    dp_ref: FloatField,
-    zs: FloatField,
-    rgrav: float,
-):
-    with computation(PARALLEL), interval(0, -1):
-        dp_ref = ak[1] - ak + (bk[1] - bk) * 1.0e5
-    with computation(PARALLEL), interval(...):
-        zs = phis * rgrav
 
 
 def gz_from_surface_height_and_thicknesses(
@@ -205,70 +189,33 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
-def _quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
-    origin, extent = grid_indexing.get_origin_domain(dims)
-    return pace.util.Quantity(
-        storage,
-        dims=dims,
-        units="unknown",
-        origin=origin,
-        extent=extent,
-    )
-
-
 def dyncore_temporaries(
-    grid_indexing: GridIndexing, *, backend: str
-) -> Tuple[Mapping[str, pace.util.Quantity], Mapping[str, "FloatField"]]:
-    tmp_storages: Dict[str, "FloatField"] = {}
-    utils.storage_dict(
-        tmp_storages,
-        ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd", "cappa"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_full(),
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["ws3"],
-        grid_indexing.max_shape[0:2],
-        grid_indexing.origin_full()[0:2],
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["crx", "xfx"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-        backend=backend,
-    )
-    utils.storage_dict(
-        tmp_storages,
-        ["cry", "yfx"],
-        grid_indexing.max_shape,
-        grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
-        backend=backend,
-    )
-    tmp_quantities: Dict[str, pace.util.Quantity] = {}
-    tmp_quantities["heat_source"] = _quantity_wrap(
-        tmp_storages["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
-    )
-    tmp_quantities["divgd"] = _quantity_wrap(
-        tmp_storages["divgd"],
-        dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-        grid_indexing=grid_indexing,
-    )
-    tmp_quantities["cappa"] = _quantity_wrap(
-        tmp_storages["cappa"],
-        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-        grid_indexing=grid_indexing,
-    )
-    for name in ["gz", "pkc", "zh"]:
-        tmp_quantities[name] = _quantity_wrap(
-            tmp_storages[name],
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
-            grid_indexing=grid_indexing,
+    quantity_factory: pace.util.QuantityFactory,
+) -> Mapping[str, pace.util.Quantity]:
+    temporaries: Dict[str, pace.util.Quantity] = {}
+    for name in ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "cappa"]:
+        # TODO: the dimensions of ut and vt may not be correct,
+        #       because they are not used. double-check and correct as needed.
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"
         )
-    return tmp_quantities, tmp_storages
+    for name in ["gz", "pkc", "zh"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
+    temporaries["divgd"] = quantity_factory.zeros(
+        dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+    )
+    temporaries["ws3"] = quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="unknown")
+    for name in ["crx", "xfx"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
+        )
+    for name in ["cry", "yfx"]:
+        temporaries[name] = quantity_factory.zeros(
+            dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+    return temporaries
 
 
 class AcousticDynamics:
@@ -419,13 +366,13 @@ class AcousticDynamics:
         self,
         comm: pace.util.CubedSphereCommunicator,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         grid_type,
         nested,
         stretched_grid,
         config: AcousticDynamicsConfig,
-        pfull: FloatFieldK,
         phis: FloatFieldIJ,
         wsd: FloatFieldIJ,
         state,  # [DaCe] hack to get around quantity as parameters for halo updates
@@ -435,6 +382,7 @@ class AcousticDynamics:
         Args:
             comm: object for cubed sphere inter-process communication
             stencil_factory: creates stencils
+            quantity_factory: creates quantities
             grid_data: metric terms defining the grid
             damping_coefficients: damping configuration
             grid_type: ???
@@ -486,8 +434,8 @@ class AcousticDynamics:
         assert not config.use_logp, "use_logp=True is not implemented"
         self._da_min = damping_coefficients.da_min
         self.grid_data = grid_data
-        self._ptop = self.grid_data.ptop
-        self._pfull = pfull
+        self._ptop = grid_data.ptop
+        self._pfull = grid_data.p
         self._wsd = wsd
         self._nk_heat_dissipation = get_nk_heat_dissipation(
             config.d_grid_shallow_water,
@@ -495,84 +443,60 @@ class AcousticDynamics:
         )
         self.nonhydrostatic_pressure_gradient = (
             nh_p_grad.NonHydrostaticPressureGradient(
-                stencil_factory, grid_data, config.grid_type
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                grid_data=grid_data,
+                grid_type=config.grid_type,
             )
         )
 
-        quantity_temporaries, storage_temporaries = dyncore_temporaries(
-            grid_indexing, backend=stencil_factory.backend
-        )
-        self._heat_source = quantity_temporaries["heat_source"]
-        self._divgd = quantity_temporaries["divgd"]
-        self._gz = quantity_temporaries["gz"]
-        self._pkc = quantity_temporaries["pkc"]
-        self._zh = quantity_temporaries["zh"]
-        self.cappa = quantity_temporaries["cappa"]
-        self._ut = storage_temporaries["ut"]
-        self._vt = storage_temporaries["vt"]
-        self._pem = storage_temporaries["pem"]
-        self._pk3 = storage_temporaries["pk3"]
-        self._crx = storage_temporaries["crx"]
-        self._cry = storage_temporaries["cry"]
-        self._xfx = storage_temporaries["xfx"]
-        self._yfx = storage_temporaries["yfx"]
-        self._ws3 = storage_temporaries["ws3"]
+        temporaries = dyncore_temporaries(quantity_factory)
+        self._heat_source = temporaries["heat_source"]
+        self._divgd = temporaries["divgd"]
+        self._gz = temporaries["gz"]
+        self._pkc = temporaries["pkc"]
+        self._zh = temporaries["zh"]
+        self.cappa = temporaries["cappa"]
+        self._ut = temporaries["ut"]
+        self._vt = temporaries["vt"]
+        self._pem = temporaries["pem"]
+        self._pk3 = temporaries["pk3"]
+        self._crx = temporaries["crx"]
+        self._cry = temporaries["cry"]
+        self._xfx = temporaries["xfx"]
+        self._yfx = temporaries["yfx"]
+        self._ws3 = temporaries["ws3"]
 
         if not config.hydrostatic:
-            self._pk3[:] = HUGE_R
+            self._pk3.data[:] = HUGE_R
 
         column_namelist = d_sw.get_column_namelist(
-            config.d_grid_shallow_water,
-            grid_indexing.domain[2],
-            backend=stencil_factory.backend,
+            config.d_grid_shallow_water, quantity_factory=quantity_factory
         )
         if not config.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
-            dp_ref_3d = utils.make_storage_from_shape(
-                grid_indexing.max_shape, backend=stencil_factory.backend
-            )
-            zs_3d = utils.make_storage_from_shape(
-                grid_indexing.max_shape, backend=stencil_factory.backend
-            )
+            self._dp_ref = grid_data.dp_ref
+            self._zs = quantity_factory.zeros([X_DIM, Y_DIM], units="m")
+            self._zs.data[:] = self._zs.np.asarray(phis.data / constants.GRAV)
 
-            dp_ref_stencil = stencil_factory.from_origin_domain(
-                dp_ref_compute,
-                origin=grid_indexing.origin_full(),
-                domain=grid_indexing.domain_full(add=(0, 0, 1)),
-            )
-            dp_ref_stencil(
-                self.grid_data.ak,
-                self.grid_data.bk,
-                phis,
-                dp_ref_3d,
-                zs_3d,
-                1.0 / constants.GRAV,
-            )
-            # After writing, make 'dp_ref' a K-field and 'zs' an IJ-field
-            self._dp_ref = utils.make_storage_data(
-                dp_ref_3d[0, 0, :],
-                (dp_ref_3d.shape[2],),
-                (0,),
-                backend=stencil_factory.backend,
-            )
-            self._zs = utils.make_storage_data(
-                zs_3d[:, :, 0],
-                zs_3d.shape[0:2],
-                (0, 0),
-                backend=stencil_factory.backend,
-            )
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,
-                damping_coefficients,
-                grid_data,
-                grid_type,
-                config.hord_tm,
-                self._dp_ref,
-                column_namelist,
+                quantity_factory=quantity_factory,
+                damping_coefficients=damping_coefficients,
+                grid_data=grid_data,
+                grid_type=grid_type,
+                hord_tm=config.hord_tm,
+                column_namelist=column_namelist,
             )
-            self.riem_solver3 = RiemannSolver3(stencil_factory, config.riemann)
-            self.riem_solver_c = RiemannSolverC(stencil_factory, p_fac=config.p_fac)
+            self.riem_solver3 = RiemannSolver3(
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                config=config.riemann,
+            )
+            self.riem_solver_c = RiemannSolverC(
+                stencil_factory, quantity_factory=quantity_factory, p_fac=config.p_fac
+            )
             origin, domain = grid_indexing.get_origin_domain(
                 [X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(2, 2)
             )
@@ -584,12 +508,13 @@ class AcousticDynamics:
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(
                 stencil_factory,
-                grid_data,
-                damping_coefficients,
-                column_namelist,
-                nested,
-                stretched_grid,
-                config.d_grid_shallow_water,
+                quantity_factory=quantity_factory,
+                grid_data=grid_data,
+                damping_coefficients=damping_coefficients,
+                column_namelist=column_namelist,
+                nested=nested,
+                stretched_grid=stretched_grid,
+                config=config.d_grid_shallow_water,
             )
         )
 
@@ -611,10 +536,11 @@ class AcousticDynamics:
 
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
-            grid_data,
-            nested,
-            config.grid_type,
-            config.nord,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            nested=nested,
+            grid_type=config.grid_type,
+            nord=config.nord,
         )
 
         self._gz_from_surface_height_and_thickness = stencil_factory.from_origin_domain(
@@ -638,7 +564,12 @@ class AcousticDynamics:
         )
 
         self.update_geopotential_height_on_c_grid = (
-            updatedzc.UpdateGeopotentialHeightOnCGrid(stencil_factory, grid_data.area)
+            updatedzc.UpdateGeopotentialHeightOnCGrid(
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                area=grid_data.area,
+                dp_ref=grid_data.dp_ref,
+            )
         )
 
         self._zero_data = stencil_factory.from_origin_domain(
@@ -664,7 +595,11 @@ class AcousticDynamics:
         if self._do_del2cubed:
             nf_ke = min(3, config.nord + 1)
             self._hyperdiffusion = HyperdiffusionDamping(
-                stencil_factory, damping_coefficients, grid_data.rarea, nmax=nf_ke
+                stencil_factory,
+                quantity_factory=quantity_factory,
+                damping_coefficients=damping_coefficients,
+                rarea=grid_data.rarea,
+                nmax=nf_ke,
             )
         if config.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(
@@ -680,7 +615,7 @@ class AcousticDynamics:
                 nk=self._nk_heat_dissipation
             ).domain_compute(),
         )
-        self._pk3_halo = PK3Halo(stencil_factory)
+        self._pk3_halo = PK3Halo(stencil_factory, quantity_factory)
         self._copy_stencil = stencil_factory.from_origin_domain(
             basic.copy_defn,
             origin=grid_indexing.origin_full(),
@@ -886,7 +821,7 @@ class AcousticDynamics:
                     )
             if not self.config.hydrostatic:
                 self.update_geopotential_height_on_c_grid(
-                    self._dp_ref, self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
+                    self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
                 )
                 self.riem_solver_c(
                     dt2,
@@ -1024,13 +959,13 @@ class AcousticDynamics:
                 # TODO: Pass through ks, or remove, inconsistent representation vs
                 # Fortran.
                 self._rayleigh_damping(
-                    state.u,
-                    state.v,
-                    state.w,
-                    self._dp_ref,
-                    self._pfull,
-                    dt_acoustic_substep,
-                    self._ptop,
+                    u=state.u,
+                    v=state.v,
+                    w=state.w,
+                    dp=self._dp_ref,
+                    pfull=self._pfull,
+                    dt=dt_acoustic_substep,
+                    ptop=self._ptop,
                 )
 
             if it != n_split - 1:

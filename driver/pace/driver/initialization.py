@@ -376,7 +376,7 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> None:
     and updates the driver state with values.
     """
 
-    ptop = state.grid_data._vertical_data.ak.view[0]
+    ptop = state.grid_data.ak.view[0]
     pe = state.dycore_state.pe
     peln = state.dycore_state.peln
     delp = state.dycore_state.delp

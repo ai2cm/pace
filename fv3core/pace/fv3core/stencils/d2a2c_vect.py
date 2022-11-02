@@ -1,7 +1,7 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
@@ -385,6 +385,7 @@ class DGrid2AGrid2CGridVectors:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         nested: bool,
         grid_type: int,
@@ -418,16 +419,8 @@ class DGrid2AGrid2CGridVectors:
         npt = 4 if not nested else 0
         if npt > grid_indexing.domain[0] - 1 or npt > grid_indexing.domain[1] - 1:
             npt = 0
-        self._utmp = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            grid_indexing.origin_full(),
-            backend=stencil_factory.backend,
-        )
-        self._vtmp = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            grid_indexing.origin_full(),
-            backend=stencil_factory.backend,
-        )
+        self._utmp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m/s")
+        self._vtmp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m/s")
 
         js1 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsc - 1
         je1 = ny - npt if grid_indexing.north_edge else grid_indexing.jec + 1

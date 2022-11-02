@@ -147,6 +147,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         # to False for now (we don't run this on a case where it is True yet)
         dycore_to_physics = update_atmos_state.DycoreToPhysics(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.namelist,
             do_dry_convective_adjust=False,
             dycore_only=self.namelist.dycore_only,

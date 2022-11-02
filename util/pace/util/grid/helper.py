@@ -12,7 +12,7 @@ try:
     from pace.dsl.gt4py_utils import split_cartesian_into_storages
 except ImportError:
     split_cartesian_into_storages = None
-from pace.util import Z_INTERFACE_DIM, get_fs
+from pace.util import Z_DIM, Z_INTERFACE_DIM, get_fs
 
 from .generation import MetricTerms
 
@@ -137,6 +137,11 @@ class VerticalGridData:
     where p = ak + bk * p_ref
     """
 
+    def __post_init__(self):
+        self._dp_ref = None
+        self._p = None
+        self._p_interface = None
+
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
         return cls(
@@ -169,6 +174,57 @@ class VerticalGridData:
             bk.view[:] = ds["bk"].values
 
         return cls(ak=ak, bk=bk)
+
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa)
+        """
+        return 1e5
+
+    @property
+    def p_interface(self) -> pace.util.Quantity:
+        if self._p_interface is None:
+            p_interface_data = self.ak.view[:] + self.bk.view[:] * self.p_ref
+            self._p_interface = pace.util.Quantity(
+                p_interface_data,
+                dims=[Z_INTERFACE_DIM],
+                units="Pa",
+                gt4py_backend=self.ak.gt4py_backend,
+            )
+        return self._p_interface
+
+    @property
+    def p(self) -> pace.util.Quantity:
+        if self._p is None:
+            p_data = (
+                self.p_interface.view[1:] - self.p_interface.view[:-1]
+            ) / self.p_interface.np.log(
+                self.p_interface.view[1:] / self.p_interface.view[:-1]
+            )
+            self._p = pace.util.Quantity(
+                p_data,
+                dims=[Z_DIM],
+                units="Pa",
+                gt4py_backend=self.p_interface.gt4py_backend,
+            )
+        return self._p
+
+    @property
+    def dp(self) -> pace.util.Quantity:
+        if self._dp_ref is None:
+            dp_ref_data = (
+                self.ak.view[1:]
+                - self.ak.view[:-1]
+                + (self.bk.view[1:] - self.bk.view[:-1]) * self.p_ref
+            )
+            self._dp_ref = pace.util.Quantity(
+                dp_ref_data,
+                dims=[Z_DIM],
+                units="Pa",
+                gt4py_backend=self.ak.gt4py_backend,
+            )
+        return self._dp_ref
 
     @property
     def ptop(self) -> float:
@@ -261,6 +317,8 @@ class GridData:
         self._vertical_data = vertical_data
         self._contravariant_data = contravariant_data
         self._angle_data = angle_data
+        self._fC = None
+        self._fC_agrid = None
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
@@ -282,14 +340,41 @@ class GridData:
         return self._horizontal_data.lat
 
     @property
-    def lon_agrid(self):
+    def lon_agrid(self) -> pace.util.Quantity:
         """longitude on the A-grid (cell centers)"""
         return self._horizontal_data.lon_agrid
 
     @property
-    def lat_agrid(self):
+    def lat_agrid(self) -> pace.util.Quantity:
         """latitude on the A-grid (cell centers)"""
         return self._horizontal_data.lat_agrid
+
+    @staticmethod
+    def _fC_from_lat(lat: pace.util.Quantity) -> pace.util.Quantity:
+        np = lat.np
+        data = 2.0 * pace.util.constants.OMEGA * np.sin(lat.data)
+        return pace.util.Quantity(
+            data,
+            units="1/s",
+            dims=lat.dims,
+            origin=lat.origin,
+            extent=lat.extent,
+            gt4py_backend=lat.gt4py_backend,
+        )
+
+    @property
+    def fC(self):
+        """Coriolis parameter at cell corners"""
+        if self._fC is None:
+            self._fC = self._fC_from_lat(self.lat)
+        return self._fC
+
+    @property
+    def fC_agrid(self):
+        """Coriolis parameter at cell centers"""
+        if self._fC_agrid is None:
+            self._fC_agrid = self._fC_from_lat(self.lat_agrid)
+        return self._fC_agrid
 
     @property
     def area(self):
@@ -418,18 +503,20 @@ class GridData:
     def edge_n(self):
         return self._horizontal_data.edge_n
 
-    # Ajda
-    # @property
-    # def p_ref(self) -> float:
-    #     """
-    #     reference pressure (Pa) used to define pressure at vertical interfaces,
-    #     where p = ak + bk * p_ref
-    #     """
-    #     return self._vertical_data.p_ref
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa) used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.p_ref
 
-    # @p_ref.setter
-    # def p_ref(self, value):
-    #     self._vertical_data.p_ref = value
+    @property
+    def p(self) -> pace.util.Quantity:
+        """
+        Reference pressure profile for Eulerian grid, defined at cell centers.
+        """
+        return self._vertical_data.p
 
     @property
     def ak(self) -> pace.util.Quantity:
@@ -463,6 +550,10 @@ class GridData:
     @ptop.setter
     def ptop(self, value):
         self._vertical_data.ptop = value
+
+    @property
+    def dp_ref(self) -> pace.util.Quantity:
+        return self._vertical_data.dp
 
     @property
     def cosa(self):

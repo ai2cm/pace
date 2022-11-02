@@ -1,10 +1,10 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from pace.util import Z_INTERFACE_DIM
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM
 from pace.util.grid import GridData
 
 
@@ -125,7 +125,13 @@ class NonHydrostaticPressureGradient:
     TODO: should implement split pgrad
     """
 
-    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, grid_type):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+        grid_data: GridData,
+        grid_type,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         self.orig = grid_indexing.origin_compute()
         domain_full_k = grid_indexing.domain_compute(add=(1, 1, 0))
@@ -135,35 +141,34 @@ class NonHydrostaticPressureGradient:
         self._rdx = grid_data.rdx
         self._rdy = grid_data.rdy
 
-        self._tmp_wk = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)),
-            origin=self.orig,
-            backend=stencil_factory.backend,
-        )  # pk3.shape
-        self._tmp_wk1 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)),
-            origin=self.orig,
-            backend=stencil_factory.backend,
-        )  # pp.shape
+        self._tmp_wk = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
+        self._tmp_wk1 = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
 
         self.a2b_k1 = AGrid2BGridFourthOrder(
             stencil_factory.restrict_vertical(k_start=1),
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kbuffer = AGrid2BGridFourthOrder(
             stencil_factory,
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kstandard = AGrid2BGridFourthOrder(
             stencil_factory,
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             replace=False,
         )
         self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(

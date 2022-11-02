@@ -2,11 +2,12 @@ import typing
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.sim1_solver import Sim1Solver
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 @typing.no_type_check
@@ -127,24 +128,24 @@ class RiemannSolverC:
     change in layer interface heights due to straining/compression by sound waves
     """
 
-    def __init__(self, stencil_factory: StencilFactory, p_fac):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+        p_fac: float,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute(add=(-1, -1, 0))
         domain = grid_indexing.domain_compute(add=(2, 2, 1))
         shape = grid_indexing.max_shape
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape, origin, backend=stencil_factory.backend
-            )
-
-        self._dm = make_storage()
-        self._w = make_storage()
-        self._pem = make_storage()
-        self._pe = make_storage()
-        self._gm = make_storage()
-        self._dz = make_storage()
-        self._pm = make_storage()
+        self._dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="kg")
+        self._w = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m/s")
+        self._pem = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._pe = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._gm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
+        self._dz = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m")
+        self._pm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
 
         self._precompute_stencil = stencil_factory.from_origin_domain(
             precompute,

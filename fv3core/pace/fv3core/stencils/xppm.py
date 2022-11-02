@@ -327,7 +327,7 @@ class XPiecewiseParabolic:
         q_mean_advected_through_x_interface: FloatField,
     ):
         """
-        Determine the mean value of q_in to be advected along x-interfaces.
+        Determine the mean value per area of q_in to be advected along x-interfaces.
 
         This is done by integrating a piecewise-parabolic subgrid reconstruction
         of q_in along the x-direction over the segment of gridcell which
