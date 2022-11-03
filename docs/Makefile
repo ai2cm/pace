@@ -18,3 +18,11 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+links: clean
+	python link_readmes.py
+
+clean:
+	rm -f readme_links/*.rst readme_links/.*.rst
+
+.PHONY: links clean

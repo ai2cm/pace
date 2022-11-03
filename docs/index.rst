@@ -5,6 +5,7 @@ Welcome to Pace's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   home
 
 
 Indices and tables
