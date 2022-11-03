@@ -1,10 +1,10 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from pace.util import Z_INTERFACE_DIM
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM
 from pace.util.grid import GridData
 
 
@@ -15,7 +15,7 @@ def set_k0_and_calc_wk(
     Args:
         pp (inout):
         pk3 (inout):
-        wk (out):
+        wk (out): delta (pressure to the kappa) computed on corners
     """
     with computation(PARALLEL):
         with interval(0, 1):
@@ -56,7 +56,7 @@ def calc_u(
                 + (gz[0, 0, 0] - gz[1, 0, 1]) * (pk3[0, 0, 1] - pk3[1, 0, 0])
             )
         )
-        # nonhydrostatic contribution
+        # hydrostatic + nonhydrostatic contribution
         u[0, 0, 0] = (
             u[0, 0, 0]
             + du[0, 0, 0]
@@ -99,7 +99,7 @@ def calc_v(
                 + (gz[0, 0, 0] - gz[0, 1, 1]) * (pk3[0, 0, 1] - pk3[0, 1, 0])
             )
         )
-        # nonhydrostatic contribution
+        # hydrostatic + nonhydrostatic contribution
         v[0, 0, 0] = (
             v[0, 0, 0]
             + dv[0, 0, 0]
@@ -114,10 +114,24 @@ def calc_v(
 
 class NonHydrostaticPressureGradient:
     """
-    Fortran name is nh_p_grad
+    Apply nonhydrostatic pressure gradient force in the horizontal.
+
+    Fully implicit with beta = 0.
+
+    Documented in Lin 97, Section 6.6 of FV3 documentation.
+
+    Fortran name is nh_p_grad.
+
+    TODO: should implement split pgrad
     """
 
-    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, grid_type):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+        grid_data: GridData,
+        grid_type,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         self.orig = grid_indexing.origin_compute()
         domain_full_k = grid_indexing.domain_compute(add=(1, 1, 0))
@@ -127,35 +141,34 @@ class NonHydrostaticPressureGradient:
         self._rdx = grid_data.rdx
         self._rdy = grid_data.rdy
 
-        self._tmp_wk = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)),
-            origin=self.orig,
-            backend=stencil_factory.backend,
-        )  # pk3.shape
-        self._tmp_wk1 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)),
-            origin=self.orig,
-            backend=stencil_factory.backend,
-        )  # pp.shape
+        self._tmp_wk = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
+        self._tmp_wk1 = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="unknown"
+        )
 
         self.a2b_k1 = AGrid2BGridFourthOrder(
             stencil_factory.restrict_vertical(k_start=1),
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kbuffer = AGrid2BGridFourthOrder(
             stencil_factory,
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kstandard = AGrid2BGridFourthOrder(
             stencil_factory,
-            grid_data,
-            grid_type,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            grid_type=grid_type,
             replace=False,
         )
         self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
@@ -193,9 +206,9 @@ class NonHydrostaticPressureGradient:
         accounting for both the hydrostatic and nonhydrostatic contributions.
 
         Args:
-            u (inout): U wind
-            v (inout): V wind
-            pp (inout): Pressure, gets updated to B-grid
+            u (inout): wind in x-direction
+            v (inout): wind in y-direction
+            pp (inout): pressure, gets updated to B-grid
             gz (inout): height of the model grid cells, gets updated to B-grid
             pk3 (inout): gets updated to B-grid
             delp (in): vertical delta in pressure
@@ -208,6 +221,10 @@ class NonHydrostaticPressureGradient:
 
         ptk = ptop ** akap
         top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk
+
+        # TODO: make it clearer that each of these a2b outputs is updated
+        # instead of the output being put in tmp_wk1, possibly by removing
+        # the second argument and using a temporary instead?
 
         self.a2b_k1(pp, self._tmp_wk1)
         self.a2b_k1(pk3, self._tmp_wk1)

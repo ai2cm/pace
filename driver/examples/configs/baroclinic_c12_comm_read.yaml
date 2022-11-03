@@ -8,7 +8,7 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: false
+  collect_performance: false
   experiment_name: c12_baroclinic
 comm_config:
   type: read
@@ -17,8 +17,8 @@ comm_config:
     rank: 0
 nx_tile: 12
 nz: 79
-dt_atmos: 225
-minutes: 60
+dt_atmos: 180
+minutes: 6
 layout:
   - 1
   - 1

@@ -64,8 +64,8 @@ minutes: 60
 nx_tile: 12
 nz: 79
 performance_config:
+  collect_performance: false
   experiment_name: c12_baroclinic
-  performance_mode: true
 physics_config:
   do_qa: true
   hydrostatic: false

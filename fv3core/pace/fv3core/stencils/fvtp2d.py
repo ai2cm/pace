@@ -3,14 +3,15 @@ from typing import Optional
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.delnflux import DelnFlux
 from pace.fv3core.stencils.xppm import XPiecewiseParabolic
 from pace.fv3core.stencils.yppm import YPiecewiseParabolic
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -128,6 +129,7 @@ class FiniteVolumeTransport:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         grid_type: int,
@@ -145,19 +147,15 @@ class FiniteVolumeTransport:
         self._area = grid_data.area
         origin = idx.origin_compute()
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                idx.max_shape,
-                origin=origin,
-                backend=stencil_factory.backend,
-            )
+        def make_quantity():
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._q_advected_y = make_storage()
-        self._q_advected_x = make_storage()
-        self._q_x_advected_mean = make_storage()
-        self._q_y_advected_mean = make_storage()
-        self._q_advected_x_y_advected_mean = make_storage()
-        self._q_advected_y_x_advected_mean = make_storage()
+        self._q_advected_y = make_quantity()
+        self._q_advected_x = make_quantity()
+        self._q_x_advected_mean = make_quantity()
+        self._q_y_advected_mean = make_quantity()
+        self._q_advected_x_y_advected_mean = make_quantity()
+        self._q_advected_y_x_advected_mean = make_quantity()
         self._nord = nord
         self._damp_c = damp_c
         ord_outer = hord
@@ -168,9 +166,10 @@ class FiniteVolumeTransport:
             self._do_delnflux = True
             self.delnflux: Optional[DelnFlux] = DelnFlux(
                 stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
                 damping_coefficients=damping_coefficients,
                 rarea=grid_data.rarea,
-                nord=self._nord,
+                nord_col=self._nord,
                 damp_c=self._damp_c,
             )
         else:

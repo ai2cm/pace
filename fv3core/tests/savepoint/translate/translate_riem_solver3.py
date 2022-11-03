@@ -15,7 +15,8 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.riemann_solver_3 = RiemannSolver3(
             stencil_factory,
-            spec.RiemannConfig(
+            quantity_factory=self.grid.quantity_factory,
+            config=spec.RiemannConfig(
                 p_fac=namelist.p_fac,
                 a_imp=namelist.a_imp,
                 use_logp=namelist.use_logp,

@@ -12,6 +12,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, s
 
 import pace.dsl.gt4py_utils as utils
 import pace.physics.functions.microphysics_funcs as functions
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
@@ -1844,24 +1845,24 @@ class MicrophysicsState:
 
     def __init__(
         self,
-        pt: FloatField,
-        qvapor: FloatField,
-        qliquid: FloatField,
-        qrain: FloatField,
-        qice: FloatField,
-        qsnow: FloatField,
-        qgraupel: FloatField,
-        qcld: FloatField,
-        ua: FloatField,
-        va: FloatField,
-        delp: FloatField,
-        delz: FloatField,
-        omga: FloatField,
-        delprsi: FloatField,
-        wmp: FloatField,
-        dz: FloatField,
-        tendency_storage: FloatField,
-        land: FloatField,
+        pt: pace.util.Quantity,
+        qvapor: pace.util.Quantity,
+        qliquid: pace.util.Quantity,
+        qrain: pace.util.Quantity,
+        qice: pace.util.Quantity,
+        qsnow: pace.util.Quantity,
+        qgraupel: pace.util.Quantity,
+        qcld: pace.util.Quantity,
+        ua: pace.util.Quantity,
+        va: pace.util.Quantity,
+        delp: pace.util.Quantity,
+        delz: pace.util.Quantity,
+        omga: pace.util.Quantity,
+        delprsi: pace.util.Quantity,
+        wmp: pace.util.Quantity,
+        dz: pace.util.Quantity,
+        tendency: pace.util.Quantity,
+        land: pace.util.Quantity,
     ):
         self.pt = pt
         self.qvapor = qvapor
@@ -1876,16 +1877,16 @@ class MicrophysicsState:
         self.delp = delp
         self.delz = delz
         self.omga = omga
-        self.qv_dt = copy.deepcopy(tendency_storage)
-        self.ql_dt = copy.deepcopy(tendency_storage)
-        self.qr_dt = copy.deepcopy(tendency_storage)
-        self.qi_dt = copy.deepcopy(tendency_storage)
-        self.qs_dt = copy.deepcopy(tendency_storage)
-        self.qg_dt = copy.deepcopy(tendency_storage)
-        self.qa_dt = copy.deepcopy(tendency_storage)
-        self.udt = copy.deepcopy(tendency_storage)
-        self.vdt = copy.deepcopy(tendency_storage)
-        self.pt_dt = copy.deepcopy(tendency_storage)
+        self.qv_dt = copy.deepcopy(tendency)
+        self.ql_dt = copy.deepcopy(tendency)
+        self.qr_dt = copy.deepcopy(tendency)
+        self.qi_dt = copy.deepcopy(tendency)
+        self.qs_dt = copy.deepcopy(tendency)
+        self.qg_dt = copy.deepcopy(tendency)
+        self.qa_dt = copy.deepcopy(tendency)
+        self.udt = copy.deepcopy(tendency)
+        self.vdt = copy.deepcopy(tendency)
+        self.pt_dt = copy.deepcopy(tendency)
         self.delprsi = delprsi
         self.wmp = wmp
         self.dz = dz
@@ -1912,9 +1913,9 @@ class Microphysics:
             stencil_factory.config.is_gpu_backend
             and stencil_factory.config.dace_config.is_dace_orchestrated()
         ):
-            self.gfdl_cloud_microphys_init(cp)
+            self.gfdl_cloud_microphys_init(namelist.dt_atmos, cp)
         else:
-            self.gfdl_cloud_microphys_init(np)
+            self.gfdl_cloud_microphys_init(namelist.dt_atmos, np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
@@ -2083,14 +2084,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self, numpy_module):
-        self.setupm(numpy_module)
+    def gfdl_cloud_microphys_init(self, dt_atmos: float, numpy_module):
+        self.setupm(dt_atmos, numpy_module)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self, numpy_module):
+    def setupm(self, dt_atmos: float, numpy_module):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2231,7 +2232,7 @@ class Microphysics:
         self._csmlt = csmlt
         self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
-        self._set_timestep(-1.0)
+        self._set_timestep(dt_atmos)
 
     def _update_timestep_if_needed(self, timestep: float):
         if timestep != self._timestep:
@@ -2255,6 +2256,7 @@ class Microphysics:
         self._timestep = timestep
 
     def __call__(self, state: MicrophysicsState, timestep: float):
+        # TODO (floriand): reintroduce after DaCe fix to inlined scalar that shouldn't
         self._update_timestep_if_needed(timestep)
         self._fields_init(
             state.land,

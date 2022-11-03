@@ -1,8 +1,9 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM
 
 
 # TODO merge with pe_halo? reuse partials?
@@ -37,7 +38,11 @@ class PK3Halo:
     Fortran name is pk3_halo
     """
 
-    def __init__(self, stencil_factory: StencilFactory):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
+    ):
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full(add=(0, 0, 1))
@@ -51,17 +56,13 @@ class PK3Halo:
             domain=domain,
         )
         shape_2D = grid_indexing.domain_full(add=(1, 1, 1))[0:2]
-        self._pe_tmp = utils.make_storage_from_shape(
-            shape_2D,
-            grid_indexing.origin_full(),
-            backend=stencil_factory.backend,
-        )
+        self._pe_tmp = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
 
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
-        """Update pressure (pk3) in halo region
+        """Update pressure raised to the kappa (pk3) in halo region.
 
         Args:
-            pk3: Interface pressure raised to power of kappa using constant kappa
+            pk3: 3D interface pressure raised to power of kappa using constant kappa
             delp: Vertical delta in pressure
             ptop: The pressure level at the top of atmosphere
             akap: Poisson constant (KAPPA)

@@ -100,18 +100,11 @@ class TranslateDynCore(ParallelTranslate2PyState):
             "ak": {},
             "bk": {},
             "diss_estd": {},
-            "pfull": {},
         }
         self._base.in_vars["data_vars"]["wsd"]["kstart"] = grid.npz
         self._base.in_vars["data_vars"]["wsd"]["kend"] = None
 
-        self._base.in_vars["parameters"] = [
-            "mdt",
-            "akap",
-            "ptop",
-            "n_map",
-            "ks",
-        ]
+        self._base.in_vars["parameters"] = ["mdt", "akap", "ptop", "n_map"]
 
         self._base.out_vars = {}
         for v, d in self._base.in_vars["data_vars"].items():
@@ -119,7 +112,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
 
         del self._base.out_vars["ak"]
         del self._base.out_vars["bk"]
-        del self._base.out_vars["pfull"]
         del self._base.out_vars["phis"]
 
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
@@ -130,9 +122,9 @@ class TranslateDynCore(ParallelTranslate2PyState):
         self.namelist = namelist
 
     def compute_parallel(self, inputs, communicator):
-        # ak, bk, pfull, and phis are numpy arrays at this point and
+        # ak, bk, and phis are numpy arrays at this point and
         #   must be converted into gt4py storages
-        for name in ("ak", "bk", "pfull", "phis"):
+        for name in ("ak", "bk", "phis"):
             inputs[name] = utils.make_storage_data(
                 inputs[name],
                 inputs[name].shape,
@@ -145,7 +137,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
-            grid_data.ks = inputs["ks"]
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
         wsd: pace.util.Quantity = self.grid.quantity_factory.empty(
@@ -160,17 +151,22 @@ class TranslateDynCore(ParallelTranslate2PyState):
                 state[name].storage[selection] = value
             else:
                 setattr(state, name, value)
+        phis: pace.util.Quantity = self.grid.quantity_factory.empty(
+            dims=[pace.util.X_DIM, pace.util.Y_DIM],
+            units="m",
+        )
+        phis.data[:] = phis.np.asarray(inputs["phis"])
         acoustic_dynamics = dyn_core.AcousticDynamics(
             comm=communicator,
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             grid_data=grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
             nested=self.grid.nested,
             stretched_grid=self.grid.stretched_grid,
             config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
-            pfull=inputs["pfull"],
-            phis=inputs["phis"],
+            phis=phis,
             wsd=wsd.storage,
             state=state,
         )

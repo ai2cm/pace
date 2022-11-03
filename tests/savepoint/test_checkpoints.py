@@ -101,12 +101,12 @@ def test_fv_dynamics(
         ds,
         translate,
     )
-    print("stencils initialized")
     if calibrate_thresholds:
         thresholds = _calibrate_thresholds(
             initializer=initializer,
             communicator=communicator,
             stencil_factory=stencil_factory,
+            quantity_factory=grid.quantity_factory,
             damping_coefficients=grid.damping_coefficients,
             dycore_config=dycore_config,
             n_trials=10,
@@ -117,7 +117,6 @@ def test_fv_dynamics(
             with open(threshold_filename, "w") as f:
                 yaml.safe_dump(dataclasses.asdict(thresholds), f)
         communicator.comm.barrier()
-    print("thresholds calibrated")
     with open(threshold_filename, "r") as f:
         data = yaml.safe_load(f)
         thresholds = dacite.from_dict(
@@ -133,6 +132,7 @@ def test_fv_dynamics(
         comm=communicator,
         grid_data=grid_data,
         stencil_factory=stencil_factory,
+        quantity_factory=grid.quantity_factory,
         damping_coefficients=grid.damping_coefficients,
         config=dycore_config,
         phis=state.phis,
@@ -148,28 +148,31 @@ def _calibrate_thresholds(
     initializer: StateInitializer,
     communicator: pace.util.CubedSphereCommunicator,
     stencil_factory: pace.dsl.StencilFactory,
+    quantity_factory: pace.util.QuantityFactory,
     damping_coefficients: DampingCoefficients,
     dycore_config: fv3core.DynamicalCoreConfig,
     n_trials: int,
     factor: float,
 ):
-    state, grid_data = initializer.new_state()
     calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
-    dycore = fv3core.DynamicalCore(
-        comm=communicator,
-        grid_data=grid_data,
-        stencil_factory=stencil_factory,
-        damping_coefficients=damping_coefficients,
-        config=dycore_config,
-        phis=state.phis,
-        state=state,
-        checkpointer=calibration,
-        timestep=timedelta(seconds=dycore_config.dt_atmos),
-    )
     for i in range(n_trials):
         print(f"running calibration trial {i}")
-        trial_state, _ = initializer.new_state()
+        trial_state, grid_data = initializer.new_state()
         perturb(dycore_state_to_dict(trial_state))
+        # we need to initialize new DynamicalCore because halo updates bind
+        # to a particular state object, currently
+        dycore = fv3core.DynamicalCore(
+            comm=communicator,
+            grid_data=grid_data,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            damping_coefficients=damping_coefficients,
+            config=dycore_config,
+            phis=trial_state.phis,
+            state=trial_state,
+            checkpointer=calibration,
+            timestep=timedelta(seconds=dycore_config.dt_atmos),
+        )
         with calibration.trial():
             dycore.step_dynamics(trial_state)
     all_thresholds = communicator.comm.allgather(calibration.thresholds)

@@ -49,13 +49,24 @@ def ray_fast_wind_compute(
     u: FloatField,
     v: FloatField,
     w: FloatField,
-    dp: FloatFieldK,
-    pfull: FloatFieldK,
+    delta_p_ref: FloatFieldK,  # reference delta pressure
+    pfull: FloatFieldK,  # input layer pressure reference?
     dt: float,
     ptop: float,
     rf_cutoff_nudge: float,
-    ks: int,
 ):
+    """
+    Args:
+        u (inout):
+        v (inout):
+        w (inout):
+        delta_p_ref (in):
+        pfull (in):
+        dt (in):
+        ptop (in):
+        rf_cutoff_nudge (in):
+        ks (in):
+    """
     from __externals__ import hydrostatic, local_ie, local_je, rf_cutoff, tau
 
     # dm_stencil
@@ -63,32 +74,35 @@ def ray_fast_wind_compute(
         # TODO -- in the fortran model rf is only computed once, repeating
         # the computation every time ray_fast is run is inefficient
         if pfull < rf_cutoff:
+            # rf is rayleigh damping increment, fraction of vertical velocity
+            # left after doing rayleigh damping (w -> w * rf)
             rf = compute_rff_vals(pfull, dt, rf_cutoff, tau * SDAY, ptop)
     with computation(FORWARD):
         with interval(0, 1):
             if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
-                dm = dp
+                p_ref = delta_p_ref
         with interval(1, None):
-            dm = dm[0, 0, -1]
+            p_ref = p_ref[0, 0, -1]
             if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
-                dm += dp
+                p_ref += delta_p_ref
     with computation(BACKWARD), interval(0, -1):
         if pfull < rf_cutoff_nudge:
-            dm = dm[0, 0, 1]
+            p_ref = p_ref[0, 0, 1]
     # ray_fast_wind(u)
     with computation(FORWARD):
         with interval(0, 1):
             with horizontal(region[: local_ie + 1, :]):
                 if pfull < rf_cutoff:
-                    dmdir = dm_layer(rf, dp, u)
+                    # dmdir = (1.0 - rf) * dp * wind
+                    dmdir = dm_layer(rf, delta_p_ref, u)
                     u *= rf
                 else:
-                    dm = 0
+                    p_ref = 0
         with interval(1, None):
             with horizontal(region[: local_ie + 1, :]):
                 dmdir = dmdir[0, 0, -1]
                 if pfull < rf_cutoff:
-                    dmdir += dm_layer(rf, dp, u)
+                    dmdir += dm_layer(rf, delta_p_ref, u)
                     u *= rf
     with computation(BACKWARD), interval(0, -1):
         if pfull < rf_cutoff:
@@ -96,21 +110,21 @@ def ray_fast_wind_compute(
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, :]):
             if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
-                u += dmdir / dm
+                u += dmdir / p_ref
     # ray_fast_wind(v)
     with computation(FORWARD):
         with interval(0, 1):
             with horizontal(region[:, : local_je + 1]):
                 if pfull < rf_cutoff:
-                    dmdir = dm_layer(rf, dp, v)
+                    dmdir = dm_layer(rf, delta_p_ref, v)
                     v *= rf
                 else:
-                    dm = 0
+                    p_ref = 0
         with interval(1, None):
             with horizontal(region[:, : local_je + 1]):
                 dmdir = dmdir[0, 0, -1]
                 if pfull < rf_cutoff:
-                    dmdir += dm_layer(rf, dp, v)
+                    dmdir += dm_layer(rf, delta_p_ref, v)
                     v *= rf
     with computation(BACKWARD), interval(0, -1):
         if pfull < rf_cutoff:
@@ -118,7 +132,7 @@ def ray_fast_wind_compute(
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, : local_je + 1]):
             if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
-                v += dmdir / dm
+                v += dmdir / p_ref
     # ray_fast_w
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, : local_je + 1]):
@@ -138,7 +152,7 @@ class RayleighDamping:
         - rf_cutoff [Float]: pressure below which no Rayleigh damping is applied
                              if tau > 0.
 
-    Fotran name: ray_fast.
+    Fortran name: ray_fast.
     """
 
     def __init__(self, stencil_factory: StencilFactory, rf_cutoff, tau, hydrostatic):
@@ -176,8 +190,8 @@ class RayleighDamping:
         pfull: FloatFieldK,
         dt: float,
         ptop: float,
-        ks: int,
     ):
+
         rf_cutoff_nudge = self._rf_cutoff + min(100.0, 10.0 * ptop)
 
         self._ray_fast_wind_compute(
@@ -189,5 +203,4 @@ class RayleighDamping:
             dt,
             ptop,
             rf_cutoff_nudge,
-            ks,
         )

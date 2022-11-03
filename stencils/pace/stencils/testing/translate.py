@@ -6,10 +6,10 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
-from pace.stencils.testing.grid import Grid
+from pace.stencils.testing.grid import Grid  # type: ignore
 
 
-logger = logging.getLogger("fv3ser")
+logger = logging.getLogger(__name__)
 
 
 def read_serialized_data(serializer, savepoint, variable):
@@ -19,9 +19,9 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def pad_field_in_j(field, nj, backend: str):
+def pad_field_in_j(field, nj: int, backend: str):
     utils.device_sync(backend)
-    outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
+    outfield = utils.tile(field[:, 0, :], (nj, 1, 1)).transpose(1, 0, 2)
     return outfield
 
 
@@ -36,7 +36,7 @@ class TranslateFortranData2Py:
         self.out_vars: Dict[str, Any] = {}
         self.write_vars: List = []
         self.grid = grid
-        self.maxshape = grid.domain_shape_full(add=(1, 1, 1))
+        self.maxshape: Tuple[int, ...] = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
         self.ignore_near_zero_errors: Dict[str, Any] = {}
 
@@ -90,7 +90,7 @@ class TranslateFortranData2Py:
         if names_4d:
             return utils.make_storage_dict(
                 array,
-                use_shape,
+                tuple(use_shape),
                 start=start,
                 origin=start,
                 dummy=dummy_axes,
@@ -101,7 +101,7 @@ class TranslateFortranData2Py:
         else:
             return utils.make_storage_data(
                 array,
-                use_shape,
+                tuple(use_shape),
                 start=start,
                 origin=start,
                 dummy=dummy_axes,
