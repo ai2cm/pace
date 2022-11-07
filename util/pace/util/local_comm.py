@@ -1,6 +1,5 @@
 import copy
 import logging
-from enum import Enum
 from typing import Any
 
 from .comm import Comm
@@ -25,19 +24,12 @@ class AsyncResult:
         return self._result()
 
 
-class SplitState(Enum):
-    NO_SPLIT = 0
-    SPLITTING = 1
-    ALREADY_SPLIT = 2
-
-
 class LocalComm(Comm):
     def __init__(self, rank, total_ranks, buffer_dict):
         self.rank = rank
         self.total_ranks = total_ranks
         self._buffer = buffer_dict
         self._i_buffer = {}
-        self._split_state = SplitState.NO_SPLIT
 
     @property
     def _split_comms(self):
