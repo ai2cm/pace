@@ -1,10 +1,8 @@
 from typing import Optional
 
 import gt4py.gtscript as gtscript
-import numpy as np
 from gt4py.gtscript import (
     __INLINED,
-    FORWARD,
     PARALLEL,
     computation,
     horizontal,
@@ -12,18 +10,32 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import X_DIM, Y_DIM, Z_DIM
-from pace.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients
 
 
-def calc_damp(damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min: float):
-    with computation(FORWARD), interval(...):
-        damp4 = (damp_c * da_min) ** (nord + 1)
+def calc_damp(
+    damp_c: pace.util.Quantity, da_min: float, nord: pace.util.Quantity
+) -> pace.util.Quantity:
+    if damp_c.dims != nord.dims or damp_c.data.shape != nord.data.shape:
+        raise NotImplementedError(
+            "current implementation requires damp_c and nord to have "
+            "identical data shape and dims"
+        )
+    data = (damp_c.data * da_min) ** (nord.data + 1)
+    return pace.util.Quantity(
+        data=data,
+        dims=damp_c.dims,
+        # TODO: find and document units
+        units="unknown",
+        origin=damp_c.origin,
+        extent=damp_c.extent,
+        gt4py_backend=damp_c.gt4py_backend,
+    )
 
 
 def fx_calc_stencil_nord(q: FloatField, del6_v: FloatFieldIJ, fx: FloatField):
@@ -941,10 +953,11 @@ class DelnFlux:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
-        rarea,
-        nord: FloatFieldK,
-        damp_c: FloatFieldK,
+        rarea: pace.util.Quantity,
+        nord_col: pace.util.Quantity,
+        damp_c: pace.util.Quantity,
     ):
         """
         nord sets the order of damping to apply:
@@ -959,9 +972,9 @@ class DelnFlux:
             config=stencil_factory.config.dace_config,
         )
         self._no_compute = False
-        if (damp_c <= 1e-4).all():
+        if (damp_c.view[:] <= 1e-4).all():
             self._no_compute = True
-        elif (damp_c[:-1] <= 1e-4).any():
+        elif (damp_c.view[:-1] <= 1e-4).any():
             raise NotImplementedError(
                 "damp_c currently must be always greater than 10^-4 for delnflux"
             )
@@ -969,27 +982,10 @@ class DelnFlux:
         nk = grid_indexing.domain[2]
         self._origin = grid_indexing.origin_full()
 
-        shape = grid_indexing.max_shape
-        k_shape = (1, 1, nk)
+        self._fx2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
+        self._fy2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
+        self._d2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="undefined")
 
-        self._damp_3d = utils.make_storage_from_shape(
-            k_shape, backend=stencil_factory.backend
-        )
-        # fields must be 3d to assign to them
-        self._fx2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
-        )
-        self._fy2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
-        )
-        self._d2 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(),
-            backend=stencil_factory.backend,
-        )
-
-        damping_factor_calculation = stencil_factory.from_origin_domain(
-            calc_damp, origin=(0, 0, 0), domain=k_shape
-        )
         self._add_diffusive_stencil = stencil_factory.from_dims_halo(
             func=add_diffusive_component,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
@@ -998,15 +994,12 @@ class DelnFlux:
             func=diffusive_damp, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
 
-        damping_factor_calculation(
-            self._damp_3d, nord, damp_c, damping_coefficients.da_min
-        )
-        self._damp = utils.make_storage_data(
-            self._damp_3d[0, 0, :], (nk,), (0,), backend=stencil_factory.backend
+        self._damp = calc_damp(
+            damp_c=damp_c, da_min=damping_coefficients.da_min, nord=nord_col
         )
 
         self.delnflux_nosg = DelnFluxNoSG(
-            stencil_factory, damping_coefficients, rarea, nord, nk=nk
+            stencil_factory, damping_coefficients, rarea, nord_col, nk=nk
         )
 
     def __call__(
@@ -1069,8 +1062,8 @@ class DelnFluxNoSG:
         self,
         stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
-        rarea,
-        nord,
+        rarea: pace.util.Quantity,
+        nord: pace.util.Quantity,
         nk: Optional[int] = None,
     ):
         """
@@ -1087,11 +1080,11 @@ class DelnFluxNoSG:
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v
         self._rarea = rarea
-        if max(nord[:]) > 3:
+        self._nmax = int(max(nord.view[:]))
+        if self._nmax > 3:
             raise ValueError("nord must be less than 3")
-        if not np.all(n in [0, 2, 3] for n in nord[:]):
+        if not all(n in [0, 2, 3] for n in nord.view[:]):
             raise NotImplementedError("nord must have values 0, 2, or 3")
-        self._nmax = int(max(nord[:]))
         i1 = grid_indexing.isc - 1 - self._nmax
         i2 = grid_indexing.iec + 1 + self._nmax
         j1 = grid_indexing.jsc - 1 - self._nmax
@@ -1134,10 +1127,10 @@ class DelnFluxNoSG:
             domains_fy.append((nt_nx - 2, nt_ny - 1, nk))
 
         nord_dictionary = {
-            "nord0": nord[0],
-            "nord1": nord[1],
-            "nord2": nord[2],
-            "nord3": nord[3],
+            "nord0": float(nord.view[0]),
+            "nord1": float(nord.view[1]),
+            "nord2": float(nord.view[2]),
+            "nord3": float(nord.view[3]),
         }
 
         self._d2_damp = stencil_factory.from_origin_domain(

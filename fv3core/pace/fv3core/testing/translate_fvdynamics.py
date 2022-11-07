@@ -327,6 +327,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             comm=communicator,
             grid_data=grid_data,
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             damping_coefficients=self.grid.damping_coefficients,
             config=DynamicalCoreConfig.from_namelist(self.namelist),
             phis=state.phis,

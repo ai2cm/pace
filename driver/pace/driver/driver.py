@@ -20,7 +20,6 @@ from pace import fv3core
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
-from pace.fv3core.initialization.dycore_state import DycoreState
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -397,7 +396,7 @@ class Driver:
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
-            self.update_driver_config_with_communicator(communicator)
+            self._update_driver_config_with_communicator(communicator)
 
             if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
 
@@ -436,17 +435,6 @@ class Driver:
                 method_to_orchestrate="_critical_path_step_all",
                 dace_compiletime_args=["timer"],
             )
-            orchestrate(
-                obj=self,
-                config=self.config.stencil_config.dace_config,
-                method_to_orchestrate="_step_dynamics",
-                dace_compiletime_args=["state", "timer"],
-            )
-            orchestrate(
-                obj=self,
-                config=self.config.stencil_config.dace_config,
-                method_to_orchestrate="_step_physics",
-            )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
                 config=config,
@@ -471,6 +459,7 @@ class Driver:
                 comm=communicator,
                 grid_data=self.state.grid_data,
                 stencil_factory=self.stencil_factory,
+                quantity_factory=self.quantity_factory,
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 timestep=self.config.timestep,
@@ -491,6 +480,7 @@ class Driver:
             if not config.disable_step_physics:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
                     dycore_config=self.config.dycore_config,
                     do_dry_convective_adjust=config.do_dry_convective_adjustment,
                     dycore_only=self.config.dycore_only,
@@ -525,7 +515,7 @@ class Driver:
 
         self._time_run = self.config.start_time
 
-    def update_driver_config_with_communicator(
+    def _update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
     ) -> None:
         dace_config = DaceConfig(
@@ -554,9 +544,10 @@ class Driver:
         self.diagnostics.store(time=self._time_run, state=self.state)
 
     @dace_inhibitor
-    def end_of_step_actions(self, step: int):
-        """Gather operations unrelated to computation.
-        Using a function allows those actions to be removed from the orchestration path.
+    def _end_of_step_actions(self, step: int):
+        """
+        Gather operations unrelated to computation.
+        Using a method allows those actions to be removed from the orchestration path.
         """
         if __debug__:
             logger.info(f"Finished stepping {step}")
@@ -583,16 +574,32 @@ class Driver:
 
         This function must remain orchestrateable by DaCe (e.g.
         all code not parsable due to python complexity needs to be moved
-        to a callback, like end_of_step_actions)."""
+        to a callback, like end_of_step_actions).
+        """
         for step in dace.nounroll(range(steps_count)):
             with timer.clock("mainloop"):
-                self._step_dynamics(
-                    self.state.dycore_state,
-                    self.performance_collector.timestep_timer,
+                self.dycore.step_dynamics(
+                    state=self.state.dycore_state,
+                    timer=timer,
                 )
                 if not self.config.disable_step_physics:
-                    self._step_physics(timestep=dt)
-            self.end_of_step_actions(step)
+                    self.dycore_to_physics(
+                        dycore_state=self.state.dycore_state,
+                        physics_state=self.state.physics_state,
+                        tendency_state=self.state.tendency_state,
+                        timestep=float(dt),
+                    )
+                    if not self.config.dycore_only:
+                        self.physics(self.state.physics_state, timestep=float(dt))
+                    self.end_of_step_update(
+                        dycore_state=self.state.dycore_state,
+                        phy_state=self.state.physics_state,
+                        u_dt=self.state.tendency_state.u_dt.storage,
+                        v_dt=self.state.tendency_state.v_dt.storage,
+                        pt_dt=self.state.tendency_state.pt_dt.storage,
+                        dt=float(dt),
+                    )
+            self._end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
@@ -607,34 +614,6 @@ class Driver:
                 f"{self.config.performance_config.experiment_name}_\
                 {self.comm.Get_rank()}.prof"
             )
-
-    def _step_dynamics(
-        self,
-        state: DycoreState,
-        timer: pace.util.Timer,
-    ):
-        self.dycore.step_dynamics(
-            state=state,
-            timer=timer,
-        )
-
-    def _step_physics(self, timestep: float):
-        self.dycore_to_physics(
-            dycore_state=self.state.dycore_state,
-            physics_state=self.state.physics_state,
-            tendency_state=self.state.tendency_state,
-            timestep=float(timestep),
-        )
-        if not self.config.dycore_only:
-            self.physics(self.state.physics_state, timestep=float(timestep))
-        self.end_of_step_update(
-            dycore_state=self.state.dycore_state,
-            phy_state=self.state.physics_state,
-            u_dt=self.state.tendency_state.u_dt.storage,
-            v_dt=self.state.tendency_state.v_dt.storage,
-            pt_dt=self.state.tendency_state.pt_dt.storage,
-            dt=float(timestep),
-        )
 
     def _write_performance_json_output(self):
         self.performance_collector.write_out_performance(

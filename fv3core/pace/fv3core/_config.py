@@ -267,9 +267,6 @@ class DynamicalCoreConfig:
     breed_vortex_inline: bool = NamelistDefaults.breed_vortex_inline
     use_old_omega: bool = NamelistDefaults.use_old_omega
     rf_fast: bool = NamelistDefaults.rf_fast
-    p_ref: float = (
-        NamelistDefaults.p_ref
-    )  # Surface pressure used to construct a horizontally-uniform reference
     adiabatic: bool = NamelistDefaults.adiabatic
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
@@ -375,7 +372,6 @@ class DynamicalCoreConfig:
             breed_vortex_inline=namelist.breed_vortex_inline,
             use_old_omega=namelist.use_old_omega,
             rf_fast=namelist.rf_fast,
-            p_ref=namelist.p_ref,
             adiabatic=namelist.adiabatic,
             nf_omega=namelist.nf_omega,
             fv_sg_adj=namelist.fv_sg_adj,

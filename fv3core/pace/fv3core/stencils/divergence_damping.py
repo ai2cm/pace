@@ -8,9 +8,9 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.basic_operations as basic
 import pace.stencils.corners as corners
+import pace.util
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -343,15 +343,16 @@ class DivergenceDamping:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         nested: bool,
         stretched_grid: bool,
         dddmp,
         d4_bg,
-        nord,
+        nord: int,
         grid_type,
-        nord_col: FloatFieldK,
+        nord_col: pace.util.Quantity,
         d2_bg: FloatFieldK,
     ):
         orchestrate(
@@ -397,10 +398,10 @@ class DivergenceDamping:
         # refer to https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/dyn_core.F90#L693  # noqa: E501
         # for comparison
         self._nonzero_nord = int(nord)
-        for k in range(len(self._nord_column)):
-            if self._nord_column[k] > 0:
+        for k in range(self._nord_column.extent[0]):
+            if self._nord_column.view[k] > 0:
                 nonzero_nord_k = k
-                self._nonzero_nord = int(self._nord_column[k])
+                self._nonzero_nord = int(self._nord_column.view[k])
                 break
 
         kstart = nonzero_nord_k
@@ -431,11 +432,7 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
-        self.ptc = utils.make_storage_from_shape(
-            self.grid_indexing.max_shape,
-            origin=(self.grid_indexing.isc - 1, self.grid_indexing.jsc - 1, 0),
-            backend=stencil_factory.backend,
-        )
+        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
             func=get_delpc,
@@ -454,12 +451,8 @@ class DivergenceDamping:
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(0, 0),
         )
-        corner_tmp = utils.make_storage_from_shape(
-            self.grid_indexing.max_shape, backend=stencil_factory.backend
-        )
         self.fill_corners_bgrid_x = corners.FillCornersBGrid(
             direction="x",
-            temporary_field=corner_tmp,
             stencil_factory=high_k_stencil_factory,
         )
 
@@ -491,7 +484,6 @@ class DivergenceDamping:
 
         self.fill_corners_bgrid_y = corners.FillCornersBGrid(
             direction="y",
-            temporary_field=corner_tmp,
             stencil_factory=high_k_stencil_factory,
         )
 
@@ -524,6 +516,7 @@ class DivergenceDamping:
 
         self.a2b_ord4 = AGrid2BGridFourthOrder(
             stencil_factory=high_k_stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             grid_type=self._grid_type,
             replace=False,

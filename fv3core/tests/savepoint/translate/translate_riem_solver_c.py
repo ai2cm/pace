@@ -13,7 +13,9 @@ class TranslateRiem_Solver_C(TranslateDycoreFortranData2Py):
     ):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RiemannSolverC(  # type: ignore
-            stencil_factory, namelist.p_fac
+            stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
+            p_fac=namelist.p_fac,
         )
         self.in_vars["data_vars"] = {
             "cappa": {},

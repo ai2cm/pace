@@ -113,7 +113,7 @@ class DiagnosticsConfig:
         else:
             fs = pace.util.get_fs(self.path)
             if not fs.exists(self.path):
-                fs.makedirs(self.path)
+                fs.makedirs(self.path, exist_ok=True)
             if self.output_format == "zarr":
                 store = zarr_storage.DirectoryStore(path=self.path)
                 monitor: pace.util.Monitor = pace.util.ZarrMonitor(

@@ -50,19 +50,27 @@ class TranslateFvTp2d(TranslateDycoreFortranData2Py):
             self.grid.full_origin(),
             backend=self.stencil_factory.backend,
         )
+        nord_col = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord"))
+        damp_c = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        damp_c.data[:] = damp_c.np.asarray(inputs.pop("damp_c"))
         for optional_arg in ["mass"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
         self.compute_func = FiniteVolumeTransport(  # type: ignore
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
-            hord=int(inputs["hord"]),
-            nord=inputs.pop("nord"),
-            damp_c=inputs.pop("damp_c"),
+            hord=int(inputs.pop("hord")),
+            nord=nord_col,
+            damp_c=damp_c,
         )
-        del inputs["hord"]
         self.compute_func(**inputs)
         return inputs
 

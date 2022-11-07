@@ -18,16 +18,17 @@ class TranslateD_SW(TranslateDycoreFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 3.2e-10
         self.stencil_factory = stencil_factory
-        column_namelist = d_sw.get_column_namelist(
-            namelist, grid.npz, backend=self.stencil_factory.backend  # type: ignore
-        )
-        self.stencil_factory = stencil_factory
         dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
+        column_namelist = d_sw.get_column_namelist(
+            config=dycore_config.acoustic_dynamics.d_grid_shallow_water,
+            quantity_factory=self.grid.quantity_factory,
+        )
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(  # type: ignore
-            self.stencil_factory,
-            self.grid.grid_data,
-            self.grid.damping_coefficients,
-            column_namelist,
+            stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
+            grid_data=self.grid.grid_data,
+            damping_coefficients=self.grid.damping_coefficients,
+            column_namelist=column_namelist,
             nested=self.grid.nested,
             stretched_grid=self.grid.stretched_grid,
             config=dycore_config.d_grid_shallow_water,
@@ -213,7 +214,7 @@ class TranslateHeatDiss(TranslateDycoreFortranData2Py):
 
     def compute_from_storage(self, inputs):
         column_namelist = d_sw.get_column_namelist(
-            self.namelist, self.grid.npz, backend=self.stencil_factory.backend
+            config=self.namelist, quantity_factory=self.grid.quantity_factory
         )
         # TODO add these to the serialized data or remove the test
         inputs["damp_w"] = column_namelist["damp_w"]

@@ -11,7 +11,7 @@ from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from pace.util import Quantity
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 @gtscript.function
@@ -179,10 +179,11 @@ class TracerAdvection:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         transport: FiniteVolumeTransport,
         grid_data,
         comm: pace.util.CubedSphereCommunicator,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
     ):
         orchestrate(
             obj=self,
@@ -196,26 +197,21 @@ class TracerAdvection:
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape=shape, origin=origin, backend=stencil_factory.backend
-            )
-
-        self._tmp_xfx = make_storage()
-        self._tmp_yfx = make_storage()
-        self._tmp_fx = make_storage()
-        self._tmp_fy = make_storage()
-        self._tmp_dp = make_storage()
-        self._tmp_dp2 = make_storage()
-        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
-        origin, extent = grid_indexing.get_origin_domain(dims)
-        self._tmp_qn2 = pace.util.Quantity(
-            make_storage(),
-            dims=dims,
-            units="kg/m^2",
-            origin=origin,
-            extent=extent,
+        self._tmp_xfx = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
         )
+        self._tmp_yfx = quantity_factory.zeros(
+            [X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._tmp_fx = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._tmp_fy = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._tmp_dp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._tmp_dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
 
         ax_offsets = grid_indexing.axis_offsets(
             grid_indexing.origin_full(), grid_indexing.domain_full()
@@ -276,7 +272,9 @@ class TracerAdvection:
             [t for t in tracers.keys()],
         )
 
-    def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
+    def __call__(
+        self, tracers: Dict[str, pace.util.Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt
+    ):
         """
         Args:
             tracers (inout): tracers to advect according to fluxes during

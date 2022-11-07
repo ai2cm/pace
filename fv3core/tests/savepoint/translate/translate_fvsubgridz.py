@@ -183,6 +183,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
         state = self.state_from_inputs(inputs)
         fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.namelist.nwat,
             self.namelist.fv_sg_adj,
             self.namelist.n_sponge,
@@ -202,6 +203,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
         for state in state_list:
             fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
                 self.stencil_factory,
+                self.grid.quantity_factory,
                 self.namelist.nwat,
                 self.namelist.fv_sg_adj,
                 self.namelist.n_sponge,

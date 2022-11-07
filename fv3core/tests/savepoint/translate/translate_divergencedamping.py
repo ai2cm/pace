@@ -41,8 +41,17 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
         self.namelist = namelist  # type: ignore
 
     def compute_from_storage(self, inputs):
+        nord_col = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_col"))
+        d2_bg = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        d2_bg.data[:] = d2_bg.np.asarray(inputs.pop("d2_bg"))
         self.divdamp = DivergenceDamping(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,
             self.grid.nested,
@@ -51,11 +60,9 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
             self.namelist.d4_bg,
             self.namelist.nord,
             self.namelist.grid_type,
-            inputs["nord_col"],
-            inputs["d2_bg"],
+            nord_col,
+            d2_bg,
         )
-        del inputs["nord_col"]
-        del inputs["d2_bg"]
         self.divdamp(**inputs)
         inputs["v_contra_dxc"] = self.subset_output(
             "v_contra_dxc", inputs["v_contra_dxc"]

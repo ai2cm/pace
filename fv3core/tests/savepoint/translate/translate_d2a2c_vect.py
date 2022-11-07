@@ -17,6 +17,7 @@ class TranslateD2A2C_Vect(TranslateDycoreFortranData2Py):
         self.namelist = namelist  # type: ignore
         self.compute_func = DGrid2AGrid2CGridVectors(  # type: ignore
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.grid_data,
             self.grid.nested,
             self.namelist.grid_type,

@@ -179,7 +179,6 @@ def driver(
             nested,
             stretched_grid,
             dycore_config.acoustic_dynamics,
-            input_data["pfull"],
             input_data["phis"],
             input_data["wsd"],
             state,

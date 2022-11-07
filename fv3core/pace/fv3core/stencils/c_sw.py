@@ -7,11 +7,10 @@ from gt4py.gtscript import (
     region,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from pace.fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from pace.stencils import corners
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -481,22 +480,6 @@ def update_y_velocity(
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
-def compute_fC(
-    stencil_factory: StencilFactory, lon: FloatFieldIJ, lat: FloatFieldIJ, backend: str
-):
-    """
-    Compute the coriolis parameter on the C-grid
-    """
-    fC = utils.make_storage_from_shape(lon.shape, backend=backend)
-    fC_stencil = stencil_factory.from_dims_halo(
-        compute_coriolis_parameter_defn,
-        compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-        compute_halos=(3, 3),
-    )
-    fC_stencil(fC, lon, lat, 0.0)
-    return fC
-
-
 class CGridShallowWaterDynamics:
     """
     Fortran name is c_sw
@@ -505,35 +488,23 @@ class CGridShallowWaterDynamics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         nested: bool,
         grid_type: int,
         nord: int,
     ):
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
-        self._fC = compute_fC(
-            stencil_factory,
-            self.grid_data.lon,
-            self.grid_data.lat,
-            backend=stencil_factory.backend,
-        )
-        origin_halo1 = (grid_indexing.isc - 1, grid_indexing.jsc - 1, 0)
-        self.delpc = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            origin=origin_halo1,
-            backend=stencil_factory.backend,
-        )
+        self._fC = self.grid_data.fC
+        # TODO: double-check the dimensions on these, they may be incorrect
+        # as they are only documentation and not used by the code
+        self.delpc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
         """
         pressure thickness on c-grid forward step
         """
-        self.ptc = utils.make_storage_from_shape(
-            grid_indexing.max_shape,
-            origin=origin_halo1,
-            backend=stencil_factory.backend,
-        )
+        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
         """
         potential temperature on c-grid forward step
         """
@@ -545,23 +516,23 @@ class CGridShallowWaterDynamics:
 
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
             stencil_factory,
-            grid_data,
-            nested,
-            grid_type,
-            self._dord4,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            nested=nested,
+            grid_type=grid_type,
+            dord4=self._dord4,
         )
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                grid_indexing.max_shape,
-                backend=stencil_factory.backend,
-            )
+        def make_quantity() -> pace.util.Quantity:
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._tmp_ke = make_storage()
-        self._tmp_vort = make_storage()
-        self._tmp_fx = make_storage()
-        self._tmp_fx1 = make_storage()
-        self._tmp_fx2 = make_storage()
+        # TODO: double-check the dimensions on these, they may be incorrect
+        # as they are only documentation and not used by the code
+        self._tmp_ke = make_quantity()
+        self._tmp_vort = make_quantity()
+        self._tmp_fx = make_quantity()
+        self._tmp_fx1 = make_quantity()
+        self._tmp_fx2 = make_quantity()
 
         if nord > 0:
             self._divergence_corner = stencil_factory.from_dims_halo(

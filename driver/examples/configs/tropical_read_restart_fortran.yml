@@ -90,7 +90,6 @@ dycore_config:
   tau_v2l: 150.
   fv_sg_adj: 600
   n_sponge: 48
-  p_ref: 101500.
 
 physics_config:
   hydrostatic: false

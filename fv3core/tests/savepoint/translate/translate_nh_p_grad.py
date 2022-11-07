@@ -36,7 +36,10 @@ class TranslateNH_P_Grad(TranslateDycoreFortranData2Py):
 
     def compute(self, inputs):
         self.compute_func = NH_P_Grad.NonHydrostaticPressureGradient(  # type: ignore
-            self.stencil_factory, self.grid.grid_data, self.namelist.grid_type
+            self.stencil_factory,
+            self.grid.quantity_factory,
+            grid_data=self.grid.grid_data,
+            grid_type=self.namelist.grid_type,
         )
         self.make_storage_data_input_vars(inputs)
         self.compute_func(**inputs)

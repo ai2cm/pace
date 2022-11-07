@@ -29,12 +29,21 @@ class TranslateDelnFlux(TranslateDycoreFortranData2Py):
         if "mass" not in inputs:
             inputs["mass"] = None
         self.make_storage_data_input_vars(inputs)
+        nord_col = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        nord_col.data[:] = nord_col.np.asarray(inputs.pop("nord_column"))
+        damp_c = self.grid.quantity_factory.zeros(
+            dims=[pace.util.Z_DIM], units="unknown"
+        )
+        damp_c.data[:] = damp_c.np.asarray(inputs.pop("damp_c"))
         self.compute_func = delnflux.DelnFlux(  # type: ignore
             self.stencil_factory,
-            self.grid.damping_coefficients,
-            self.grid.rarea,
-            inputs.pop("nord_column"),
-            inputs.pop("damp_c"),
+            quantity_factory=self.grid.quantity_factory,
+            damping_coefficients=self.grid.damping_coefficients,
+            rarea=self.grid.rarea,
+            nord_col=nord_col,
+            damp_c=damp_c,
         )
         self.compute_func(**inputs)
         return self.slice_output(inputs)

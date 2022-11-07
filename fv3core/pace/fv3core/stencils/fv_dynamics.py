@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
-from gt4py.gtscript import PARALLEL, computation, interval, log
+from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
@@ -12,7 +12,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldK
+from pace.dsl.typing import FloatField
 from pace.fv3core._config import DynamicalCoreConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils import fvtp2d, tracer_2d_1l
@@ -62,29 +62,6 @@ def omega_from_w(delp: FloatField, delz: FloatField, w: FloatField, omega: Float
         omega = delp / delz * w
 
 
-def initialize_pfull(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatField,
-    p_ref: float,
-):
-    """
-    Set pfull to reference pressures defined by the hybrid coordinate.
-
-    Defined as ak[k] + bk[k] * p_ref.
-
-    Args:
-        ak (in): ak coefficient for the hybrid coordinate
-        bk (in): bk coefficient for the hybrid coordinate
-        pfull (out): pressure thickness of atmospheric layer
-        p_ref (in): reference pressure
-    """
-    with computation(PARALLEL), interval(...):
-        ph1 = ak + bk * p_ref
-        ph2 = ak[1] + bk[1] * p_ref
-        pfull = (ph2 - ph1) / log(ph2 / ph1)
-
-
 def fvdyn_temporaries(
     quantity_factory: pace.util.QuantityFactory,
 ) -> Mapping[str, pace.util.Quantity]:
@@ -120,6 +97,7 @@ class DynamicalCore:
         comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
@@ -229,19 +207,6 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = pace.util.SubtileGridSizer.from_tile_params(
-            nx_tile=config.npx - 1,
-            ny_tile=config.npy - 1,
-            nz=config.npz,
-            n_halo=grid_indexing.n_halo,
-            layout=config.layout,
-            tile_partitioner=comm.tile.partitioner,
-            tile_rank=comm.tile.rank,
-            extra_dim_lengths={},
-        )
-        quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=stencil_factory.backend
-        )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
         self.comm_rank = comm.rank
@@ -252,6 +217,7 @@ class DynamicalCore:
 
         tracer_transport = fvtp2d.FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -261,9 +227,6 @@ class DynamicalCore:
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             self.tracers[name] = state.__dict__[name]
-        self.tracer_storages = {
-            name: quantity.storage for name, quantity in self.tracers.items()
-        }
 
         temporaries = fvdyn_temporaries(quantity_factory)
         self._te_2d = temporaries["te_2d"]
@@ -275,6 +238,7 @@ class DynamicalCore:
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
             stencil_factory,
+            quantity_factory,
             tracer_transport,
             self.grid_data,
             comm,
@@ -284,17 +248,7 @@ class DynamicalCore:
         self._bk = grid_data.bk
         self._phis = phis
         self._ptop = self.grid_data.ptop
-        pfull_stencil = stencil_factory.from_origin_domain(
-            initialize_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
-        )
-        pfull = utils.make_storage_from_shape(
-            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
-        )
-        pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
-        # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(
-            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
-        )
+        self._pfull = grid_data.p
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={
@@ -320,22 +274,23 @@ class DynamicalCore:
             domain=grid_indexing.domain_full(),
         )
         self.acoustic_dynamics = AcousticDynamics(
-            comm,
-            stencil_factory,
-            grid_data,
-            damping_coefficients,
-            config.grid_type,
-            nested,
-            stretched_grid,
-            self.config.acoustic_dynamics,
-            self._pfull,
-            self._phis,
-            self._wsd.storage,
-            state,
+            comm=comm,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            grid_type=config.grid_type,
+            nested=nested,
+            stretched_grid=stretched_grid,
+            config=self.config.acoustic_dynamics,
+            phis=self._phis,
+            wsd=self._wsd,
+            state=state,
             checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
+            quantity_factory,
             damping_coefficients,
             grid_data.rarea,
             self.config.nf_omega,
@@ -349,16 +304,18 @@ class DynamicalCore:
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
             stencil_factory,
-            self.config.check_negative,
-            self.config.hydrostatic,
+            quantity_factory=quantity_factory,
+            check_negative=self.config.check_negative,
+            hydrostatic=self.config.hydrostatic,
         )
 
         self._lagrangian_to_eulerian_obj = LagrangianToEulerian(
-            stencil_factory,
-            config.remapping,
-            grid_data.area_64,
-            NQ,
-            self._pfull,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config.remapping,
+            area_64=grid_data.area_64,
+            nq=NQ,
+            pfull=self._pfull,
             tracers=self.tracers,
             checkpointer=checkpointer,
         )
@@ -367,7 +324,7 @@ class DynamicalCore:
             grid_indexing.domain_full(add=(1, 1, 1)),
             grid_indexing.origin_compute(),
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            n_halo=utils.halo,
+            n_halo=grid_indexing.n_halo,
             backend=stencil_factory.backend,
         )
         self._omega_halo_updater = WrappedHaloUpdater(
@@ -587,7 +544,7 @@ class DynamicalCore:
                 with timer.clock("Remapping"):
                     self._checkpoint_remapping_in(state)
                     self._lagrangian_to_eulerian_obj(
-                        self.tracer_storages,
+                        self.tracers,
                         state.pt,
                         state.delp,
                         state.delz,

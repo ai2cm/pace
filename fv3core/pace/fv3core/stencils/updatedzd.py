@@ -1,13 +1,23 @@
+from typing import Tuple
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
-from pace.dsl.stencil import GridIndexing, StencilFactory
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.fv3core.stencils.delnflux import DelnFluxNoSG
 from pace.fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from pace.util import (
+    X_DIM,
+    X_INTERFACE_DIM,
+    Y_DIM,
+    Y_INTERFACE_DIM,
+    Z_DIM,
+    Z_INTERFACE_DIM,
+)
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -117,30 +127,31 @@ def apply_height_fluxes(
 
 
 def cubic_spline_interpolation_constants(
-    dp0: FloatFieldK,
-    gk: FloatField,
-    beta: FloatField,
-    gamma: FloatField,
-):
+    dp0: pace.util.Quantity, quantity_factory: pace.util.QuantityFactory
+) -> Tuple[pace.util.Quantity, pace.util.Quantity, pace.util.Quantity]:
     """
     Computes constants used in cubic spline interpolation
     from cell center to interface levels.
 
     Args:
-        dp0: target pressure on interface levels (in)
-        gk: interpolation constant on mid levels (out)
-        beta: interpolation constant on mid levels (out)
-        gamma: interpolation constant on mid levels (out)
+        dp0: reference pressure thickness on mid levels (in)
+
+    Returns:
+        gk: interpolation constant on mid levels
+        beta: interpolation constant on mid levels
+        gamma: interpolation constant on mid levels
     """
-    with computation(FORWARD):
-        with interval(0, 1):
-            gk = dp0[1] / dp0
-            beta = gk * (gk + 0.5)
-            gamma = (1.0 + gk * (gk + 1.5)) / beta
-        with interval(1, -1):
-            gk = dp0[-1] / dp0
-            beta = 2.0 + 2.0 * gk - gamma[0, 0, -1]
-            gamma = gk / beta
+    gk = quantity_factory.zeros([Z_DIM], units="")
+    beta = quantity_factory.zeros([Z_DIM], units="")
+    gamma = quantity_factory.zeros([Z_DIM], units="")
+    gk.view[0] = dp0.view[1] / dp0.view[0]
+    beta.view[0] = gk.view[0] * (gk.view[0] + 0.5)
+    gamma.view[0] = (1.0 + gk.view[0] * (gk.view[0] + 1.5)) / beta.view[0]
+    gk.view[1:] = dp0.view[:-1] / dp0.view[1:]
+    for i in range(1, beta.view[:].shape[0]):
+        beta.view[i] = 2.0 + 2.0 * gk.view[i] - gamma.view[i - 1]
+        gamma.view[i] = gk.view[i] / beta.view[i]
+    return gk, beta, gamma
 
 
 def cubic_spline_interpolation_from_layer_center_to_interfaces(
@@ -193,21 +204,13 @@ class UpdateHeightOnDGrid:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         grid_data: GridData,
         grid_type: int,
         hord_tm: int,
-        dp0: FloatFieldK,
         column_namelist,
     ):
-        """
-        Args:
-            grid: fv3core grid object
-            namelist: flattened fv3gfs namelist
-            dp0: air pressure on interface levels, reference pressure
-                can be used as an approximation
-            column_namelist: dictionary of parameter columns
-        """
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -216,14 +219,12 @@ class UpdateHeightOnDGrid:
         self.grid_indexing = grid_indexing
         self._area = grid_data.area
         self._column_namelist = column_namelist
-        if any(column_namelist["damp_vt"] <= 1e-5):
-            raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
-        self._dp0 = dp0
-        self._allocate_temporary_storages(
-            grid_indexing, backend=stencil_factory.backend
-        )
-        self._initialize_interpolation_constants(
-            stencil_factory=stencil_factory, grid_indexing=grid_indexing
+        if any(column_namelist["damp_vt"].view[:] <= 1e-5):
+            raise NotImplementedError("damp <= 1e-5 in column_namelist is untested")
+        self._dp_ref = grid_data.dp_ref
+        self._allocate_temporary_storages(quantity_factory)
+        self._gk, self._beta, self._gamma = cubic_spline_interpolation_constants(
+            dp0=grid_data.dp_ref, quantity_factory=quantity_factory
         )
 
         self._interpolate_to_layer_interface = stencil_factory.from_origin_domain(
@@ -233,6 +234,7 @@ class UpdateHeightOnDGrid:
         )
         self.finite_volume_transport = FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=grid_type,
@@ -251,80 +253,31 @@ class UpdateHeightOnDGrid:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
 
-    def _allocate_temporary_storages(self, grid_indexing: GridIndexing, backend: str):
-        largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
-        self._crx_interface = utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-            backend=backend,
+    def _allocate_temporary_storages(self, quantity_factory: pace.util.QuantityFactory):
+        self._crx_interface = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_DIM, Z_INTERFACE_DIM], ""
         )
-        self._cry_interface = utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
-            backend=backend,
+        self._cry_interface = quantity_factory.zeros(
+            [X_DIM, Y_INTERFACE_DIM, Z_INTERFACE_DIM], ""
         )
-        self._x_area_flux_interface = utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
-            backend=backend,
+        self._x_area_flux_interface = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_DIM, Z_INTERFACE_DIM], "m^2"
         )
-        self._y_area_flux_interface = utils.make_storage_from_shape(
-            largest_possible_shape,
-            grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
-            backend=backend,
+        self._y_area_flux_interface = quantity_factory.zeros(
+            [X_DIM, Y_INTERFACE_DIM, Z_INTERFACE_DIM], "m^2"
         )
-        self._wk = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full(), backend=backend
+        self._wk = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "unknown")
+        self._height_x_diffusive_flux = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], "unknown"
         )
-        self._height_x_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full(), backend=backend
+        self._height_y_diffusive_flux = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], "unknown"
         )
-        self._height_y_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full(), backend=backend
+        self._fx = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_DIM, Z_INTERFACE_DIM], "unknown"
         )
-        self._fx = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full(), backend=backend
-        )
-        self._fy = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full(), backend=backend
-        )
-
-    def _initialize_interpolation_constants(
-        self, stencil_factory: StencilFactory, grid_indexing: GridIndexing
-    ):
-        # because stencils only work on 3D at the moment, need to compute in 3D
-        # and then make these 1D
-        gk_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1),
-            (0, 0, 0),
-            backend=stencil_factory.backend,
-        )
-        gamma_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1),
-            (0, 0, 0),
-            backend=stencil_factory.backend,
-        )
-        beta_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1),
-            (0, 0, 0),
-            backend=stencil_factory.backend,
-        )
-
-        _cubic_spline_interpolation_constants = stencil_factory.from_origin_domain(
-            cubic_spline_interpolation_constants,
-            origin=(0, 0, 0),
-            domain=(1, 1, grid_indexing.domain[2] + 1),
-        )
-
-        _cubic_spline_interpolation_constants(self._dp0, gk_3d, beta_3d, gamma_3d)
-        self._gk = utils.make_storage_data(
-            gk_3d[0, 0, :], gk_3d.shape[2:], (0,), backend=stencil_factory.backend
-        )
-        self._beta = utils.make_storage_data(
-            beta_3d[0, 0, :], beta_3d.shape[2:], (0,), backend=stencil_factory.backend
-        )
-        self._gamma = utils.make_storage_data(
-            gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
+        self._fy = quantity_factory.zeros(
+            [X_DIM, Y_INTERFACE_DIM, Z_INTERFACE_DIM], "unknown"
         )
 
     def __call__(
