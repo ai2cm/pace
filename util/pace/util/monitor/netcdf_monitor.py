@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set
 import fsspec
 import numpy as np
 
-from pace.util.communicator import CubedSphereCommunicator
+from pace.util.communicator import Communicator
 
 from .. import _xarray as xr
 from ..filesystem import get_fs
@@ -109,7 +109,7 @@ class NetCDFMonitor:
     def __init__(
         self,
         path: str,
-        communicator: CubedSphereCommunicator,
+        communicator: Communicator,
         time_chunk_size: int = 1,
     ):
         """Create a NetCDFMonitor.
