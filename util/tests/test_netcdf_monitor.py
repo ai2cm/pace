@@ -65,15 +65,15 @@ def test_monitor_store_multi_rank_state(
             )
         )
 
-    # for rank in range(total_ranks - 1, -1, -1):
-    #     state = {
-    #         "var_const1": pace.util.Quantity(
-    #             numpy.ones([nz, ny_rank, nx_rank]),
-    #             dims=dims,
-    #             units=units,
-    #         ),
-    #     }
-    #     monitor_list[rank].store_constant(state)
+    for rank in range(total_ranks - 1, -1, -1):
+        state = {
+            "var_const1": pace.util.Quantity(
+                numpy.ones([nz, ny_rank, nx_rank]),
+                dims=dims,
+                units=units,
+            ),
+        }
+        monitor_list[rank].store_constant(state)
 
     tile_gathered = []
     for i_t in range(nt):
@@ -117,13 +117,13 @@ def test_monitor_store_multi_rank_state(
     np.testing.assert_array_equal(ds["var1"].values, 1.0)
 
     ds_const = xr.open_dataset(str(tmpdir / "constants.nc"))
-    # assert "var_const1" in ds_const
-    # np.testing.assert_array_equal(
-    #     ds_const["var_const1"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
-    # )
-    # assert ds_const["var_const1"].dims == ("tile",) + dims
-    # assert ds_const["var_const1"].attrs["units"] == units
-    # np.testing.assert_array_equal(ds_const["var_const1"].values, 1.0)
+    assert "var_const1" in ds_const
+    np.testing.assert_array_equal(
+        ds_const["var_const1"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
+    )
+    assert ds_const["var_const1"].dims == ("tile",) + dims
+    assert ds_const["var_const1"].attrs["units"] == units
+    np.testing.assert_array_equal(ds_const["var_const1"].values, 1.0)
     assert "var_const2" in ds_const
     np.testing.assert_array_equal(
         ds_const["var_const2"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
