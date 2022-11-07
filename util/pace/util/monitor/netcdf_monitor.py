@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set
 import fsspec
 import numpy as np
 
-from pace.util.communicator import Communicator
+from pace.util.communicator import CubedSphereCommunicator
 
 from .. import _xarray as xr
 from ..filesystem import get_fs
@@ -41,10 +41,13 @@ class _TimeChunkedVariable:
 
 class _ChunkedNetCDFWriter:
 
-    FILENAME_FORMAT = "state_{chunk:04d}.nc"
+    FILENAME_FORMAT = "state_{chunk:04d}_tile{tile}.nc"
 
-    def __init__(self, path: str, fs: fsspec.AbstractFileSystem, time_chunk_size: int):
+    def __init__(
+        self, path: str, tile: int, fs: fsspec.AbstractFileSystem, time_chunk_size: int
+    ):
         self._path = path
+        self._tile = tile
         self._fs = fs
         self._time_chunk_size = time_chunk_size
         self._i_time = 0
@@ -80,12 +83,14 @@ class _ChunkedNetCDFWriter:
                     to_numpy(chunked.data.view[:]),
                     dims=chunked.data.dims,
                     attrs=chunked.data.attrs,
-                )
+                ).expand_dims({"tile": [self._tile]}, axis=1)
             ds = xr.Dataset(data_vars=data_vars)
             chunk_index = self._i_time // self._time_chunk_size
             chunk_path = str(
                 Path(self._path)
-                / _ChunkedNetCDFWriter.FILENAME_FORMAT.format(chunk=chunk_index)
+                / _ChunkedNetCDFWriter.FILENAME_FORMAT.format(
+                    chunk=chunk_index, tile=self._tile
+                )
             )
             with self._fs.open(chunk_path, "wb") as f:
                 ds.to_netcdf(f)
@@ -104,7 +109,7 @@ class NetCDFMonitor:
     def __init__(
         self,
         path: str,
-        communicator: Communicator,
+        communicator: CubedSphereCommunicator,
         time_chunk_size: int = 1,
     ):
         """Create a NetCDFMonitor.
@@ -112,10 +117,10 @@ class NetCDFMonitor:
         Args:
             path: directory in which to store data
             communicator: provides global communication to gather state
-            filename_format: a string format for the filename. Must contain a
-                "chunk" field which will be replaced with the chunk number.
-            time_chunk_size: number of times
+            time_chunk_size: number of times per file
         """
+        rank = communicator.rank
+        self._tile_index = communicator.partitioner.tile_index(rank)
         self._path = path
         self._fs = get_fs(path)
         self._communicator = communicator
@@ -128,6 +133,7 @@ class NetCDFMonitor:
         if self.__writer is None:
             self.__writer = _ChunkedNetCDFWriter(
                 path=self._path,
+                tile=self._tile_index,
                 fs=self._fs,
                 time_chunk_size=self._time_chunk_size,
             )
@@ -155,7 +161,7 @@ class NetCDFMonitor:
                     set(state.keys()), self._expected_vars
                 )
             )
-        state = self._communicator.gather_state(state)
+        state = self._communicator.tile.gather_state(state)
         if state is not None:  # we are on root rank
             self._writer.append(state)
 

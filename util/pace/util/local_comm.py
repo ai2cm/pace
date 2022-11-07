@@ -30,8 +30,16 @@ class LocalComm(Comm):
         self.total_ranks = total_ranks
         self._buffer = buffer_dict
         self._i_buffer = {}
-        self._split_comms = {}
-        self._split_buffers = {}
+
+    @property
+    def _split_comms(self):
+        self._buffer["split_comms"] = self._buffer.get("split_comms", {})
+        return self._buffer["split_comms"]
+
+    @property
+    def _split_buffers(self):
+        self._buffer["split_buffers"] = self._buffer.get("split_buffers", {})
+        return self._buffer["split_buffers"]
 
     def __repr__(self):
         return f"LocalComm(rank={self.rank}, total_ranks={self.total_ranks})"
@@ -87,6 +95,8 @@ class LocalComm(Comm):
     def _gather_buffer(self):
         if "gather" not in self._buffer:
             self._buffer["gather"] = [None for i in range(self.total_ranks)]
+        while len(self._buffer["gather"]) < self.total_ranks:
+            self._buffer["gather"].append(None)
         return self._buffer["gather"]
 
     def bcast(self, value, root=0):
