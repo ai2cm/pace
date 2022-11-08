@@ -1,8 +1,10 @@
 import unittest.mock
 
+import numpy as np
 import pytest
 
 from pace.driver.safety_checks import SafetyChecker
+from pace.util import Quantity
 
 
 def test_register_variable():
@@ -49,6 +51,24 @@ def test_check_state_failing_max():
     dycore_state = unittest.mock.MagicMock(u=u)
     with pytest.raises(RuntimeError):
         checker.check_state(dycore_state)
+
+
+def test_check_state_domain_only():
+    SafetyChecker.clear_all_checks()
+    SafetyChecker.register_variable("u", maximum_value=10, compute_domain_only=True)
+    checker = SafetyChecker()
+    u_data = np.ones((4, 4, 2))
+    u_data[0:1, 0:1, :] = 100
+    u_quantity = Quantity(
+        u_data,
+        ("x", "y", "z"),
+        "unknown",
+        origin=(1, 1, 0),
+        extent=(3, 3, 2),
+        gt4py_backend="numpy",
+    )
+    dycore_state = unittest.mock.MagicMock(u=u_quantity)
+    checker.check_state(dycore_state)
 
 
 def test_variable_not_present():

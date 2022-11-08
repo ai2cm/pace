@@ -518,7 +518,7 @@ class Driver:
         self._time_run = self.config.start_time
 
         self.safety_checker = SafetyChecker()
-        SafetyChecker.register_variable("ua", -200, 200)
+        SafetyChecker.register_variable("ua", -200, 200, compute_domain_only=True)
 
     def _update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
