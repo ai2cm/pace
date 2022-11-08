@@ -170,6 +170,7 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         state = DycoreState(**inputs)
         self._base.compute_func = ApplyPhysicsToDycore(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.grid_data,
             self.namelist,
             communicator,
