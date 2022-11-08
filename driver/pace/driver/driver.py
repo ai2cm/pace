@@ -17,6 +17,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace import fv3core
+from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -122,6 +123,7 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
+    safety_check_frequency: int = 1
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -515,6 +517,9 @@ class Driver:
 
         self._time_run = self.config.start_time
 
+        self.safety_checker = SafetyChecker()
+        SafetyChecker.register_variable("ua", -200, 200)
+
     def _update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
     ) -> None:
@@ -554,6 +559,8 @@ class Driver:
         self.time += self.config.timestep
         if ((step + 1) % self.config.output_frequency) == 0:
             self.diagnostics.store(time=self.time, state=self.state)
+        if ((step + 1) % self.config.safety_check_frequency) == 0:
+            self.safety_checker.check_state(self.state.dycore_state)
         self.config.restart_config.write_intermediate_if_enabled(
             state=self.state,
             step=step,
