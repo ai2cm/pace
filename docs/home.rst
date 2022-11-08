@@ -9,3 +9,4 @@ Documentation
     :glob:
 
     readme/physics_README.md
+    readme/stencils_README.md
