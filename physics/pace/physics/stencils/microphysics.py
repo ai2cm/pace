@@ -1910,17 +1910,8 @@ class Microphysics:
         self.namelist = namelist
         # In orchestration mode, we pass the device memory
         # TODO: turn arrays in setupm into a dataclass, or inidivudal scalars
-        if (
-            stencil_factory.config.is_gpu_backend
-            and stencil_factory.config.dace_config.is_dace_orchestrated()
-        ):
-            self.gfdl_cloud_microphys_init(namelist.dt_atmos, cp)
-        else:
-            self.gfdl_cloud_microphys_init(namelist.dt_atmos, np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         grid_indexing = stencil_factory.grid_indexing
-        origin = grid_indexing.origin_compute()
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
 
         self._hydrostatic = self.namelist.hydrostatic
         self._kke = grid_indexing.domain[2] - 1
@@ -1988,6 +1979,8 @@ class Microphysics:
         self._ccn = make_quantity()
         self._c_praut = make_quantity()
         self._m1_sol = make_quantity()
+
+        self.gfdl_cloud_microphys_init(namelist.dt_atmos, self._m1_sol.np)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0

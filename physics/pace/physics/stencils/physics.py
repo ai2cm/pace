@@ -220,7 +220,6 @@ class Physics:
         self._prsik = make_quantity()
         self._dm3d = make_quantity()
         self._del_gz = make_quantity()
-        self._full_zero = make_quantity()
         self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
             origin=grid_indexing.origin_full(),
