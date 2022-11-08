@@ -253,10 +253,6 @@ class TracerAdvection:
             externals=local_axis_offsets,
         )
         self.finite_volume_transport: FiniteVolumeTransport = transport
-        # If use AllReduce, will need something like this:
-        # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
-        # self._cmax_1 = stencil_factory.from_origin_domain(cmax_stencil1)
-        # self._cmax_2 = stencil_factory.from_origin_domain(cmax_stencil2)
 
         # Setup halo updater for tracers
         tracer_halo_spec = quantity_factory.get_quantity_halo_spec(

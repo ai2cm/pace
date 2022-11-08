@@ -498,22 +498,6 @@ class AcousticDynamics:
             )
         )
 
-        # TODO (floriand): Due to DaCe VRAM pooling creating a memory
-        # leak with the usage pattern of those two fields
-        # We use the C_SW internal to workaround it e.g.:
-        #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
-        #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
-        # DaCe has already a fix on their side and it awaits release
-        # issue
-        # self.delpc = utils.make_storage_from_shape(
-        #     grid_indexing.domain_full(add=(1, 1, 1)),
-        #     backend=stencil_factory.backend,
-        # )
-        # self.ptc = utils.make_storage_from_shape(
-        #     grid_indexing.domain_full(add=(1, 1, 1)),
-        #     backend=stencil_factory.backend,
-        # )
-
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
             quantity_factory=quantity_factory,
@@ -803,6 +787,13 @@ class AcousticDynamics:
                 self.update_geopotential_height_on_c_grid(
                     self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
                 )
+                # TODO (floriand): Due to DaCe VRAM pooling creating a memory
+                # leak with the usage pattern of those two fields
+                # We use the C_SW internal to workaround it e.g.:
+                #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
+                #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
+                # DaCe has already a fix on their side and it awaits release
+                # issue
                 self.riem_solver_c(
                     dt2,
                     self.cappa,

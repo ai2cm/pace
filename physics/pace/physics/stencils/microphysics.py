@@ -10,13 +10,13 @@ except ModuleNotFoundError:
     cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
-import pace.dsl.gt4py_utils as utils
 import pace.physics.functions.microphysics_funcs as functions
 import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import GridData
 
 from .._config import PhysicsConfig
@@ -1897,6 +1897,7 @@ class Microphysics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         namelist: PhysicsConfig,
     ):
@@ -1939,56 +1940,54 @@ class Microphysics:
         self._use_ccn = False if self.namelist.prog_ccn else True
         self._area = grid_data.area
 
-        def make_storage(**kwargs):
-            return utils.make_storage_from_shape(
-                shape, origin=origin, backend=stencil_factory.backend, **kwargs
-            )
+        def make_quantity(**kwargs):
+            return quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._rain = make_storage()
-        self._graupel = make_storage()
-        self._ice = make_storage()
-        self._snow = make_storage()
+        self._rain = make_quantity()
+        self._graupel = make_quantity()
+        self._ice = make_quantity()
+        self._snow = make_quantity()
 
-        self._h_var = make_storage()
-        self._rh_adj = make_storage()
-        self._rh_rain = make_storage()
+        self._h_var = make_quantity()
+        self._rh_adj = make_quantity()
+        self._rh_rain = make_quantity()
 
-        self._qn = make_storage()
-        self._qaz = make_storage()
-        self._qgz = make_storage()
-        self._qiz = make_storage()
-        self._qlz = make_storage()
-        self._qrz = make_storage()
-        self._qsz = make_storage()
-        self._qvz = make_storage()
-        self._den = make_storage()
-        self._denfac = make_storage()
-        self._tz = make_storage()
-        self._qa0 = make_storage()
-        self._qg0 = make_storage()
-        self._qi0 = make_storage()
-        self._ql0 = make_storage()
-        self._qr0 = make_storage()
-        self._qs0 = make_storage()
-        self._qv0 = make_storage()
-        self._t0 = make_storage()
-        self._dp0 = make_storage()
-        self._den0 = make_storage()
-        self._dz0 = make_storage()
-        self._u0 = make_storage()
-        self._v0 = make_storage()
-        self._dz1 = make_storage()
-        self._dp1 = make_storage()
-        self._p1 = make_storage()
-        self._u1 = make_storage()
-        self._v1 = make_storage()
-        self._m1 = make_storage()
-        self._vtgz = make_storage()
-        self._vtrz = make_storage()
-        self._vtsz = make_storage()
-        self._ccn = make_storage()
-        self._c_praut = make_storage()
-        self._m1_sol = make_storage()
+        self._qn = make_quantity()
+        self._qaz = make_quantity()
+        self._qgz = make_quantity()
+        self._qiz = make_quantity()
+        self._qlz = make_quantity()
+        self._qrz = make_quantity()
+        self._qsz = make_quantity()
+        self._qvz = make_quantity()
+        self._den = make_quantity()
+        self._denfac = make_quantity()
+        self._tz = make_quantity()
+        self._qa0 = make_quantity()
+        self._qg0 = make_quantity()
+        self._qi0 = make_quantity()
+        self._ql0 = make_quantity()
+        self._qr0 = make_quantity()
+        self._qs0 = make_quantity()
+        self._qv0 = make_quantity()
+        self._t0 = make_quantity()
+        self._dp0 = make_quantity()
+        self._den0 = make_quantity()
+        self._dz0 = make_quantity()
+        self._u0 = make_quantity()
+        self._v0 = make_quantity()
+        self._dz1 = make_quantity()
+        self._dp1 = make_quantity()
+        self._p1 = make_quantity()
+        self._u1 = make_quantity()
+        self._v1 = make_quantity()
+        self._m1 = make_quantity()
+        self._vtgz = make_quantity()
+        self._vtrz = make_quantity()
+        self._vtsz = make_quantity()
+        self._ccn = make_quantity()
+        self._c_praut = make_quantity()
+        self._m1_sol = make_quantity()
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
