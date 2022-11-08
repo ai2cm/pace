@@ -27,9 +27,12 @@ class SafetyChecker:
 
         Args:
             name (str): name of the variable in the dycore state
-            minimum_value (Optional[int], optional): Minimum value if specified. Defaults to None.
-            maximum_value (Optional[int], optional): Maximum value if specified. Defaults to None.
-            compute_domain_only (bool, optional): If evaluation should only happen on the compute or the entire domain. Defaults to False.
+            minimum_value (Optional[int], optional): Minimum value if specified.
+                Defaults to None.
+            maximum_value (Optional[int], optional): Maximum value if specified.
+                Defaults to None.
+            compute_domain_only (bool, optional): If evaluation should only happen
+                on the compute or the entire domain. Defaults to False.
 
         Raises:
             NotImplementedError: If variables are doubly-registered
@@ -76,9 +79,11 @@ class SafetyChecker:
 
             if bounds[0] and min_value < bounds[0]:
                 raise RuntimeError(
-                    f"Variable {variable} is outside of its specified bounds: {bounds[0]} specified, {min_value} found"
+                    f"Variable {variable} is outside of its specified bounds: \
+                    {bounds[0]} specified, {min_value} found"
                 )
             if bounds[1] and max_value > bounds[1]:
                 raise RuntimeError(
-                    f"Variable {variable} is outside of its specified bounds: {bounds[1]} specified, {max_value} found"
+                    f"Variable {variable} is outside of its specified bounds: \
+                    {bounds[1]} specified, {max_value} found"
                 )
