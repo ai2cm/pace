@@ -2,12 +2,6 @@ import copy
 import typing
 
 import numpy as np
-
-
-try:
-    import cupy as cp
-except ModuleNotFoundError:
-    cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
 import pace.physics.functions.microphysics_funcs as functions
@@ -2133,7 +2127,7 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = numpy_module.empty((3, 4))
+        acco = np.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
@@ -2156,54 +2150,48 @@ class Microphysics:
         cracw = self.namelist.c_cracw * cracw
 
         # Subl and revap: five constants for three separate processes
-        cssub = numpy_module.empty(5)
-        cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
-        cssub[1] = 0.78 / np.sqrt(act[0])
-        cssub[2] = (
+        self._cssub_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
+        self._cssub_1 = 0.78 / np.sqrt(act[0])
+        self._cssub_2 = (
             0.31
             * scm3
             * gam263
             * np.sqrt(self.namelist.clin / visk)
             / act[0] ** 0.65625
         )
-        cssub[3] = tcond * constants.RVGAS
-        cssub[4] = (hlts ** 2) * vdifu
+        self._cssub_3 = tcond * constants.RVGAS
+        self._cssub_4 = (hlts ** 2) * vdifu
 
-        cgsub = numpy_module.empty(5)
-        cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
-        cgsub[1] = 0.78 / np.sqrt(act[5])
-        cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
-        cgsub[3] = cssub[3]
-        cgsub[4] = cssub[4]
+        self._cgsub_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
+        self._cgsub_1 = 0.78 / np.sqrt(act[5])
+        self._cgsub_2 = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
+        self._cgsub_3 = self._cssub_3
+        self._cgsub_4 = self._cssub_4
 
-        crevp = numpy_module.empty(5)
-        crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
-        crevp[1] = 0.78 / np.sqrt(act[1])
-        crevp[2] = (
+        self._crevp_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
+        self._crevp_1 = 0.78 / np.sqrt(act[1])
+        self._crevp_2 = (
             0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
-        crevp[3] = cssub[3]
-        crevp[4] = hltc ** 2 * vdifu
+        self._crevp_3 = self._cssub_3
+        self._crevp_4 = hltc ** 2 * vdifu
 
-        cgfr = numpy_module.empty(2)
-        cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
-        cgfr[1] = 0.66
+        self._cgfr_0 = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
+        self._cgfr_1 = 0.66
 
         # smlt: five constants (lin et al. 1983)
-        csmlt = numpy_module.empty(5)
-        csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
-        csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
-        csmlt[2] = cssub[1]
-        csmlt[3] = cssub[2]
-        csmlt[4] = ch2o / hltf
+        self._csmlt_0 = 2.0 * pie * tcond * rnzs / hltf
+        self._csmlt_1 = 2.0 * pie * vdifu * rnzs * hltc / hltf
+        self._csmlt_2 = self._cssub_1
+        self._csmlt_3 = self._cssub_2
+        self._csmlt_4 = ch2o / hltf
 
         # gmlt: five constants
-        cgmlt = numpy_module.empty(5)
-        cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
-        cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
-        cgmlt[2] = cgsub[1]
-        cgmlt[3] = cgsub[2]
-        cgmlt[4] = ch2o / hltf
+        self._cgmlt_0 = 2.0 * pie * tcond * rnzg / hltf
+        self._cgmlt_1 = 2.0 * pie * vdifu * rnzg * hltc / hltf
+        self._cgmlt_2 = self._cgsub_1
+        self._cgmlt_3 = self._cgsub_2
+        self._cgmlt_4 = ch2o / hltf
 
         es0 = 6.107799961e2  # ~6.1 mb
         self._fac_rc = fac_rc
@@ -2218,11 +2206,6 @@ class Microphysics:
         self._cgacw = cgacw
         self._cgaci = cgaci
         self._cracw = cracw
-        self._cssub = cssub
-        self._crevp = crevp
-        self._cgfr = cgfr
-        self._csmlt = csmlt
-        self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
         self._set_timestep(dt_atmos)
 
@@ -2311,7 +2294,7 @@ class Microphysics:
             self._cpaut,
         )
 
-        for n in range(self._ntimes):
+        for _ in range(self._ntimes):
             self._warm_rain(
                 self._h_var,
                 self._rain,
@@ -2342,11 +2325,11 @@ class Microphysics:
                 self._lv00,
                 self._fac_rc,
                 self._cracw,
-                self._crevp[0],
-                self._crevp[1],
-                self._crevp[2],
-                self._crevp[3],
-                self._crevp[4],
+                self._crevp_0,
+                self._crevp_1,
+                self._crevp_2,
+                self._crevp_3,
+                self._crevp_4,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2409,11 +2392,11 @@ class Microphysics:
                 self._lv00,
                 self._fac_rc,
                 self._cracw,
-                self._crevp[0],
-                self._crevp[1],
-                self._crevp[2],
-                self._crevp[3],
-                self._crevp[4],
+                self._crevp_0,
+                self._crevp_1,
+                self._crevp_2,
+                self._crevp_3,
+                self._crevp_4,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2461,23 +2444,23 @@ class Microphysics:
                 self._cgacw,
                 self._cgaci,
                 self._cracw,
-                self._cssub[0],
-                self._cssub[1],
-                self._cssub[2],
-                self._cssub[3],
-                self._cssub[4],
-                self._cgfr[0],
-                self._cgfr[1],
-                self._csmlt[0],
-                self._csmlt[1],
-                self._csmlt[2],
-                self._csmlt[3],
-                self._csmlt[4],
-                self._cgmlt[0],
-                self._cgmlt[1],
-                self._cgmlt[2],
-                self._cgmlt[3],
-                self._cgmlt[4],
+                self._cssub_0,
+                self._cssub_1,
+                self._cssub_2,
+                self._cssub_3,
+                self._cssub_4,
+                self._cgfr_0,
+                self._cgfr_1,
+                self._csmlt_0,
+                self._csmlt_1,
+                self._csmlt_2,
+                self._csmlt_3,
+                self._csmlt_4,
+                self._cgmlt_0,
+                self._cgmlt_1,
+                self._cgmlt_2,
+                self._cgmlt_3,
+                self._cgmlt_4,
                 self._ces0,
                 self._dts,
                 self._rdts,
