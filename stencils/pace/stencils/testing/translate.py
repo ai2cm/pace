@@ -204,15 +204,11 @@ class TranslateFortranData2Py:
                 )
                 for varname, data_element in data_result.items():
                     index = names_4d.index(varname)
-                    if hasattr(data_element, "synchronize"):
-                        data_element.synchronize()
                     var4d[:, :, :, index] = np.squeeze(
                         np.asarray(data_element)[self.grid.slice_dict(ds)]
                     )
                 out[serialname] = var4d
             else:
-                if hasattr(data_result, "synchronize"):
-                    data_result.synchronize()
                 slice_tuple = self.grid.slice_dict(ds, len(data_result.shape))
                 out[serialname] = np.squeeze(np.asarray(data_result)[slice_tuple])
             if "kaxis" in info:

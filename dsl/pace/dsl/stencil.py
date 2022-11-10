@@ -41,9 +41,6 @@ def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id
     report_head = f"comparing against numpy for func {function_name}, gt_id {gt_id}:"
     report_segments = []
     for i, (arg, numpy_arg) in enumerate(zip(args, args_copy)):
-        if isinstance(arg, pace.util.Quantity):
-            arg = arg.storage
-            numpy_arg = numpy_arg.storage
         if isinstance(arg, np.ndarray):
             report_segments.append(report_diff(arg, numpy_arg, label=f"arg {i}"))
     for name in kwargs:
