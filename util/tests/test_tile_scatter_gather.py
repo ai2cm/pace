@@ -159,9 +159,8 @@ def test_gathered_quantity_has_storage(
         list(zip(communicator_list, scattered_quantities))
     ):
         result = communicator.gather(send_quantity=rank_quantity)
-        if communicator.rank == 0:
-            print(result.gt4py_backend, result.metadata)
-            assert isinstance(result.storage, gt4py.storage.storage.Storage)
+        if communicator.rank != 0:
+            assert isinstance(result, pace.util.Quantity)
         else:
             assert result is None
 
@@ -178,7 +177,7 @@ def test_scattered_quantity_has_storage(
         else:
             result_list.append(communicator.scatter())
     for rank, result in enumerate(result_list):
-        assert isinstance(result.storage, gt4py.storage.storage.Storage)
+        assert isinstance(result, pace.util.Quantity)
 
 
 def test_tile_gather_state(

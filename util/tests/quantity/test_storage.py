@@ -9,9 +9,9 @@ try:
 except ImportError:
     gt4py = None
 try:
-    import cupy
+    import cupy as cp
 except ImportError:
-    cupy = None
+    cp = None
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def quantity(data, origin, extent, dims, units):
 
 def test_numpy(quantity, backend):
     if "cupy" in backend:
-        assert quantity.np is cupy
+        assert quantity.np is cp
     else:
         assert quantity.np is np
 
@@ -101,9 +101,9 @@ def test_modifying_numpy_storage_modifies_view():
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
 def test_storage_exists(quantity, backend):
     if "numpy" in backend:
-        assert isinstance(quantity.storage, gt4py.storage.storage.CPUStorage)
+        assert isinstance(quantity.data, np.ndarray)
     else:
-        assert isinstance(quantity.storage, gt4py.storage.storage.GPUStorage)
+        assert isinstance(quantity.data, cp.ndarray)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
@@ -114,7 +114,7 @@ def test_storage_does_not_exist(quantity, backend):
 
 def test_data_is_not_storage(quantity, backend):
     if gt4py is not None:
-        assert not isinstance(quantity.data, gt4py.storage.storage.Storage)
+        assert not isinstance(quantity.data, (np.ndaray, cp.ndarray))
 
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
@@ -189,15 +189,14 @@ def test_numpy_data_becomes_cupy_with_gpu_backend(
         units=units,
         gt4py_backend=gt4py_backend,
     )
-    assert isinstance(quantity.data, cupy.ndarray)
-    assert isinstance(quantity.storage, gt4py.storage.storage.GPUStorage)
+    assert isinstance(quantity.data, cp.ndarray)
 
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy"], indirect=True)
 def test_cannot_use_cpu_storage_with_gpu_backend(
     data, origin, extent, dims, units, gt4py_backend
 ):
-    assert isinstance(data, gt4py.storage.storage.CPUStorage)
+    assert isinstance(data, np.ndarray)
     with pytest.raises(TypeError):
         pace.util.Quantity(
             data,
@@ -213,7 +212,7 @@ def test_cannot_use_cpu_storage_with_gpu_backend(
 def test_cannot_use_gpu_storage_with_cpu_backend(
     data, origin, extent, dims, units, gt4py_backend
 ):
-    assert isinstance(data, gt4py.storage.storage.GPUStorage)
+    assert isinstance(data, cp.ndarray)
     with pytest.raises(TypeError):
         pace.util.Quantity(
             data,

@@ -594,9 +594,9 @@ class Driver:
                     self.end_of_step_update(
                         dycore_state=self.state.dycore_state,
                         phy_state=self.state.physics_state,
-                        u_dt=self.state.tendency_state.u_dt.storage,
-                        v_dt=self.state.tendency_state.v_dt.storage,
-                        pt_dt=self.state.tendency_state.pt_dt.storage,
+                        u_dt=self.state.tendency_state.u_dt.data,
+                        v_dt=self.state.tendency_state.v_dt.data,
+                        pt_dt=self.state.tendency_state.pt_dt.data,
                         dt=float(dt),
                     )
             self._end_of_step_actions(step)

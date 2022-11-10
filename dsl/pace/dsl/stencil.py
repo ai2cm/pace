@@ -20,7 +20,6 @@ import dace
 import gt4py
 import numpy as np
 from gt4py import gtscript
-from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.dsl.gt4py_utils as gt4py_utils
@@ -32,6 +31,12 @@ from pace.util import testing
 from pace.util.decomposition import block_waiting_for_compilation, unblock_waiting_tiles
 from pace.util.halo_data_transformer import QuantityHaloSpec
 from pace.util.mpi import MPI
+
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
 
 
 def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
@@ -431,7 +436,7 @@ class FrozenStencil(SDFGConvertible):
                     f"after calling {self._func_name}"
                 )
 
-    def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
+    def _mark_cuda_fields_written(self, fields: Mapping[str, cp.ndarray]):
         if self.stencil_config.is_gpu_backend:
             for write_field in self._written_fields:
                 fields[write_field]._set_device_modified()
@@ -520,15 +525,11 @@ class FrozenStencil(SDFGConvertible):
 
 def _convert_quantities_to_storage(args, kwargs):
     for i, arg in enumerate(args):
-        try:
-            args[i] = arg.storage
-        except AttributeError:
-            pass
+        if isinstance(arg, pace.util.Quantity):
+            args[i] = arg.data
     for name, arg in kwargs.items():
-        try:
-            kwargs[name] = arg.storage
-        except AttributeError:
-            pass
+        if isinstance(arg, pace.util.Quantity):
+            kwargs[name] = arg.data
 
 
 class GridIndexing:

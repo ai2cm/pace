@@ -315,7 +315,7 @@ def test_convert_quantities_to_storage_one_arg_quantity():
     kwargs = {}
     _convert_quantities_to_storage(args, kwargs)
     assert len(args) == 1
-    assert args[0] == quantity.storage
+    assert args[0] == quantity.data
     assert len(kwargs) == 0
 
 
@@ -326,7 +326,7 @@ def test_convert_quantities_to_storage_one_kwarg_quantity():
     _convert_quantities_to_storage(args, kwargs)
     assert len(args) == 0
     assert len(kwargs) == 1
-    assert kwargs["val"] == quantity.storage
+    assert kwargs["val"] == quantity.data
 
 
 def test_convert_quantities_to_storage_one_arg_nonquantity():

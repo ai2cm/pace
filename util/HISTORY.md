@@ -23,6 +23,7 @@ Minor changes:
 - fixed a bug in `pace.util.grid` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
 - Added .cleanup() method to ZarrMonitor, used only for API compatibility with NetCDFMonitor and does nothing
 - ZarrMonitor.partitioner may now be any Partitioner and not just a CubedSpherePartitioner
+- Quantity no longer has a `storage` attribute - the ndarray is directly accessible through the `data` attribute.
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.

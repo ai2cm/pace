@@ -280,47 +280,30 @@ class Quantity:
             extent = tuple(extent)
 
         if isinstance(data, (int, float, list)):
+            # If converting basic data, use a numpy ndarray.
             data = np.asarray(data)
-        elif gt4py is not None and isinstance(data, gt4py.storage.storage.Storage):
-            if gt4py_backend is not None:
+
+        if gt4py_backend is not None:
+            if not isinstance(data, (np.ndarray, cupy.ndarray)):
                 raise TypeError(
-                    "cannot select gt4py backend with keyword argument "
-                    "when providing storage as data"
+                    f"Only supports numpy.ndarray and cupy.ndarray, got {type(data)}"
                 )
-            else:
-                gt4py_backend = data.backend
-            if isinstance(data, gt4py.storage.storage.GPUStorage):
-                self._storage = data
-                self._data = data.gpu_view
-            elif isinstance(data, gt4py.storage.storage.CPUStorage):
-                self._storage = data
-                self._data = data.data
-            else:
-                raise TypeError(
-                    "only storages supported are CPUStorage and GPUStorage, "
-                    f"got {type(data)}"
-                )
-        elif gt4py_backend is not None:
-            extra_dims = [i for i in dims if i not in constants.SPATIAL_DIMS]
-            if len(extra_dims) > 0 or not dims:
-                mask = None
-            else:
-                mask = tuple(
-                    [
-                        any(dim in coord_dims for dim in dims)
-                        for coord_dims in [
-                            constants.X_DIMS,
-                            constants.Y_DIMS,
-                            constants.Z_DIMS,
-                        ]
-                    ]
-                )
-            self._storage, self._data = self._initialize_storage(
-                data, origin=origin, gt4py_backend=gt4py_backend, mask=mask
+            # If not passing data, allocate it using the `gt4py_backend` parameter.
+            dimensions = tuple(
+                [
+                    axis
+                    if any(dim in axis_dims for axis_dims in constants.SPATIAL_DIMS)
+                    else str(dims[index])
+                    for index, (dim, axis) in enumerate(
+                        zip(dims, ("I", "J", "K", *([None] * (len(dims) - 3))))
+                    )
+                ]
+            )
+            self._data = self._initialize_data(
+                data, origin=origin, gt4py_backend=gt4py_backend, dimensions=dimensions
             )
         else:
             self._data = data
-            self._storage = None
 
         _validate_quantity_property_lengths(data.shape, dims, origin, extent)
         self._metadata = QuantityMetadata(
@@ -387,44 +370,17 @@ class Quantity:
         """
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
-    @property
-    def storage(self):
-        """A gt4py storage representing the data in this Quantity.
-
-        Will raise TypeError if the gt4py backend was not specified when initializing
-        this object, either by providing a Storage for data or explicitly specifying
-        a backend.
-        """
-        if self._storage is None:
-            raise TypeError(
-                "gt4py backend was not specified when initializing this object"
-            )
-        return self._storage
-
-    def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
-        storage = gt4py.storage.storage.empty(
-            gt4py_backend,
-            default_origin=origin,
-            shape=data.shape,
-            dtype=data.dtype,
-            mask=mask,
-            managed_memory=True,  # required to get GPUStorage with only gpu data copy
+    def _initialize_data(self, data, origin, gt4py_backend: str, dimensions: Tuple):
+        """Allocates an ndarray with optimal memory layout, and copies the data over."""
+        storage = gt4py.storage.empty(
+            data.shape,
+            data.dtype,
+            backed=gt4py_backend,
+            aligned_index=origin,
+            dimensions=dimensions,
         )
         storage[...] = data
-        # storage must initialize new memory. when GDP-3 is merged, we can instead
-        # initialize storage from self._data
-        # when GDP-3 is merged, we can instead use the data in self._data to
-        # initialize the storage, instead of making a copy.
-        if isinstance(storage, gt4py.storage.storage.CPUStorage):
-            data = storage.data
-        elif isinstance(storage, gt4py.storage.storage.GPUStorage):
-            data = storage.gpu_view
-        else:
-            raise NotImplementedError(
-                f"received unexpected storage type {type(storage)} "
-                f"for gt4py_backend {gt4py_backend}, did gt4py get updated?"
-            )
-        return storage, data
+        return storage
 
     @property
     def metadata(self) -> QuantityMetadata:
@@ -489,20 +445,20 @@ class Quantity:
 
     @property
     def __array_interface__(self):
-        return self.storage.__array_interface__
+        return self.data.__array_interface__
 
     @property
     def __cuda_array_interface__(self):
-        return self.storage.__cuda_array_interface__
+        return self.data.__cuda_array_interface__
 
     @property
     def shape(self):
-        return self.storage.shape
+        return self.data.shape
 
     def __descriptor__(self):
         if self._storage is None:
             return None  # trigger DaCe JIT
-        return self._storage.__descriptor__()
+        return self.__descriptor__()
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.

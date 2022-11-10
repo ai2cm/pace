@@ -70,8 +70,8 @@ def setup_physics():
     for field in fields(pace.physics.PhysicsState):
         array = getattr(physics_state, field.name)
         # check that it's a storage this way, because Field is not a class
-        if hasattr(array, "data"):
-            array.data[:] = random.uniform(-1, 1, size=array.data.shape)
+        if isinstance(array, np.ndarray):
+            array[:] = random.uniform(-1, 1, size=array.data.shape)
     return physics, physics_state
 
 

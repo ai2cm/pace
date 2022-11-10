@@ -193,8 +193,8 @@ def test_call_does_not_allocate_storages():
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
-    with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
-        with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
+    with unittest.mock.patch("gt4py.storage.zeros", new=error_func):
+        with unittest.mock.patch("gt4py.storage.empty", new=error_func):
             dycore.step_dynamics(state, timer)
 
 

@@ -62,13 +62,10 @@ def get_state_from_input(
 ) -> Dict[str, SimpleNamespace]:
     """
     Transforms the input data from the dictionary of strings
-    to arrays into a state  we can pass in
-
-    Input is a dict of arrays. These are transformed into Storage arrays
-    useable in GT4Py
+    to arrays into a state we can pass in.
 
     This will also take care of reshaping the arrays into same sized
-    fields as required by the acoustics
+    fields as required by the acoustics.
     """
     driver_object = TranslateDynCore([grid], namelist, stencil_config)
     driver_object._base.make_storage_data_input_vars(input_data)

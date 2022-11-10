@@ -36,6 +36,12 @@ from pace.dsl.dace.utils import (
 from pace.util.mpi import MPI
 
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+
 def dace_inhibitor(func: Callable):
     """Triggers callback generation wrapping `func` while doing DaCe parsing."""
     return func
@@ -43,9 +49,9 @@ def dace_inhibitor(func: Callable):
 
 def _upload_to_device(host_data: List[Any]):
     """Make sure any data that are still a gt4py.storage gets uploaded to device"""
-    for data in host_data:
-        if isinstance(data, gt4py.storage.Storage):
-            data.host_to_device()
+    for i, data in enumerate(host_data):
+        if isinstance(data, cp.ndarray):
+            host_data[i] = cp.asarray(data)
 
 
 def _download_results_from_dace(
@@ -55,9 +61,7 @@ def _download_results_from_dace(
     gt4py_results = None
     if dace_result is not None:
         for arg in args:
-            if isinstance(arg, gt4py.storage.Storage) and hasattr(
-                arg, "_set_device_modified"
-            ):
+            if isinstance(arg, cp.ndarray) and hasattr(arg, "_set_device_modified"):
                 arg._set_device_modified()
         if config.is_gpu_backend():
             gt4py_results = [
