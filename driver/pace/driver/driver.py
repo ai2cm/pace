@@ -123,7 +123,7 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
-    safety_check_frequency: int = 1
+    safety_check_frequency: Optional[int] = None
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -559,7 +559,10 @@ class Driver:
         self.time += self.config.timestep
         if ((step + 1) % self.config.output_frequency) == 0:
             self.diagnostics.store(time=self.time, state=self.state)
-        if ((step + 1) % self.config.safety_check_frequency) == 0:
+        if (
+            self.config.safety_check_frequency
+            and ((step + 1) % self.config.safety_check_frequency) == 0
+        ):
             self.safety_checker.check_state(self.state.dycore_state)
         self.config.restart_config.write_intermediate_if_enabled(
             state=self.state,
