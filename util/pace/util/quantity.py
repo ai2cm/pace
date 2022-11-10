@@ -293,7 +293,7 @@ class Quantity:
                 [
                     axis
                     if any(dim in axis_dims for axis_dims in constants.SPATIAL_DIMS)
-                    else str(dims[index])
+                    else str(data.shape[index])
                     for index, (dim, axis) in enumerate(
                         zip(dims, ("I", "J", "K", *([None] * (len(dims) - 3))))
                     )
@@ -372,14 +372,13 @@ class Quantity:
 
     def _initialize_data(self, data, origin, gt4py_backend: str, dimensions: Tuple):
         """Allocates an ndarray with optimal memory layout, and copies the data over."""
-        storage = gt4py.storage.empty(
-            data.shape,
+        storage = gt4py.storage.from_array(
+            data,
             data.dtype,
             backend=gt4py_backend,
             aligned_index=origin,
             dimensions=dimensions,
         )
-        storage[...] = data
         return storage
 
     @property
