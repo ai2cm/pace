@@ -395,7 +395,10 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def is_gpu_backend(backend: str) -> bool:
-    return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
+    is_gpu_backend = gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
+    if is_gpu_backend and cp is None:
+        raise ValueError("GPU backends require cupy to be installed.")
+    return is_gpu_backend
 
 
 def zeros(shape, dtype=Float, *, backend: str):

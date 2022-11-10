@@ -1,13 +1,19 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
 from pace.stencils.testing.grid import Grid  # type: ignore
 
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +29,17 @@ def pad_field_in_j(field, nj: int, backend: str):
     utils.device_sync(backend)
     outfield = utils.tile(field[:, 0, :], (nj, 1, 1)).transpose(1, 0, 2)
     return outfield
+
+
+def get_data(value: Union[pace.util.Quantity, np.ndarray]) -> np.ndarray:
+    if isinstance(value, pace.util.Quantity):
+        return value.data
+    elif cp is not None and isinstance(value, cp.ndarray):
+        return cp.asnumpy(value)
+    elif isinstance(value, np.ndarray):
+        return value
+    else:
+        raise TypeError(f"Unrecognized value type: {type(value)}")
 
 
 class TranslateFortranData2Py:
@@ -191,7 +208,7 @@ class TranslateFortranData2Py:
             serialname = info["serialname"] if "serialname" in info else var
             ds = self.grid.default_domain_dict()
             ds.update(info)
-            data_result = out_data[var]
+            data_result = get_data(out_data[var])
             if isinstance(data_result, dict):
                 names_4d = info.get("names_4d", utils.tracer_variables)
                 var4d = np.zeros(
@@ -210,7 +227,7 @@ class TranslateFortranData2Py:
                 out[serialname] = var4d
             else:
                 slice_tuple = self.grid.slice_dict(ds, len(data_result.shape))
-                out[serialname] = np.squeeze(np.asarray(data_result)[slice_tuple])
+                out[serialname] = np.squeeze(data_result[slice_tuple])
             if "kaxis" in info:
                 out[serialname] = np.moveaxis(out[serialname], 2, info["kaxis"])
         return out
