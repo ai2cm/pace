@@ -4,7 +4,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 from typing_extensions import Literal
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
@@ -13,6 +13,7 @@ from pace.physics.physics_state import PhysicsState
 from pace.physics.stencils.get_phi_fv3 import get_phi_fv3
 from pace.physics.stencils.get_prs_fv3 import get_prs_fv3
 from pace.physics.stencils.microphysics import Microphysics
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import GridData
 
 from .._config import PhysicsConfig
@@ -196,6 +197,7 @@ class Physics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         namelist: PhysicsConfig,
         active_packages: List[Literal[PHYSICS_PACKAGES]],
@@ -207,22 +209,17 @@ class Physics:
         )
 
         grid_indexing = stencil_factory.grid_indexing
-        origin = grid_indexing.origin_compute()
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._setup_statein()
         self._ptop = grid_data.ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
         self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape, origin=origin, backend=stencil_factory.backend
-            )
+        def make_quantity():
+            return quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._prsik = make_storage()
-        self._dm3d = make_storage()
-        self._del_gz = make_storage()
-        self._full_zero_storage = make_storage()
+        self._prsik = make_quantity()
+        self._dm3d = make_quantity()
+        self._del_gz = make_quantity()
         self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
             origin=grid_indexing.origin_full(),
@@ -259,7 +256,7 @@ class Physics:
                 )
             )
             self._microphysics = Microphysics(
-                stencil_factory, grid_data, namelist=namelist
+                stencil_factory, quantity_factory, grid_data, namelist=namelist
             )
         else:
             self._do_microphysics = False
