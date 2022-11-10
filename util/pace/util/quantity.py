@@ -507,19 +507,6 @@ class Quantity:
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
 
-        If you know you are working with cell-centered variables, you can do:
-
-        >>> from pace.util import X_DIM, Y_DIM, Z_DIM
-        >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
-
-        To support re-ordering without checking whether quantities are on
-        cell centers or interfaces, the API supports giving a list of dimension names
-        for dimensions. For example, to re-order to X-Y-Z dimensions regardless of the
-        grid the variable is on, one could do:
-
-        >>> from pace.util import X_DIMS, Y_DIMS, Z_DIMS
-        >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
-
         Args:
             target_dims: a list of output dimensions. Instead of a single dimension
                 name, an iterable of dimensions can be used instead for any entries.
@@ -532,6 +519,30 @@ class Quantity:
         Raises:
             ValueError: if any of the target dimensions do not exist on this Quantity,
                 or if this Quantity contains multiple values from an iterable entry
+
+        Examples:
+            Let's say we have a cell-centered variable:
+
+            >>> import pace.util
+            >>> import numpy as np
+            >>> quantity = pace.util.Quantity(
+            ...     data=np.zeros([2, 3, 4]),
+            ...     dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            ...             units="m",
+            ... )
+
+            If you know you are working with cell-centered variables, you can do:
+
+            >>> from pace.util import X_DIM, Y_DIM, Z_DIM
+            >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
+
+            To support re-ordering without checking whether quantities are on
+            cell centers or interfaces, the API supports giving a list of dimension
+            names for dimensions. For example, to re-order to X-Y-Z dimensions
+            regardless of the grid the variable is on, one could do:
+
+            >>> from pace.util import X_DIMS, Y_DIMS, Z_DIMS
+            >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
         """
         target_dims = _collapse_dims(target_dims, self.dims)
         transpose_order = [self.dims.index(dim) for dim in target_dims]
