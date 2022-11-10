@@ -473,7 +473,7 @@ def device_sync(backend: str) -> None:
         cp.cuda.Device(0).synchronize()
 
 
-def split_cartesian_into_storages(var: FloatField):
+def split_cartesian_into_storages(var: np.ndarray) -> Sequence[np.ndarray]:
     """
     Provided a storage of dims [X_DIM, Y_DIM, CARTESIAN_DIM]
          or [X_INTERFACE_DIM, Y_INTERFACE_DIM, CARTESIAN_DIM]
@@ -483,10 +483,6 @@ def split_cartesian_into_storages(var: FloatField):
     var_data = []
     for cart in range(3):
         var_data.append(
-            make_storage_data(
-                asarray(var.data, type(var.data))[:, :, cart],
-                var.data.shape[0:2],
-                backend=var.backend,
-            )
+            asarray(var, type(var))[:, :, cart],
         )
     return var_data
