@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import gt4py
 import numpy as np
 
-from pace.dsl.typing import DTypes, Field, Float, FloatField
+from pace.dsl.typing import DTypes, Field, Float
 
 
 try:
