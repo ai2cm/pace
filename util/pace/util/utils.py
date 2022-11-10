@@ -40,22 +40,20 @@ def list_by_dims(
     return tuple(return_list)
 
 
-def is_contiguous(array: Union[np.ndarray, cp.ndarray]) -> bool:
+def is_contiguous(array: np.ndarray) -> bool:
     return array.flags["C_CONTIGUOUS"] or array.flags["F_CONTIGUOUS"]
 
 
-def is_c_contiguous(array: Union[np.ndarray, cp.ndarray]) -> bool:
+def is_c_contiguous(array: np.ndarray) -> bool:
     return array.flags["C_CONTIGUOUS"]
 
 
-def ensure_contiguous(maybe_array: Union[np.ndarray, np.ndarray, None]) -> None:
+def ensure_contiguous(maybe_array: Union[np.ndarray, None]) -> None:
     if maybe_array is not None and not is_contiguous(maybe_array):
         raise ValueError("ndarray is not contiguous")
 
 
-def safe_assign_array(
-    to_array: Union[np.ndarray, cp.ndarray], from_array: Union[np.ndarray, cp.ndarray]
-):
+def safe_assign_array(to_array: np.ndarray, from_array: np.ndarray):
     """Failproof assignment for array on different devices.
 
     The memory will be downloaded/uploaded from GPU if need be.
