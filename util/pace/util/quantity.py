@@ -375,7 +375,7 @@ class Quantity:
         storage = gt4py.storage.empty(
             data.shape,
             data.dtype,
-            backed=gt4py_backend,
+            backend=gt4py_backend,
             aligned_index=origin,
             dimensions=dimensions,
         )
