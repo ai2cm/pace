@@ -49,6 +49,7 @@ def dace_inhibitor(func: Callable):
 
 def _upload_to_device(host_data: List[Any]):
     """Make sure any data that are still a gt4py.storage gets uploaded to device"""
+    assert cp is not None
     for i, data in enumerate(host_data):
         if isinstance(data, cp.ndarray):
             host_data[i] = cp.asarray(data)

@@ -100,7 +100,9 @@ class QuantityFactory:
         for the given dims.
         """
         # TODO: Replace this once aligned_index fix is included.
-        quantity_data = self._numpy.from_array(data, data.dtype, aligned_index=[0] * len(data.shape))
+        quantity_data = self._numpy.from_array(
+            data, data.dtype, aligned_index=[0] * len(data.shape)
+        )
         return Quantity(data=quantity_data, dims=dims, units=units)
 
     def _allocate(

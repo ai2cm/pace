@@ -455,9 +455,7 @@ class Quantity:
         return self.data.shape
 
     def __descriptor__(self):
-        if self._storage is None:
-            return None  # trigger DaCe JIT
-        return self.__descriptor__()
+        return None  # trigger DaCe JIT
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
