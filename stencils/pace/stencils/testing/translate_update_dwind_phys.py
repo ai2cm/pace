@@ -26,6 +26,7 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         partitioner = pace.util.TilePartitioner(self.namelist.layout)
         self.compute_func = AGrid2DGridPhysics(
             self.stencil_factory,
+            self.grid.quantity_factory,
             partitioner,
             self.grid.rank,
             self.namelist,

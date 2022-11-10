@@ -61,7 +61,11 @@ def setup_physics():
     )
     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
     physics = pace.physics.Physics(
-        stencil_factory, grid_data, physics_config, active_packages=["microphysics"]
+        stencil_factory,
+        quantity_factory,
+        grid_data,
+        physics_config,
+        active_packages=["microphysics"],
     )
     physics_state = pace.physics.PhysicsState.init_zeros(
         quantity_factory, active_packages=["microphysics"]
