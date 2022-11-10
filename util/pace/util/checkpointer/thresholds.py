@@ -17,7 +17,7 @@ except ImportError:
 
 SavepointName = str
 VariableName = str
-ArrayLike = Union[Quantity, cp.ndarray, np.ndarray]
+ArrayLike = Union[Quantity, np.ndarray]
 
 
 class InsufficientTrialsError(Exception):
