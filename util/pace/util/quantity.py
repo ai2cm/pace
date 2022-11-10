@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import Dict, Iterable, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Iterable, Sequence, Tuple, Union, cast
 
 import numpy as np
 
@@ -49,6 +49,21 @@ class QuantityMetadata:
             raise TypeError(
                 f"quantity underlying data is of unexpected type {self.data_type}"
             )
+
+
+@dataclasses.dataclass
+class QuantityHaloSpec:
+    """Describe the memory to be exchanged, including size of the halo."""
+
+    n_points: int
+    strides: Tuple[int]
+    itemsize: int
+    shape: Tuple[int]
+    origin: Tuple[int, ...]
+    extent: Tuple[int, ...]
+    dims: Tuple[str, ...]
+    numpy_module: NumpyModule
+    dtype: Any
 
 
 class BoundaryArrayView:
@@ -365,6 +380,19 @@ class Quantity:
             origin=origin,
             extent=extent,
             gt4py_backend=gt4py_backend,
+        )
+
+    def halo_spec(self, n_halo: int) -> QuantityHaloSpec:
+        return QuantityHaloSpec(
+            n_halo,
+            self.data.strides,
+            self.data.itemsize,
+            self.data.shape,
+            self.metadata.origin,
+            self.metadata.extent,
+            self.metadata.dims,
+            self.np,
+            self.metadata.dtype,
         )
 
     def __repr__(self):
