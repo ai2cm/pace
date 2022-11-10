@@ -62,7 +62,7 @@ def _mask_to_dimensions(
     return dimensions
 
 
-def _translate_origin(origin: Tuple[int, ...], mask: Tuple[bool, ...]) -> List[int]:
+def _translate_origin(origin: Sequence[int], mask: Tuple[bool, ...]) -> Sequence[int]:
     if len(origin) == int(sum(mask)):
         # Correct length. Assumedd to be correctly specified.
         return origin
