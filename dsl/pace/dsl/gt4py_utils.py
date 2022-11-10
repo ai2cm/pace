@@ -62,7 +62,11 @@ def _mask_to_dimensions(
     return dimensions
 
 
-def _interpolate_origin(origin: Tuple[int, ...], mask: Tuple[bool, ...]) -> List[int]:
+def _translate_origin(origin: Tuple[int, ...], mask: Tuple[bool, ...]) -> List[int]:
+    if len(origin) == int(sum(mask)):
+        # Correct length. Assumedd to be correctly specified.
+        return origin
+
     assert len(mask) == 3
     final_origin: List[int] = []
     for i, has_axis in enumerate(mask):
@@ -161,7 +165,7 @@ def make_storage_data(
         data,
         dtype,
         backend=backend,
-        aligned_index=_interpolate_origin(origin, mask),
+        aligned_index=_translate_origin(origin, mask),
         dimensions=_mask_to_dimensions(mask, data.shape),
     )
     return storage
@@ -294,7 +298,7 @@ def make_storage_from_shape(
         shape,
         dtype,
         backend=backend,
-        aligned_index=_interpolate_origin(origin, mask),
+        aligned_index=_translate_origin(origin, mask),
         dimensions=_mask_to_dimensions(mask, shape),
     )
     return storage
