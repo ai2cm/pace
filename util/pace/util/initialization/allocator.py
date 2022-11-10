@@ -37,6 +37,9 @@ class StorageNumpy:
     def zeros(self, *args, **kwargs) -> np.ndarray:
         return gt4py.storage.zeros(*args, backend=self.backend, **kwargs)
 
+    def from_array(self, *args, **kwargs) -> np.ndarray:
+        return gt4py.storage.from_array(*args, backend=self.backend, **kwargs)
+
 
 class QuantityFactory:
     def __init__(self, sizer: GridSizer, numpy):
@@ -96,9 +99,9 @@ class QuantityFactory:
         That numpy array must correspond to the correct shape and extent
         for the given dims.
         """
-        base = self.empty(dims=dims, units=units, dtype=data.dtype)
-        base.data[:] = base.np.asarray(data)
-        return base
+        # TODO: Replace this once aligned_index fix is included.
+        quantity_data = self._numpy.from_array(data, data.dtype, aligned_index=[0] * len(data.shape))
+        return Quantity(data=quantity_data, dims=dims, units=units)
 
     def _allocate(
         self,

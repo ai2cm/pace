@@ -145,11 +145,6 @@ def make_storage_data(
                 default_mask = (n_dims * (True,)) + ((max_dim - n_dims) * (False,))
         mask = default_mask
 
-    # Convert to `dimensions` which is the new parameter type that gt4py accepts.
-    zip(
-        shape,
-    )
-
     if n_dims == 1:
         data = _make_storage_data_1d(
             data, shape, start, dummy, axis, read_only, backend=backend
