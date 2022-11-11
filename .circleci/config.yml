@@ -480,6 +480,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - doctest:
+          filters:
+            tags:
+              only: /^v.*/
       - dycore_savepoints:
           matrix:
             parameters:
