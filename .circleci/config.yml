@@ -163,6 +163,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - run:
           name: save python_version.txt
           command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
