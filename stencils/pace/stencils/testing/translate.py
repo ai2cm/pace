@@ -31,15 +31,23 @@ def pad_field_in_j(field, nj: int, backend: str):
     return outfield
 
 
-def get_data(value: Union[pace.util.Quantity, np.ndarray]) -> np.ndarray:
-    if isinstance(value, pace.util.Quantity):
-        return value.data
-    elif cp is not None and isinstance(value, cp.ndarray):
-        return cp.asnumpy(value)
-    elif isinstance(value, np.ndarray):
-        return value
+def get_data(
+    value: Union[Dict[str, Any], pace.util.Quantity, np.ndarray]
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def _convert(value: Union[pace.util.Quantity, np.ndarray]) -> np.ndarray:
+        if isinstance(value, pace.util.Quantity):
+            return value.data
+        elif cp is not None and isinstance(value, cp.ndarray):
+            return cp.asnumpy(value)
+        elif isinstance(value, np.ndarray):
+            return value
+        else:
+            raise TypeError(f"Unrecognized value type: {type(value)}")
+
+    if isinstance(value, dict):
+        return {k: _convert(v) for k, v in value.items()}
     else:
-        raise TypeError(f"Unrecognized value type: {type(value)}")
+        return _convert(value)
 
 
 class TranslateFortranData2Py:
