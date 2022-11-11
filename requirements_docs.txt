@@ -3,4 +3,3 @@ sphinx>=1.4
 sphinx-argparse
 sphinx_rtd_theme
 sphinx-gallery
-sphinx-doctest
