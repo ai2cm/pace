@@ -53,6 +53,10 @@ if [[ $backend == gt_* || $backend == dace_* ]]; then
     backend=${backend/_/:}
 fi
 
+if [[ $backend == gt_* || $backend == *"dace"* ]]; then
+    export FV3_DACEMODE=BuildAndRun
+fi
+
 # NOTE: Timeout is set by run_command in schedulerTools.sh
 if [ -v LONG_EXECUTION ]; then
     default_timeout=210
