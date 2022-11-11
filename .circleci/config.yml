@@ -143,7 +143,7 @@ jobs:
           command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+            - v3-lint-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: run linting
           command: |
@@ -152,7 +152,31 @@ jobs:
             pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+          key: v3-lint-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+          paths:
+            - ~/.cache/pre-commit
+            - venv
+
+  doctest:
+    docker:
+    - image: cimg/python:3.8
+    steps:
+      - checkout
+      - run:
+          name: save python_version.txt
+          command: python --version | awk '{print $2;}' > python_version.txt
+      - restore_cache:
+          keys:
+            - v3-doctest-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+      - run:
+          name: run doctest
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip3 install -r requirements_dev.txt -r requirements_docs.txt -c constraints.txt
+            make doctest
+      - save_cache:
+          key: v3-doctest-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
