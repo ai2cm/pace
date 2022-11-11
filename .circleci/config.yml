@@ -165,24 +165,12 @@ jobs:
       - run:
           name: Update Submodules
           command: git submodule update --init
-      - run:
-          name: save python_version.txt
-          command: python --version | awk '{print $2;}' > python_version.txt
-      - restore_cache:
-          keys:
-            - v3-doctest-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+      - setup_environment_mpi
       - run:
           name: run doctest
           command: |
-            python3 -m venv venv
             . venv/bin/activate
-            pip3 install -r requirements_dev.txt -r requirements_docs.txt -c constraints.txt
             make doctest
-      - save_cache:
-          key: v3-doctest-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
-          paths:
-            - ~/.cache/pre-commit
-            - venv
 
   dycore_savepoints:
     machine:
