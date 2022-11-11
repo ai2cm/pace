@@ -19,12 +19,13 @@ RUN apt-get update -y && \
 RUN apt-get update -y && \
     apt install -y --no-install-recommends \
     git \
-    python3.9 \
-    python3.9-dev &&\
+    python3-pip \
+    python3.10 \
+    python3.10-dev &&\
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 60
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 60
 
 RUN apt-get update -y &&\
     apt install -y --no-install-recommends\
@@ -43,13 +44,9 @@ RUN python -m pip --no-cache-dir \
     xarray \
     zarr
 
-# default shapely causes seg fault
-RUN pip uninstall shapely -y
-RUN pip install --no-binary :all: shapely
-
 # set up for fv3viz
 RUN cd /
 RUN git clone https://github.com/ai2cm/fv3net.git
-RUN cd fv3net && git checkout 9df1bde7
+RUN cd fv3net && git checkout 1d168ef
 RUN python -m pip install fv3net/external/vcm
 ENV PYTHONPATH=/fv3net/external/fv3viz

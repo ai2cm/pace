@@ -1,7 +1,6 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
-import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
 from pace import fv3core
@@ -11,6 +10,7 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.util import X_DIM, Y_DIM
 from pace.util.grid import DriverGridData, GridData
 
 
@@ -84,6 +84,7 @@ class ApplyPhysicsToDycore:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
@@ -110,20 +111,26 @@ class ApplyPhysicsToDycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, comm.partitioner.tile, comm.rank, namelist, grid_info
+            stencil_factory,
+            quantity_factory,
+            comm.partitioner.tile,
+            comm.rank,
+            namelist,
+            grid_info,
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            state, stencil_factory, grid_data, order=namelist.c2l_ord, comm=comm
+            state,
+            stencil_factory,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            order=namelist.c2l_ord,
+            comm=comm,
         )
-        self.origin = grid_indexing.origin_compute()
-        self.extent = grid_indexing.domain_compute()
+        origin = grid_indexing.origin_compute()
         shape = grid_indexing.max_shape
-        full_3Dfield_1pts_halo_spec = grid_indexing.get_quantity_halo_spec(
-            shape,
-            self.origin,
+        full_3Dfield_1pts_halo_spec = quantity_factory.get_quantity_halo_spec(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=1,
-            backend=stencil_factory.backend,
         )
         self._udt_halo_updater = WrappedHaloUpdater(
             self.comm.get_scalar_halo_updater([full_3Dfield_1pts_halo_spec]),
@@ -136,12 +143,8 @@ class ApplyPhysicsToDycore:
             ["v_dt"],
         )
         # TODO: check if we actually need surface winds
-        self._u_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, backend=stencil_factory.backend
-        )
-        self._v_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, backend=stencil_factory.backend
-        )
+        self._u_srf = quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="m/s")
+        self._v_srf = quantity_factory.zeros(dims=[X_DIM, Y_DIM], units="m/s")
 
     def __call__(
         self,

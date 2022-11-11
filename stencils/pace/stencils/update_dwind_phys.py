@@ -1,10 +1,10 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
-from pace.util import TilePartitioner
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import DriverGridData
 
 
@@ -157,7 +157,8 @@ class AGrid2DGridPhysics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        partitioner: TilePartitioner,
+        quantity_factory: pace.util.QuantityFactory,
+        partitioner: pace.util.TilePartitioner,
         rank: int,
         namelist,
         grid_info: DriverGridData,
@@ -186,21 +187,21 @@ class AGrid2DGridPhysics:
         self.west_edge = grid_indexing.west_edge
         self.east_edge = grid_indexing.east_edge
 
-        def make_storage():
-            return utils.make_storage_from_shape(shape, backend=stencil_factory.backend)
+        def make_quantity():
+            return quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._ue_1 = make_storage()
-        self._ue_2 = make_storage()
-        self._ue_3 = make_storage()
-        self._ut_1 = make_storage()
-        self._ut_2 = make_storage()
-        self._ut_3 = make_storage()
-        self._ve_1 = make_storage()
-        self._ve_2 = make_storage()
-        self._ve_3 = make_storage()
-        self._vt_1 = make_storage()
-        self._vt_2 = make_storage()
-        self._vt_3 = make_storage()
+        self._ue_1 = make_quantity()
+        self._ue_2 = make_quantity()
+        self._ue_3 = make_quantity()
+        self._ut_1 = make_quantity()
+        self._ut_2 = make_quantity()
+        self._ut_3 = make_quantity()
+        self._ve_1 = make_quantity()
+        self._ve_2 = make_quantity()
+        self._ve_3 = make_quantity()
+        self._vt_1 = make_quantity()
+        self._vt_2 = make_quantity()
+        self._vt_3 = make_quantity()
 
         self._update_dwind_prep_stencil = stencil_factory.from_origin_domain(
             update_dwind_prep_stencil,
