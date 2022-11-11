@@ -8,9 +8,11 @@ stencil_config:
 initialization:
   type: baroclinic
 diagnostics_config:
-  path: "noout.zarr"
+  path: "output.zarr"
   names:
-    []
+    - ua 
+    - va
+    - pt
 output_initial_state: true
 performance_config:
   collect_performance: true

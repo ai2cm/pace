@@ -56,6 +56,5 @@ srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c768_96r
 EOF
 launch_job run.daint.slurm 15000
 
-mv 
 tar -czvf ${PACE_DIR}/output.tar.gz output.zarr
 
