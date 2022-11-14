@@ -102,23 +102,19 @@ class QuantityFactory:
         for the given dims.
         """
         # TODO: Replace this once aligned_index fix is included.
-        base = self.empty(dims=dims, units=units, dtype=data.dtype)
-        base.data[:] = base.np.asarray(data)
-        return base
-
-        # quantity_data = self._numpy.from_array(
-        #     data, data.dtype, aligned_index=[0] * len(data.shape)
-        # )
-        # origin = self.sizer.get_origin(dims)
-        # extent = self.sizer.get_extent(dims)
-        # return Quantity(
-        #     data=quantity_data,
-        #     dims=dims,
-        #     units=units,
-        #     gt4py_backend=self._numpy.backend,
-        #     origin=origin,
-        #     extent=extent,
-        # )
+        quantity_data = self._numpy.from_array(
+            data, data.dtype, aligned_index=[0] * len(data.shape)
+        )
+        origin = self.sizer.get_origin(dims)
+        extent = self.sizer.get_extent(dims)
+        return Quantity(
+            data=quantity_data,
+            dims=dims,
+            units=units,
+            gt4py_backend=self._numpy.backend,
+            origin=origin,
+            extent=extent,
+        )
 
     def _allocate(
         self,
