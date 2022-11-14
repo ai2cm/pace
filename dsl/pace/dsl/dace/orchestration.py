@@ -48,7 +48,10 @@ def dace_inhibitor(func: Callable):
 
 
 def _upload_to_device(host_data: List[Any]):
-    """Make sure any data that are still a gt4py.storage gets uploaded to device"""
+    """Make sure any ndarrays gets uploaded to the device
+
+    This will raise an assertion if cupy is not installed.
+    """
     assert cp is not None
     for i, data in enumerate(host_data):
         if isinstance(data, cp.ndarray):
@@ -62,8 +65,11 @@ def _download_results_from_dace(
     gt4py_results = None
     if dace_result is not None:
         for arg in args:
-            if isinstance(arg, cp.ndarray) and hasattr(arg, "_set_device_modified"):
-                arg._set_device_modified()
+            try:
+                if isinstance(arg, cp.ndarray):
+                    arg._set_device_modified()
+            except AttributeError:
+                pass
         if config.is_gpu_backend():
             gt4py_results = [
                 gt4py.storage.from_array(
@@ -116,7 +122,8 @@ def _to_gpu(sdfg: dace.SDFG):
 
 def _run_sdfg(daceprog: DaceProgram, config: DaceConfig, args, kwargs):
     """Execute a compiled SDFG - do not check for compilation"""
-    _upload_to_device(list(args) + list(kwargs.values()))
+    if config.is_gpu_backend():
+        _upload_to_device(list(args) + list(kwargs.values()))
     res = daceprog(*args, **kwargs)
     return _download_results_from_dace(config, res, list(args) + list(kwargs.values()))
 
@@ -134,14 +141,14 @@ def _build_sdfg(
         if config.is_gpu_backend():
             _to_gpu(sdfg)
             make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.GPU)
+
+            # Upload args to device
+            _upload_to_device(list(args) + list(kwargs.values()))
         else:
             for sd, _aname, arr in sdfg.arrays_recursive():
                 if arr.shape == (1,):
                     arr.storage = DaceStorageType.Register
             make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.CPU)
-
-        # Upload args to device
-        _upload_to_device(list(args) + list(kwargs.values()))
 
         # Build non-constants & non-transients from the sdfg_kwargs
         sdfg_kwargs = daceprog._create_sdfg_args(sdfg, args, kwargs)

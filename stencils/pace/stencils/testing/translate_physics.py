@@ -4,7 +4,7 @@ import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import GridIndexing
 from pace.physics import PhysicsConfig
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
-from pace.stencils.testing.translate import TranslateFortranData2Py, get_data
+from pace.stencils.testing.translate import TranslateFortranData2Py, as_numpy
 
 
 def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: str):
@@ -137,7 +137,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             serialname = info["serialname"] if "serialname" in info else var
             compute_domain = info["compute"] if "compute" in info else True
             if not manual:
-                data_result = get_data(out_data[var])
+                data_result = as_numpy(out_data[var])
                 n_dim = len(data_result.shape)
                 cn2 = int(data_result.shape[0] - self.grid.halo * 2 - 1) ** 2
                 roll_zero = info["out_roll_zero"] if "out_roll_zero" in info else False

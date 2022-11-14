@@ -31,7 +31,7 @@ def pad_field_in_j(field, nj: int, backend: str):
     return outfield
 
 
-def get_data(
+def as_numpy(
     value: Union[Dict[str, Any], pace.util.Quantity, np.ndarray]
 ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
     def _convert(value: Union[pace.util.Quantity, np.ndarray]) -> np.ndarray:
@@ -216,7 +216,7 @@ class TranslateFortranData2Py:
             serialname = info["serialname"] if "serialname" in info else var
             ds = self.grid.default_domain_dict()
             ds.update(info)
-            data_result = get_data(out_data[var])
+            data_result = as_numpy(out_data[var])
             if isinstance(data_result, dict):
                 names_4d = info.get("names_4d", utils.tracer_variables)
                 var4d = np.zeros(

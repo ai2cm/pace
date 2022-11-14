@@ -203,9 +203,9 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         state.v = v_quantity
         self._base.compute_func(
             state,
-            tendencies["u_dt"].data,
-            tendencies["v_dt"].data,
-            tendencies["t_dt"].data,
+            tendencies["u_dt"],
+            tendencies["v_dt"],
+            tendencies["t_dt"],
             dt=float(self.namelist.dt_atmos),
         )
         out = {}
