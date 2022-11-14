@@ -10,16 +10,6 @@ from ..quantity import Quantity
 from .sizer import GridSizer
 
 
-def _wrap_storage_call(function, backend):
-    def wrapped(shape, dtype=float, **kwargs):
-        kwargs["managed_memory"] = True
-        kwargs.setdefault("default_origin", [0] * len(shape))
-        return function(backend, shape=shape, dtype=dtype, **kwargs)
-
-    wrapped.__name__ = function.__name__
-    return wrapped
-
-
 class StorageNumpy:
     def __init__(self, backend: str):
         """Initialize an object which behaves like the numpy module, but uses
@@ -38,9 +28,6 @@ class StorageNumpy:
 
     def zeros(self, *args, **kwargs) -> np.ndarray:
         return gt4py.storage.zeros(*args, backend=self.backend, **kwargs)
-
-    def from_array(self, *args, **kwargs) -> np.ndarray:
-        return gt4py.storage.from_array(*args, backend=self.backend, **kwargs)
 
 
 class QuantityFactory:
@@ -101,20 +88,9 @@ class QuantityFactory:
         That numpy array must correspond to the correct shape and extent
         for the given dims.
         """
-        # TODO: Replace this once aligned_index fix is included.
-        quantity_data = self._numpy.from_array(
-            data, data.dtype, aligned_index=[0] * len(data.shape)
-        )
-        origin = self.sizer.get_origin(dims)
-        extent = self.sizer.get_extent(dims)
-        return Quantity(
-            data=quantity_data,
-            dims=dims,
-            units=units,
-            gt4py_backend=self._numpy.backend,
-            origin=origin,
-            extent=extent,
-        )
+        base = self.empty(dims=dims, units=units, dtype=data.dtype)
+        base.data[:] = base.np.asarray(data)
+        return base
 
     def _allocate(
         self,

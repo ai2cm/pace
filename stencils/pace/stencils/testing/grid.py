@@ -581,23 +581,25 @@ class Grid:
                 dims=GridDefinitions.rdya.dims,
                 units=GridDefinitions.rdya.units,
             ),
+            # ee1, ee2, es1, ew2 were mysteriously zero-padded, so this
+            # ensures we get data of the correct shape with correct data.
             ee1=self.quantity_factory.from_array(
-                data=self.ee1,
+                data=self.ee1[:, :, :3],
                 dims=GridDefinitions.ee1.dims,
                 units=GridDefinitions.ee1.units,
             ),
             ee2=self.quantity_factory.from_array(
-                data=self.ee2,
+                data=self.ee2[:, :, :3],
                 dims=GridDefinitions.ee2.dims,
                 units=GridDefinitions.ee2.units,
             ),
             es1=self.quantity_factory.from_array(
-                data=self.es1,
+                data=self.es1[:, :, :3],
                 dims=GridDefinitions.es1.dims,
                 units=GridDefinitions.es1.units,
             ),
             ew2=self.quantity_factory.from_array(
-                data=self.ew2,
+                data=self.ew2[:, :, :3],
                 dims=GridDefinitions.ew2.dims,
                 units=GridDefinitions.ew2.units,
             ),
@@ -621,23 +623,24 @@ class Grid:
                 dims=GridDefinitions.a22.dims,
                 units=GridDefinitions.a22.units,
             ),
+            # Similarly, the translate code also pads these arrays.
             edge_w=self.quantity_factory.from_array(
-                data=self.edge_w,
+                data=self.edge_w[:19],
                 dims=GridDefinitions.edge_w.dims,
                 units=GridDefinitions.edge_w.units,
             ),
             edge_e=self.quantity_factory.from_array(
-                data=self.edge_e,
+                data=self.edge_e[:19],
                 dims=GridDefinitions.edge_e.dims,
                 units=GridDefinitions.edge_e.units,
             ),
             edge_s=self.quantity_factory.from_array(
-                data=self.edge_s,
+                data=self.edge_s[:19],
                 dims=GridDefinitions.edge_s.dims,
                 units=GridDefinitions.edge_s.units,
             ),
             edge_n=self.quantity_factory.from_array(
-                data=self.edge_n,
+                data=self.edge_n[:19],
                 dims=GridDefinitions.edge_n.dims,
                 units=GridDefinitions.edge_n.units,
             ),
