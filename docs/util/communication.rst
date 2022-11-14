@@ -1,3 +1,5 @@
+.. _communication:
+
 =============
 Communication
 =============
@@ -87,18 +89,18 @@ Given a Quantity, the Boundary object can tell us where the data on the boundary
 
 .. doctest::
 
-    >>> quantity.view[:] = np.arange(4)[None, :] + np.arange(4)[:, None]
+    >>> quantity.view[:] = np.arange(4)[None, :] + np.arange(0, 40, 10)[:, None]
     >>> quantity.data[:]
-    array([[0., 0., 0., 0., 0., 0.],
-           [0., 0., 1., 2., 3., 0.],
-           [0., 1., 2., 3., 4., 0.],
-           [0., 2., 3., 4., 5., 0.],
-           [0., 3., 4., 5., 6., 0.],
-           [0., 0., 0., 0., 0., 0.]])
+    array([[ 0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  1.,  2.,  3.,  0.],
+           [ 0., 10., 11., 12., 13.,  0.],
+           [ 0., 20., 21., 22., 23.,  0.],
+           [ 0., 30., 31., 32., 33.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.]])
     >>> boundary.send_slice(quantity.halo_spec(n_halo=1))
     (slice(4, 5, None), slice(1, 5, None))
     >>> quantity.data[boundary.send_slice(quantity.halo_spec(n_halo=1))]
-    array([[3., 4., 5., 6.]])
+    array([[30., 31., 32., 33.]])
     >>> boundary.recv_slice(quantity.halo_spec(n_halo=1))
     (slice(5, 6, None), slice(1, 5, None))
 

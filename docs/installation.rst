@@ -43,3 +43,5 @@ Inside of your pace `venv` or conda environment pip install the Python requireme
 
 .. code-block:: console
     $ pip3 install -r requirements_dev.txt -c constraints.txt
+
+There are also separate requirements files which can be installed for linting (`requirements_lint.txt`) and building documentation (`requirements_docs.txt`).

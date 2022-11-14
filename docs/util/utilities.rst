@@ -1,3 +1,5 @@
+.. _utilities:
+
 =========
 Utilities
 =========
@@ -12,9 +14,9 @@ A runfile using this functionality can be found in the `examples` directory.
 Diagnostic IO
 -------------
 
-State can be persisted to disk using either :py:func:`pace.util.write_state` (described below) or :py:class:`pace.util.ZarrMonitor`.
-The latter will coordinate between ranks to write state to a unified Zarr store.
-Initializing it requires passing grid information.
+State can be persisted to disk using e.g. :py:func:`pace.util.write_state` (described below), :py:class:`pace.util.ZarrMonitor`, or :py:class:`pace.util.NetCDFMonitor`. ZarrMonitor involves each rank writing its own file which is ideal if file count is not an issue, while NetCDFMonitor writes one file per tile but requires gathering all tile data onto one rank, which may not be feasible for larger resolutions.
+
+Initializing the :py:class:`pace.util.ZarrMonitor` requires passing grid information.
 This can be done directly from the namelist in a configuration dictionary like so::
 
     import pace.util
