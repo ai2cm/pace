@@ -523,11 +523,23 @@ class FrozenStencil(SDFGConvertible):
 
 def _convert_quantities_to_storage(args, kwargs):
     for i, arg in enumerate(args):
-        if isinstance(arg, pace.util.Quantity):
+        try:
+            # Check that 'dims' is an attribute of arg. If so,
+            # this means it's a pace.util.Quantity, so we need
+            # to pull off the ndarray.
+            arg.dims
             args[i] = arg.data
+        except AttributeError:
+            pass
     for name, arg in kwargs.items():
-        if isinstance(arg, pace.util.Quantity):
+        try:
+            # Check that 'dims' is an attribute of arg. If so,
+            # this means it's a pace.util.Quantity, so we need
+            # to pull off the ndarray.
+            arg.dims
             kwargs[name] = arg.data
+        except AttributeError:
+            pass
 
 
 class GridIndexing:
