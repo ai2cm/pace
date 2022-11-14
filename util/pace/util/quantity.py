@@ -283,12 +283,16 @@ class Quantity:
             # If converting basic data, use a numpy ndarray.
             data = np.asarray(data)
 
+        if not isinstance(data, (np.ndarray, cupy.ndarray)):
+            raise TypeError(
+                f"Only supports numpy.ndarray and cupy.ndarray, got {type(data)}"
+            )
+
         if gt4py_backend is not None:
-            if not isinstance(data, (np.ndarray, cupy.ndarray)):
-                raise TypeError(
-                    f"Only supports numpy.ndarray and cupy.ndarray, got {type(data)}"
-                )
-            # If not passing data, allocate it using the `gt4py_backend` parameter.
+            gt4py_backend_cls = gt4py.backend.from_name(gt4py_backend)
+            assert gt4py_backend_cls is not None
+            is_optimal_layout = gt4py_backend_cls.storage_info["is_optimal_layout"]
+
             dimensions = tuple(
                 [
                     axis
@@ -299,10 +303,19 @@ class Quantity:
                     )
                 ]
             )
-            self._data = self._initialize_data(
-                data, origin=origin, gt4py_backend=gt4py_backend, dimensions=dimensions
+
+            self._data = (
+                data
+                if is_optimal_layout(data, dimensions)
+                else self._initialize_data(
+                    data,
+                    origin=origin,
+                    gt4py_backend=gt4py_backend,
+                    dimensions=dimensions,
+                )
             )
         else:
+            # We have no info about the gt4py_backend, so just assign it.
             self._data = data
 
         _validate_quantity_property_lengths(data.shape, dims, origin, extent)
