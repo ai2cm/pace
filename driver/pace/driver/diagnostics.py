@@ -202,6 +202,8 @@ class MonitorDiagnostics(Diagnostics):
         zarr_grid = {
             "lat": grid_data.lat,
             "lon": grid_data.lon,
+            "lon_agrid": grid_data.lon_agrid,
+            "lat_agrid": grid_data.lat_agrid,
         }
         self.monitor.store_constant(zarr_grid)
 
