@@ -30,6 +30,7 @@ exitError()
 
 set -x
 
+
 # echo basic setup
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
