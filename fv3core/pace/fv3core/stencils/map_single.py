@@ -104,7 +104,6 @@ class MapSingle:
 
         # TODO: consider refactoring to take in origin and domain
         grid_indexing = stencil_factory.grid_indexing
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
 
         def make_quantity():

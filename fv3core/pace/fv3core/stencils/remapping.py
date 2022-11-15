@@ -64,6 +64,7 @@ def undo_delz_adjust_and_copy_peln(
         pn2 (in):
     """
     # TODO: We can assign pe0 and peln outside of a stencil to save the data copying
+    # dace parsing may not allow this, however
     with computation(PARALLEL), interval(0, -1):
         delz = -delz * delp
     with computation(PARALLEL), interval(...):
@@ -609,10 +610,7 @@ class LagrangianToEulerian:
         # now that we have the pressure profiles, we can start remapping
         self._map_single_pt(pt, peln, self._pn2, qmin=self._t_min)
 
-        # TODO if self._nq > 5:
         self._mapn_tracer(self._pe1, self._pe2, self._dp2, tracers)
-        # TODO else if self._nq > 0:
-        # TODO map1_q2, fillz
 
         self._map_single_w(w, self._pe1, self._pe2, qs=wsd)
         self._map_single_delz(delz, self._pe1, self._pe2)

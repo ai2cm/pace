@@ -127,8 +127,6 @@ class Sim1Solver:
         p_fac: Safety factor for minimum nonhydrostatic pressures.
     """
 
-    # TODO: implement MOIST_CAPPA=false
-
     def __init__(
         self,
         stencil_factory: StencilFactory,
