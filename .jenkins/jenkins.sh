@@ -53,7 +53,7 @@ if [[ $backend == gt_* || $backend == dace_* ]]; then
     backend=${backend/_/:}
 fi
 
-if [[ $backend == gt_* || $backend == *"dace"* ]]; then
+if [[ $backend == *"dace"* ]]; then
     export FV3_DACEMODE=BuildAndRun
 fi
 
