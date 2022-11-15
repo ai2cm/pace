@@ -296,7 +296,7 @@ class DynamicalCore:
             self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
-            state, stencil_factory, quantity_factory, grid_data, config.c2l_ord, comm
+            state, stencil_factory, grid_data, config.c2l_ord, comm
         )
         self._cappa = self.acoustic_dynamics.cappa
 
@@ -320,9 +320,12 @@ class DynamicalCore:
             checkpointer=checkpointer,
         )
 
-        full_xyz_spec = quantity_factory.get_quantity_halo_spec(
+        full_xyz_spec = grid_indexing.get_quantity_halo_spec(
+            grid_indexing.domain_full(add=(1, 1, 1)),
+            grid_indexing.origin_compute(),
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=grid_indexing.n_halo,
+            backend=stencil_factory.backend,
         )
         self._omega_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm

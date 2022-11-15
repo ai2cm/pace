@@ -443,9 +443,12 @@ class Grid:
         dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update."""
-        return self.quantity_factory.get_quantity_halo_spec(
+        return self.grid_indexing.get_quantity_halo_spec(
+            shape,
+            origin,
             dims=dims,
             n_halo=halo_points,
+            backend=self.backend,
         )
 
     @property

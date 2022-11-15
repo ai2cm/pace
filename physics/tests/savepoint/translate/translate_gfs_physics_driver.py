@@ -137,7 +137,6 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         )
         physics = Physics(
             self.stencil_factory,
-            self.grid.quantity_factory,
             self.grid.grid_data,
             self.namelist,
             active_packages=active_packages,
