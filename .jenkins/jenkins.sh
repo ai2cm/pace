@@ -28,6 +28,7 @@ exitError()
     exit $1
 }
 
+
 set -x
 
 # echo basic setup
