@@ -2,6 +2,9 @@ from typing import ClassVar, Dict, Optional, Tuple
 
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.util.quantity import Quantity
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SafetyChecker:
@@ -78,12 +81,12 @@ class SafetyChecker:
                 max_value = var.data.max()
 
             if bounds[0] and min_value < bounds[0]:
-                raise RuntimeError(
+                logger.info(
                     f"Variable {variable} is outside of its specified bounds: \
                     {bounds[0]} specified, {min_value} found"
                 )
             if bounds[1] and max_value > bounds[1]:
-                raise RuntimeError(
+                logger.info(
                     f"Variable {variable} is outside of its specified bounds: \
                     {bounds[1]} specified, {max_value} found"
                 )

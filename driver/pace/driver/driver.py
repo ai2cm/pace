@@ -519,6 +519,9 @@ class Driver:
 
         self.safety_checker = SafetyChecker()
         SafetyChecker.register_variable("ua", -200, 200, compute_domain_only=True)
+        SafetyChecker.register_variable("va", -200, 200, compute_domain_only=True)
+        SafetyChecker.register_variable("delp", -1.0, 4000, compute_domain_only=True)
+        SafetyChecker.register_variable("pt", 100, 380, compute_domain_only=True)
 
     def _update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
