@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Callable, ClassVar, Type, TypeVar
 
 import f90nml
+import xarray as xr
 
 import pace.driver
 import pace.dsl
@@ -20,7 +21,7 @@ from pace.dsl.dace.orchestration import DaceConfig
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.stencil_config import CompilationConfig
 from pace.fv3core.testing import TranslateFVDynamics
-from pace.stencils.testing import TranslateGrid
+from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.util.namelist import Namelist
 
 from .registry import Registry
@@ -233,6 +234,7 @@ class SerialboxInit(Initializer):
 
     path: str
     serialized_grid: bool
+    netcdf: bool = True
 
     @property
     def start_time(self) -> datetime:
@@ -246,17 +248,6 @@ class SerialboxInit(Initializer):
     def _namelist(self) -> Namelist:
         return Namelist.from_f90nml(self._f90_namelist)
 
-    def _get_serialized_grid(
-        self,
-        communicator: pace.util.CubedSphereCommunicator,
-        backend: str,
-    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
-        ser = self._serializer(communicator)
-        grid = TranslateGrid.new_from_serialized_data(
-            ser, communicator.rank, self._namelist.layout, backend
-        ).python_grid()
-        return grid
-
     def _serializer(self, communicator: pace.util.CubedSphereCommunicator):
         import serialbox
 
@@ -266,6 +257,18 @@ class SerialboxInit(Initializer):
             "Generator_rank" + str(communicator.rank),
         )
         return serializer
+
+    def _get_grid(self, communicator: pace.util.CubedSphereCommunicator, backend: str):
+        ds_grid: xr.Dataset = xr.open_dataset(
+            os.path.join(self.path, "Grid-Info.nc")
+        ).isel(savepoint=0)
+        grid = TranslateGrid(
+            dataset_to_dict(ds_grid.isel(rank=communicator.rank)),
+            rank=communicator.rank,
+            layout=self._namelist.layout,
+            backend=backend,
+        ).python_grid()
+        return grid
 
     def get_driver_state(
         self,
@@ -301,10 +304,6 @@ class SerialboxInit(Initializer):
         backend: str,
     ) -> fv3core.DycoreState:
 
-        grid = self._get_serialized_grid(communicator=communicator, backend=backend)
-
-        ser = self._serializer(communicator)
-        savepoint_in = ser.get_savepoint("Driver-In")[0]
         dace_config = DaceConfig(
             communicator,
             backend,
@@ -318,11 +317,35 @@ class SerialboxInit(Initializer):
             dace_config=dace_config,
         )
         stencil_factory = StencilFactory(
-            config=stencil_config, grid_indexing=grid.grid_indexing
+            config=stencil_config,
+            grid_indexing=pace.dsl.GridIndexing.from_sizer_and_communicator(
+                sizer=pace.util.SubtileGridSizer.from_tile_params(
+                    nx_tile=self._namelist.npx - 1,
+                    ny_tile=self._namelist.npy - 1,
+                    nz=self._namelist.npz,
+                    n_halo=3,
+                    tile_partitioner=communicator.partitioner.tile,
+                    tile_rank=communicator.rank,
+                    extra_dim_lengths={},
+                    layout=self._namelist.layout,
+                ),
+                cube=communicator,
+            ),
         )
+        grid = self._get_grid(communicator, backend)
         translate_object = TranslateFVDynamics(grid, self._namelist, stencil_factory)
-        input_data = translate_object.collect_input_data(ser, savepoint_in)
-        dycore_state = translate_object.state_from_inputs(input_data)
+        if self.netcdf:
+            ds = xr.open_dataset(os.path.join(self.path, "Driver-In.nc")).sel(
+                savepoint=0, rank=communicator.rank
+            )
+            input_data = dataset_to_dict(ds.copy())
+            dycore_state, grid_data = translate_object.prepare_data(input_data)
+        else:
+            ser = self._serializer(communicator)
+            savepoint_in = ser.get_savepoint("Driver-In")[0]
+
+            input_data = translate_object.collect_input_data(ser, savepoint_in)
+            dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
 
 
