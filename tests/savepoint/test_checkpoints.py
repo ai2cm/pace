@@ -10,7 +10,10 @@ import yaml
 
 import pace.dsl
 import pace.util
-from pace import fv3core
+from pace import fv3core, physics
+from pace.driver import Driver, DriverConfig
+from pace.driver.grid import SerialboxGridConfig
+from pace.driver.initialization import SerialboxInit
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
@@ -142,6 +145,51 @@ def test_fv_dynamics(
     )
     with validation.trial():
         dycore.step_dynamics(state)
+
+
+def test_driver(
+    backend: str, data_path: str, calibrate_thresholds: bool, threshold_path: str
+):
+    print("start test call")
+    namelist = pace.util.Namelist.from_f90nml(
+        f90nml.read(os.path.join(data_path, "input.nml"))
+    )
+    threshold_filename = os.path.join(threshold_path, "driver.yaml")
+    communicator = pace.util.CubedSphereCommunicator(
+        comm=pace.util.MPIComm(),
+        partitioner=pace.util.CubedSpherePartitioner(
+            tile=pace.util.TilePartitioner(layout=namelist.layout)
+        ),
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        compilation_config=pace.dsl.CompilationConfig(
+            backend=backend,
+            communicator=communicator,
+            rebuild=False,
+        )
+    )
+    initialization = SerialboxInit(path=data_path, serialized_grid=True, netcdf=True)
+    nx_tile = namelist.npx - 1
+    nz = namelist.npz
+    layout = namelist.layout
+    dt_atmos = namelist.dt_atmos
+    grid_config = SerialboxGridConfig(path=data_path, netcdf=True)
+    dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
+    physics_config = physics.PhysicsConfig.from_namelist(namelist)
+    seconds = 225.0
+    driver_config = DriverConfig(
+        stencil_config=stencil_config,
+        initialization=initialization,
+        nx_tile=nx_tile,
+        nz=nz,
+        layout=layout,
+        dt_atmos=dt_atmos,
+        grid_config=grid_config,
+        dycore_config=dycore_config,
+        physics_config=physics_config,
+        seconds=seconds,
+    )
+    driver = Driver(config=driver_config)
 
 
 def _calibrate_thresholds(
