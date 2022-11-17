@@ -308,7 +308,7 @@ class UpdateAtmosphereState:
     def _checkpoint_driver_out(self, state: fv3core.DycoreState):
         if self.call_checkpointer:
             self.checkpointer(
-                "Driver-out",
+                "Driver-Out",
                 u=state.u,
                 v=state.v,
                 w=state.w,
@@ -378,4 +378,4 @@ class UpdateAtmosphereState:
                 pt_dt,
                 dt=dt,
             )
-        self._checkpoint_driver_out(state=dycore_state)
+            self._checkpoint_driver_out(state=dycore_state)

@@ -12,7 +12,11 @@ import pace.dsl
 import pace.util
 from pace import fv3core, physics
 from pace.driver import Driver, DriverConfig
-from pace.driver.checkpointer import Checkpointer, NullCheckpointerInit
+from pace.driver.checkpointer import (
+    Checkpointer,
+    NullCheckpointerInit,
+    ValidationCheckpointerInit,
+)
 from pace.driver.grid import SerialboxGridConfig
 from pace.driver.initialization import Initializer, SerialboxInit
 from pace.fv3core.initialization.dycore_state import DycoreState
@@ -209,8 +213,8 @@ def test_driver(
     )
     if calibrate_thresholds:
         thresholds = _calibrate_driver_thresholds(
-            n_trials=2,
-            factor=10.0,
+            n_trials=10,
+            factor=20.0,
             namelist=namelist,
             data_path=data_path,
             backend=backend,
@@ -226,16 +230,17 @@ def test_driver(
             with open(threshold_filename, "w") as f:
                 yaml.safe_dump(dataclasses.asdict(thresholds), f)
         communicator.comm.barrier()
-    with open(threshold_filename, "r") as f:
-        data = yaml.safe_load(f)
-        thresholds = dacite.from_dict(
-            data_class=pace.util.SavepointThresholds,
-            data=data,
-            config=dacite.Config(strict=True),
-        )
-    validation = pace.util.ValidationCheckpointer(
-        savepoint_data_path=data_path, thresholds=thresholds, rank=communicator.rank
+    validation = ValidationCheckpointerInit(
+        savepoint_data_path=data_path, threshold_filename=threshold_filename
     )
+    driver, _ = make_driver(
+        namelist=namelist,
+        data_path=data_path,
+        backend=backend,
+        checkpointer=validation,
+    )
+    with driver.checkpointer.trial():
+        driver.step_all()
 
 
 def _calibrate_driver_thresholds(
@@ -272,6 +277,7 @@ def _calibrate_driver_thresholds(
         driver.checkpointer = calibration
         driver.state.dycore_state = trial_state
         driver.dycore.checkpointer = calibration
+        driver.dycore.acoustic_dynamics.checkpointer = calibration
         driver.end_of_step_update.checkpointer = calibration
         with calibration.trial():
             driver.step_all()
@@ -279,6 +285,7 @@ def _calibrate_driver_thresholds(
     thresholds = merge_thresholds(all_thresholds)
     set_manual_thresholds(thresholds)
     set_manual_thresholds(thresholds, savepoint_name="Driver-In")
+    override_var_relative_threshold(thresholds, "Driver-Out", 100.0, "qgraupel")
     return thresholds
 
 
@@ -326,6 +333,20 @@ def set_manual_thresholds(
     for entry in thresholds.savepoints[savepoint_name]:
         for name in entry:
             entry[name] = pace.util.Threshold(relative=0.0, absolute=0.0)
+
+
+def override_var_relative_threshold(
+    thresholds: SavepointThresholds,
+    savepoint_name: str,
+    relative: float,
+    var: str,
+):
+    for entry in thresholds.savepoints[savepoint_name]:
+        for name in entry:
+            if name == var:
+                entry[name] = pace.util.Threshold(
+                    relative=relative, absolute=entry[name].absolute
+                )
 
 
 def merge_thresholds(all_thresholds: List[pace.util.SavepointThresholds]):
