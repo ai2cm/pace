@@ -37,9 +37,6 @@ else
     exit 1
 fi
 
-
-${JENKINS_DIR}/fetch_caches.sh "gt:gpu" "c48_6ranks_baroclinic" dycore
-
 cat << EOF > run.daint.slurm
 #!/bin/bash
 #SBATCH --constraint=gpu
@@ -55,6 +52,7 @@ cat << EOF > run.daint.slurm
 ########################################################
 set -x
 export OMP_NUM_THREADS=12
+export FV3_DACEMODE=BuildAndRun
 srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/${NAMELIST}.yaml
 EOF
 
