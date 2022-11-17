@@ -9,6 +9,10 @@ from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
 from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
+try:
+    import dace
+except ImportError:
+    dace = None
 
 if cupy is None:
     import numpy as cupy
@@ -467,8 +471,12 @@ class Quantity:
     def shape(self):
         return self.data.shape
 
-    def __descriptor__(self):
-        return None  # trigger DaCe JIT
+    def __descriptor__(self) -> "dace.data.Array":
+        """The descriptor is a property that dace uses."""
+        if dace is None:
+            raise ModuleNotFoundError("dace is not installed")
+
+        return dace.data.Array(self.data.dtype, self.shape)
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.

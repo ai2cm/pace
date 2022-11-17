@@ -95,6 +95,7 @@ dace==0.14
     #   -r requirements_dev.txt
     #   pace-dsl
     #   pace-dsl (dsl/setup.py)
+    #   pace-util
 dacite==1.6.0
     # via
     #   fv3config
