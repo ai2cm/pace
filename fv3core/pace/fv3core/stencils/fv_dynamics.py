@@ -172,6 +172,13 @@ class DynamicalCore:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_driver_in",
+            dace_compiletime_args=["state"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_remapping_in",
             dace_compiletime_args=[
                 "state",
@@ -352,6 +359,21 @@ class DynamicalCore:
                 qvapor=state.qvapor,
             )
 
+    def _checkpoint_driver_in(self, state: DycoreState):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Driver-In",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
+
     def _checkpoint_remapping_in(
         self,
         state: DycoreState,
@@ -452,6 +474,7 @@ class DynamicalCore:
             state: model prognostic state and inputs
         """
         self._checkpoint_fvdynamics(state=state, tag="In")
+        self._checkpoint_driver_in(state=state)
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 

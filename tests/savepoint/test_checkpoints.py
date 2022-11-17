@@ -12,8 +12,9 @@ import pace.dsl
 import pace.util
 from pace import fv3core, physics
 from pace.driver import Driver, DriverConfig
+from pace.driver.checkpointer import Checkpointer, NullCheckpointerInit
 from pace.driver.grid import SerialboxGridConfig
-from pace.driver.initialization import SerialboxInit
+from pace.driver.initialization import Initializer, SerialboxInit
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
@@ -147,14 +148,12 @@ def test_fv_dynamics(
         dycore.step_dynamics(state)
 
 
-def test_driver(
-    backend: str, data_path: str, calibrate_thresholds: bool, threshold_path: str
+def make_driver(
+    namelist: pace.util.Namelist,
+    data_path: str,
+    backend: str,
+    checkpointer: Checkpointer,
 ):
-    print("start test call")
-    namelist = pace.util.Namelist.from_f90nml(
-        f90nml.read(os.path.join(data_path, "input.nml"))
-    )
-    threshold_filename = os.path.join(threshold_path, "driver.yaml")
     communicator = pace.util.CubedSphereCommunicator(
         comm=pace.util.MPIComm(),
         partitioner=pace.util.CubedSpherePartitioner(
@@ -188,8 +187,98 @@ def test_driver(
         dycore_config=dycore_config,
         physics_config=physics_config,
         seconds=seconds,
+        checkpointer_config=checkpointer,
     )
     driver = Driver(config=driver_config)
+    return driver, communicator
+
+
+def test_driver(
+    backend: str, data_path: str, calibrate_thresholds: bool, threshold_path: str
+):
+    print("start test call")
+    namelist = pace.util.Namelist.from_f90nml(
+        f90nml.read(os.path.join(data_path, "input.nml"))
+    )
+    threshold_filename = os.path.join(threshold_path, "driver.yaml")
+    driver, communicator = make_driver(
+        namelist=namelist,
+        data_path=data_path,
+        backend=backend,
+        checkpointer=NullCheckpointerInit(),
+    )
+    if calibrate_thresholds:
+        thresholds = _calibrate_driver_thresholds(
+            n_trials=2,
+            factor=10.0,
+            namelist=namelist,
+            data_path=data_path,
+            backend=backend,
+            initialization=driver.config.initialization,
+            quantity_factory=driver.quantity_factory,
+            communicator=communicator,
+            damping_coefficients=driver.state.damping_coefficients,
+            driver_grid_data=driver.state.driver_grid_data,
+            grid_data=driver.state.grid_data,
+        )
+        print(f"calibrated thresholds: {thresholds}")
+        if communicator.rank == 0:
+            with open(threshold_filename, "w") as f:
+                yaml.safe_dump(dataclasses.asdict(thresholds), f)
+        communicator.comm.barrier()
+    with open(threshold_filename, "r") as f:
+        data = yaml.safe_load(f)
+        thresholds = dacite.from_dict(
+            data_class=pace.util.SavepointThresholds,
+            data=data,
+            config=dacite.Config(strict=True),
+        )
+    validation = pace.util.ValidationCheckpointer(
+        savepoint_data_path=data_path, thresholds=thresholds, rank=communicator.rank
+    )
+
+
+def _calibrate_driver_thresholds(
+    n_trials: int,
+    factor: float,
+    namelist,
+    data_path: str,
+    backend: str,
+    initialization: Initializer,
+    quantity_factory: pace.util.QuantityFactory,
+    communicator: pace.util.CubedSphereCommunicator,
+    damping_coefficients: DampingCoefficients,
+    driver_grid_data: pace.util.grid.DriverGridData,
+    grid_data: pace.util.grid.GridData,
+):
+    calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
+    for i in range(n_trials):
+        print(f"running calibration trial {i}")
+        trial_state = initialization.get_driver_state(
+            quantity_factory,
+            communicator,
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
+        ).dycore_state
+        perturb(dycore_state_to_dict(trial_state))
+        driver, _ = make_driver(
+            namelist=namelist,
+            data_path=data_path,
+            backend=backend,
+            checkpointer=NullCheckpointerInit(),
+        )
+        # Need to use the same calibration checkpointer for all trials
+        driver.checkpointer = calibration
+        driver.state.dycore_state = trial_state
+        driver.dycore.checkpointer = calibration
+        with calibration.trial():
+            driver.step_all()
+    all_thresholds = communicator.comm.allgather(calibration.thresholds)
+    thresholds = merge_thresholds(all_thresholds)
+    set_manual_thresholds(thresholds)
+    set_manual_thresholds(thresholds, savepoint_name="Driver-In")
+    return thresholds
 
 
 def _calibrate_thresholds(
@@ -229,9 +318,11 @@ def _calibrate_thresholds(
     return thresholds
 
 
-def set_manual_thresholds(thresholds: SavepointThresholds):
+def set_manual_thresholds(
+    thresholds: SavepointThresholds, savepoint_name: str = "FVDynamics-In"
+):
     # all thresholds on the input data are 0 because no computation has happened yet
-    for entry in thresholds.savepoints["FVDynamics-In"]:
+    for entry in thresholds.savepoints[savepoint_name]:
         for name in entry:
             entry[name] = pace.util.Threshold(relative=0.0, absolute=0.0)
 

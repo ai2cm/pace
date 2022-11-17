@@ -23,9 +23,11 @@ from pace.dsl.stencil_config import CompilationConfig, RunMode
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.util.checkpointer import Checkpointer
 from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
+from .checkpointer import CheckpointerInitializerSelector, NullCheckpointerInit
 from .comm import CreatesCommSelector
 from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
@@ -81,6 +83,7 @@ class DriverConfig:
             initial state of the model before timestepping
         output_frequency: number of model timesteps between diagnostic timesteps,
             defaults to every timestep
+        checkpointer: specifies the type of checkpointer to use
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -122,6 +125,11 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
+    checkpointer_config: CheckpointerInitializerSelector = dataclasses.field(
+        default_factory=lambda: CheckpointerInitializerSelector(
+            type="null", config=NullCheckpointerInit()
+        )
+    )
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -225,6 +233,9 @@ class DriverConfig:
             driver_grid_data=driver_grid_data,
             grid_data=grid_data,
         )
+
+    def get_checkpointer(self, rank: int) -> Checkpointer:
+        return self.checkpointer_config.get_checkpointer(rank)
 
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
@@ -454,6 +465,7 @@ class Driver:
                 grid_data=grid_data,
             )
 
+            self.checkpointer = self.config.get_checkpointer(rank=communicator.rank)
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
@@ -465,6 +477,7 @@ class Driver:
                 timestep=self.config.timestep,
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
+                checkpointer=self.checkpointer,
             )
 
             if not config.dycore_only and not config.disable_step_physics:
