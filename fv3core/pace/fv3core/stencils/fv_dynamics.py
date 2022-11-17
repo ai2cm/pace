@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
-from gt4py.gtscript import PARALLEL, computation, interval, log
+from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
@@ -12,7 +12,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldK
+from pace.dsl.typing import FloatField
 from pace.fv3core._config import DynamicalCoreConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils import fvtp2d, tracer_2d_1l
@@ -22,10 +22,9 @@ from pace.fv3core.stencils.dyn_core import AcousticDynamics
 from pace.fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from pace.fv3core.stencils.remapping import LagrangianToEulerian
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util import Timer
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM, Timer
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
-from pace.util.quantity import Quantity
 
 
 logger = logging.getLogger(__name__)
@@ -43,39 +42,29 @@ def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatFiel
         pkz (in):
         dp1 (in):
         q_con (in):
-        pt (out):
+        pt (out): temperature when input, "potential density temperature" when output
     """
+    # TODO: why and how is pt being adjusted? update docstring and/or name
+    # TODO: split pt into two variables for different in/out meanings
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
-def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
+def omega_from_w(delp: FloatField, delz: FloatField, w: FloatField, omega: FloatField):
     """
     Args:
-        delp (in):
-        delz (in):
-        w (in):
-        omga (out):
+        delp (in): vertical layer thickness in Pa
+        delz (in): vertical layer thickness in m
+        w (in): vertical wind in m/s
+        omga (out): vertical wind in Pa/s
     """
     with computation(PARALLEL), interval(...):
-        omga = delp / delz * w
-
-
-def init_pfull(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatField,
-    p_ref: float,
-):
-    with computation(PARALLEL), interval(...):
-        ph1 = ak + bk * p_ref
-        ph2 = ak[1] + bk[1] * p_ref
-        pfull = (ph2 - ph1) / log(ph2 / ph1)
+        omega = delp / delz * w
 
 
 def fvdyn_temporaries(
     quantity_factory: pace.util.QuantityFactory,
-) -> Mapping[str, Quantity]:
+) -> Mapping[str, pace.util.Quantity]:
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.zeros(
@@ -108,6 +97,7 @@ class DynamicalCore:
         comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
@@ -179,29 +169,44 @@ class DynamicalCore:
             dace_compiletime_args=["state", "tag"],
         )
 
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_remapping_in",
+            dace_compiletime_args=[
+                "state",
+            ],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_remapping_out",
+            dace_compiletime_args=["state"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_tracer_advection_in",
+            dace_compiletime_args=["state"],
+        )
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_tracer_advection_out",
+            dace_compiletime_args=["state"],
+        )
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
         self.call_checkpointer = checkpointer is not None
-        if not self.call_checkpointer:
-            self.checkpointer = pace.util.NullCheckpointer()
+        if checkpointer is None:
+            self.checkpointer: pace.util.Checkpointer = pace.util.NullCheckpointer()
         else:
             self.checkpointer = checkpointer
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = pace.util.SubtileGridSizer.from_tile_params(
-            nx_tile=config.npx - 1,
-            ny_tile=config.npy - 1,
-            nz=config.npz,
-            n_halo=grid_indexing.n_halo,
-            layout=config.layout,
-            tile_partitioner=comm.tile.partitioner,
-            tile_rank=comm.tile.rank,
-            extra_dim_lengths={},
-        )
-        quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=stencil_factory.backend
-        )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
         self.comm_rank = comm.rank
@@ -212,6 +217,7 @@ class DynamicalCore:
 
         tracer_transport = fvtp2d.FiniteVolumeTransport(
             stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -221,9 +227,6 @@ class DynamicalCore:
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             self.tracers[name] = state.__dict__[name]
-        self.tracer_storages = {
-            name: quantity.storage for name, quantity in self.tracers.items()
-        }
 
         temporaries = fvdyn_temporaries(quantity_factory)
         self._te_2d = temporaries["te_2d"]
@@ -235,27 +238,17 @@ class DynamicalCore:
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
             stencil_factory,
+            quantity_factory,
             tracer_transport,
             self.grid_data,
             comm,
             self.tracers,
-            checkpointer=checkpointer,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
         self._phis = phis
         self._ptop = self.grid_data.ptop
-        pfull_stencil = stencil_factory.from_origin_domain(
-            init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
-        )
-        pfull = utils.make_storage_from_shape(
-            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
-        )
-        pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
-        # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(
-            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
-        )
+        self._pfull = grid_data.p
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={
@@ -270,8 +263,8 @@ class DynamicalCore:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._set_omega_stencil = stencil_factory.from_origin_domain(
-            set_omega,
+        self._omega_from_w = stencil_factory.from_origin_domain(
+            omega_from_w,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
@@ -281,28 +274,29 @@ class DynamicalCore:
             domain=grid_indexing.domain_full(),
         )
         self.acoustic_dynamics = AcousticDynamics(
-            comm,
-            stencil_factory,
-            grid_data,
-            damping_coefficients,
-            config.grid_type,
-            nested,
-            stretched_grid,
-            self.config.acoustic_dynamics,
-            self._pfull,
-            self._phis,
-            self._wsd.storage,
-            state,
+            comm=comm,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            grid_type=config.grid_type,
+            nested=nested,
+            stretched_grid=stretched_grid,
+            config=self.config.acoustic_dynamics,
+            phis=self._phis,
+            wsd=self._wsd,
+            state=state,
             checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
+            quantity_factory,
             damping_coefficients,
             grid_data.rarea,
             self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
-            state, stencil_factory, grid_data, config.c2l_ord, comm
+            state, stencil_factory, quantity_factory, grid_data, config.c2l_ord, comm
         )
         self._cappa = self.acoustic_dynamics.cappa
 
@@ -310,26 +304,25 @@ class DynamicalCore:
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
             stencil_factory,
-            self.config.check_negative,
-            self.config.hydrostatic,
+            quantity_factory=quantity_factory,
+            check_negative=self.config.check_negative,
+            hydrostatic=self.config.hydrostatic,
         )
 
         self._lagrangian_to_eulerian_obj = LagrangianToEulerian(
-            stencil_factory,
-            config.remapping,
-            grid_data.area_64,
-            NQ,
-            self._pfull,
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            config=config.remapping,
+            area_64=grid_data.area_64,
+            nq=NQ,
+            pfull=self._pfull,
             tracers=self.tracers,
             checkpointer=checkpointer,
         )
 
-        full_xyz_spec = grid_indexing.get_quantity_halo_spec(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            grid_indexing.origin_compute(),
+        full_xyz_spec = quantity_factory.get_quantity_halo_spec(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            n_halo=utils.halo,
-            backend=stencil_factory.backend,
+            n_halo=grid_indexing.n_halo,
         )
         self._omega_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
@@ -359,6 +352,93 @@ class DynamicalCore:
                 qvapor=state.qvapor,
             )
 
+    def _checkpoint_remapping_in(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Remapping-In",
+                pt=state.pt,
+                delp=state.delp,
+                delz=state.delz,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                ua=state.ua,
+                va=state.va,
+                cappa=self._cappa,
+                pkz=state.pkz,
+                pk=state.pk,
+                pe=state.pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                phis=state.phis,
+                te_2d=self._te0_2d,
+                ps=state.ps,
+                wsd=self._wsd,
+                omga=state.omga,
+                dp1=self._dp1,
+            )
+
+    def _checkpoint_remapping_out(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Remapping-Out",
+                pt=state.pt,
+                delp=state.delp,
+                delz=state.delz,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                cappa=self._cappa,
+                pkz=state.pkz,
+                pk=state.pk,
+                pe=state.pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                te_2d=self._te0_2d,
+                omga=state.omga,
+                dp1=self._dp1,
+            )
+
+    def _checkpoint_tracer_advection_in(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Tracer2D1L-In",
+                dp1=self._dp1,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+                cxd=state.cxd,
+                cyd=state.cyd,
+            )
+
+    def _checkpoint_tracer_advection_out(
+        self,
+        state: DycoreState,
+    ):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Tracer2D1L-Out",
+                dp1=self._dp1,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+                cxd=state.cxd,
+                cyd=state.cyd,
+            )
+
     def step_dynamics(
         self,
         state: DycoreState,
@@ -380,6 +460,7 @@ class DynamicalCore:
             raise NotImplementedError("Hydrostatic is not implemented")
         if __debug__:
             log_on_rank_0("FV Setup")
+
         self._fv_setup_stencil(
             state.qvapor,
             state.qliquid,
@@ -440,6 +521,9 @@ class DynamicalCore:
                 timestep=self._timestep / self._k_split,
             )
 
+            # 1 is shallow water model, don't need vertical remapping
+            # 2 and 3 are also simple baroclinic models that don't need
+            # vertical remapping. > 4 implies this is a full physics model
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
                 # where those are given in atmosphere.F90 by:
@@ -455,8 +539,9 @@ class DynamicalCore:
                 if __debug__:
                     log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
+                    self._checkpoint_remapping_in(state)
                     self._lagrangian_to_eulerian_obj(
-                        self.tracer_storages,
+                        self.tracers,
                         state.pt,
                         state.delp,
                         state.delz,
@@ -489,6 +574,9 @@ class DynamicalCore:
                         self._timestep / self._k_split,
                         self._timestep,
                     )
+                    self._checkpoint_remapping_out(state)
+                # TODO: can we pull this block out of the loop intead of
+                # using an if-statement?
                 if last_step:
                     da_min: float = self._get_da_min()
                     self.post_remap(
@@ -501,14 +589,16 @@ class DynamicalCore:
             is_root_rank=self.comm_rank == 0,
         )
 
+    # TODO: flatten the methods here for clarity
     def _dyn(
         self,
         state: DycoreState,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
         n_map,
         timestep: float,  # time to step forward by
         timer: pace.util.Timer,
     ):
+        # TODO: why are we copying delp to dp1? what is dp1?
         self._copy_stencil(
             state.delp,
             self._dp1,
@@ -525,6 +615,7 @@ class DynamicalCore:
             if __debug__:
                 log_on_rank_0("TracerAdvection")
             with timer.clock("TracerAdvection"):
+                self._checkpoint_tracer_advection_in(state)
                 self.tracer_advection(
                     tracers,
                     self._dp1,
@@ -534,6 +625,9 @@ class DynamicalCore:
                     state.cyd,
                     self._timestep / self._k_split,
                 )
+                self._checkpoint_tracer_advection_out(state)
+        else:
+            raise NotImplementedError("z_tracer=False is not implemented")
 
     def post_remap(
         self,
@@ -541,10 +635,16 @@ class DynamicalCore:
         is_root_rank: bool,
         da_min: float,
     ):
+        """
+        Compute diagnostic omega as required for physics, and
+        apply hyperdiffusion on it.
+        """
         if not self.config.hydrostatic:
             if __debug__:
                 log_on_rank_0("Omega")
-            self._set_omega_stencil(
+            # TODO: GFDL should implement the "vulcan omega" update,
+            # use hydrostatic omega instead of this conversion
+            self._omega_from_w(
                 state.delp,
                 state.delz,
                 state.w,
@@ -579,6 +679,12 @@ class DynamicalCore:
 
         if __debug__:
             log_on_rank_0("CubedToLatLon")
+        # convert d-grid x-wind and y-wind to
+        # cell-centered zonal and meridional winds
+        # TODO: make separate variables for the internal-temporary
+        # usage of ua and va, and rename state.ua and state.va
+        # to reflect that they are cell center
+        # zonal and meridional wind
         self._cubed_to_latlon(
             state.u,
             state.v,

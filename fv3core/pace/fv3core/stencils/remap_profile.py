@@ -3,10 +3,11 @@ from typing import Tuple
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 @gtscript.function
@@ -563,6 +564,7 @@ class RemapProfile:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         kord: int,
         iv: int,
         i1: int,
@@ -572,8 +574,10 @@ class RemapProfile:
     ):
         """
         The constraints on the spline are set by kord and iv.
-        Arguments:
-            stencil_factory
+
+        Args:
+            stencil_factory: creates stencils
+            quantity_factory: creates quantities
             kord: ???
             iv: ???
             i1: The first i-element to compute on
@@ -591,20 +595,12 @@ class RemapProfile:
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
-        def make_storage(**kwargs):
-            return utils.make_storage_from_shape(
-                shape=grid_indexing.domain_full(add=(0, 0, 1)),
-                origin=grid_indexing.origin_full(),
-                backend=stencil_factory.backend,
-                **kwargs,
-            )
-
-        self._gam: FloatField = make_storage()
-        self._q: FloatField = make_storage()
-        self._q_bot: FloatField = make_storage()
-        self._extm: BoolField = make_storage(dtype=bool)
-        self._ext5: BoolField = make_storage()
-        self._ext6: BoolField = make_storage()
+        self._gam = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._q = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._q_bot = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._extm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
+        self._ext5 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
+        self._ext6 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
 
         i_extent: int = int(i2 - i1 + 1)
         j_extent: int = int(j2 - j1 + 1)

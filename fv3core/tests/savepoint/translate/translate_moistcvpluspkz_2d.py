@@ -69,7 +69,7 @@ class TranslateMoistCVPlusPkz_2d(TranslateDycoreFortranData2Py):
     ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = MoistPKZ(stencil_factory, self.grid)
+        self.compute_func = MoistPKZ(stencil_factory, self.grid)  # type: ignore
 
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},

@@ -46,4 +46,4 @@ class TranslatePE_Halo(TranslateDycoreFortranData2Py):
         self.out_vars = {"pe": self.in_vars["data_vars"]["pe"]}
         self.stencil_factory = stencil_factory
         stencil_class = PE_Halo_Wrapper(self.stencil_factory)
-        self.compute_func = stencil_class
+        self.compute_func = stencil_class  # type: ignore

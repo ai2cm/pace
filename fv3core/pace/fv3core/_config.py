@@ -101,7 +101,16 @@ class AcousticDynamicsConfig:
     rf_cutoff: float
     rf_fast: bool
     breed_vortex_inline: bool
+    """
+    setting for nudging where we can insert tropical cyclone tracks
+    and add fake tropical cyclones at a certain point in the code
+    not used so much right now because we can run at high enough
+    resolution to directly nudge to tropical cyclone data
+    """
     use_old_omega: bool
+    """
+    mainly for backwards compatibility, not really used anymore
+    """
     riemann: RiemannConfig
     d_grid_shallow_water: DGridShallowWaterLagrangianDynamicsConfig
 
@@ -258,9 +267,6 @@ class DynamicalCoreConfig:
     breed_vortex_inline: bool = NamelistDefaults.breed_vortex_inline
     use_old_omega: bool = NamelistDefaults.use_old_omega
     rf_fast: bool = NamelistDefaults.rf_fast
-    p_ref: float = (
-        NamelistDefaults.p_ref
-    )  # Surface pressure used to construct a horizontally-uniform reference
     adiabatic: bool = NamelistDefaults.adiabatic
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
@@ -366,7 +372,6 @@ class DynamicalCoreConfig:
             breed_vortex_inline=namelist.breed_vortex_inline,
             use_old_omega=namelist.use_old_omega,
             rf_fast=namelist.rf_fast,
-            p_ref=namelist.p_ref,
             adiabatic=namelist.adiabatic,
             nf_omega=namelist.nf_omega,
             fv_sg_adj=namelist.fv_sg_adj,

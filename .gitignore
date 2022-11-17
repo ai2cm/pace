@@ -162,3 +162,5 @@ RESTART/
 _dacegraphs
 
 **/testing/output/*
+*.png
+*.nc

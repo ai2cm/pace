@@ -1,4 +1,5 @@
 import pace.dsl
+import pace.fv3core
 import pace.util
 from pace.fv3core import DynamicalCoreConfig
 from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
@@ -60,7 +61,7 @@ class TranslateSatAdjust3d(TranslateDycoreFortranData2Py):
             },
             "cappa": {},
         }
-        self.namelist = namelist
+        self.namelist = pace.fv3core.DynamicalCoreConfig.from_namelist(namelist)
         self.stencil_factory = stencil_factory
 
     def compute_from_storage(self, inputs):

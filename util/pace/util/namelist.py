@@ -444,9 +444,6 @@ class Namelist:
     breed_vortex_inline: bool = NamelistDefaults.breed_vortex_inline
     use_old_omega: bool = NamelistDefaults.use_old_omega
     rf_fast: bool = NamelistDefaults.rf_fast
-    p_ref: float = (
-        NamelistDefaults.p_ref
-    )  # Surface pressure used to construct a horizontally-uniform reference
     adiabatic: bool = NamelistDefaults.adiabatic
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj

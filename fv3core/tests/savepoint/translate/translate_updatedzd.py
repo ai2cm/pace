@@ -1,6 +1,7 @@
 import numpy as np
 
 import pace.dsl
+import pace.fv3core
 import pace.fv3core.stencils.updatedzd
 import pace.util
 from pace.fv3core.stencils import d_sw
@@ -17,7 +18,6 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
     ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
-            "dp0": {},  # column var
             "surface_height": {"serialname": "zs"},
             "height": {"kend": grid.npz + 1},
             "courant_number_x": grid.x3d_compute_domain_y_dict(),
@@ -49,24 +49,26 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
         self.out_vars["ws"]["kstart"] = grid.npz
         self.out_vars["ws"]["kend"] = None
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = pace.fv3core.DynamicalCoreConfig.from_namelist(namelist)
         self._subset = get_subset_func(
             self.grid.grid_indexing,
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=((0, 0), (0, 0)),
         )
+        self.ignore_near_zero_errors = {"zh": True, "wsd": True}
+        self.near_zero = 1e-30
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.updatedzd = pace.fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,
             self.grid.grid_type,
             self.namelist.hord_tm,
-            inputs.pop("dp0"),
-            d_sw.get_column_namelist(
-                self.namelist, self.grid.npz, backend=self.stencil_factory.backend
+            column_namelist=d_sw.get_column_namelist(
+                self.namelist, quantity_factory=self.grid.quantity_factory
             ),
         )
         self.updatedzd(**inputs)

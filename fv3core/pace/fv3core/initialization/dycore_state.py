@@ -33,6 +33,7 @@ class DycoreState:
             "intent": "inout",
         }
     )
+    # TODO: move a-grid winds to temporary internal storage
     ua: pace.util.Quantity = field(
         metadata={
             "name": "eastward_wind",
@@ -268,6 +269,10 @@ class DycoreState:
             "intent": "inout",
         }
     )
+    """
+    how much energy is dissipated, is mainly captured
+    to send to the stochastic physics (in contrast to heat_source)
+    """
     phis: pace.util.Quantity = field(
         metadata={
             "name": "surface_geopotential",
@@ -327,7 +332,7 @@ class DycoreState:
                     extent=sizer.get_extent(dims),
                     gt4py_backend=backend,
                 )
-        state = cls(**dict_state)
+        state = cls(**dict_state)  # type: ignore
         return state
 
     @classmethod
@@ -352,6 +357,75 @@ class DycoreState:
                 inputs[_field.name] = quantity
         return cls(**inputs, bdt=bdt, mdt=mdt)
 
+    @classmethod
+    def from_fortran_restart(
+        cls,
+        *,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+        path: str,
+    ):
+        state_dict: Mapping[str, pace.util.Quantity] = pace.util.open_restart(
+            dirname=path,
+            communicator=communicator,
+            tracer_properties=TRACER_PROPERTIES,
+        )
+
+        new = cls.init_zeros(quantity_factory=quantity_factory)
+        new.pt.view[:] = new.pt.np.asarray(
+            state_dict["air_temperature"].transpose(new.pt.dims).view[:]
+        )
+        new.delp.view[:] = new.delp.np.asarray(
+            state_dict["pressure_thickness_of_atmospheric_layer"]
+            .transpose(new.delp.dims)
+            .view[:]
+        )
+        new.phis.view[:] = new.phis.np.asarray(
+            state_dict["surface_geopotential"].transpose(new.phis.dims).view[:]
+        )
+        new.w.view[:] = new.w.np.asarray(
+            state_dict["vertical_wind"].transpose(new.w.dims).view[:]
+        )
+        new.u.view[:] = new.u.np.asarray(
+            state_dict["x_wind"].transpose(new.u.dims).view[:]
+        )
+        new.v.view[:] = new.v.np.asarray(
+            state_dict["y_wind"].transpose(new.v.dims).view[:]
+        )
+        new.qvapor.view[:] = new.qvapor.np.asarray(
+            state_dict["specific_humidity"].transpose(new.qvapor.dims).view[:]
+        )
+        new.qliquid.view[:] = new.qliquid.np.asarray(
+            state_dict["cloud_liquid_water_mixing_ratio"]
+            .transpose(new.qliquid.dims)
+            .view[:]
+        )
+        new.qice.view[:] = new.qice.np.asarray(
+            state_dict["cloud_ice_mixing_ratio"].transpose(new.qice.dims).view[:]
+        )
+        new.qrain.view[:] = new.qrain.np.asarray(
+            state_dict["rain_mixing_ratio"].transpose(new.qrain.dims).view[:]
+        )
+        new.qsnow.view[:] = new.qsnow.np.asarray(
+            state_dict["snow_mixing_ratio"].transpose(new.qsnow.dims).view[:]
+        )
+        new.qgraupel.view[:] = new.qgraupel.np.asarray(
+            state_dict["graupel_mixing_ratio"].transpose(new.qgraupel.dims).view[:]
+        )
+        new.qo3mr.view[:] = new.qo3mr.np.asarray(
+            state_dict["ozone_mixing_ratio"].transpose(new.qo3mr.dims).view[:]
+        )
+        new.qcld.view[:] = new.qcld.np.asarray(
+            state_dict["cloud_fraction"].transpose(new.qcld.dims).view[:]
+        )
+        new.delz.view[:] = new.delz.np.asarray(
+            state_dict["vertical_thickness_of_atmospheric_layer"]
+            .transpose(new.delz.dims)
+            .view[:]
+        )
+
+        return new
+
     @property
     def xr_dataset(self):
         data_vars = {}
@@ -372,3 +446,52 @@ class DycoreState:
 
     def __getitem__(self, item):
         return getattr(self, item)
+
+
+TRACER_PROPERTIES = {
+    "specific_humidity": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "sphum",
+        "units": "g/kg",
+    },
+    "cloud_liquid_water_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "liq_wat",
+        "units": "g/kg",
+    },
+    "cloud_ice_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "ice_wat",
+        "units": "g/kg",
+    },
+    "rain_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "rainwat",
+        "units": "g/kg",
+    },
+    "snow_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "snowwat",
+        "units": "g/kg",
+    },
+    "graupel_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "graupel",
+        "units": "g/kg",
+    },
+    "ozone_mixing_ratio": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "o3mr",
+        "units": "g/kg",
+    },
+    "turbulent_kinetic_energy": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "sgs_tke",
+        "units": "g/kg",
+    },
+    "cloud_fraction": {
+        "dims": [pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM],
+        "restart_name": "cld_amt",
+        "units": "g/kg",
+    },
+}

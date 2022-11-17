@@ -84,13 +84,14 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, self.stencil_factory.backend
         )
-        physics_state = PhysicsState(
-            **inputs,
+        physics_state = PhysicsState.init_from_storages(
+            inputs,
+            sizer=sizer,
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
         microphysics = Microphysics(
-            self.stencil_factory, self.grid.grid_data, self.namelist
+            self.stencil_factory, quantity_factory, self.grid.grid_data, self.namelist
         )
         microph_state = physics_state.microphysics
         microphysics(microph_state, timestep=Float(self.namelist.dt_atmos))

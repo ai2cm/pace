@@ -135,10 +135,9 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             quantity_factory=quantity_factory,
             active_packages=active_packages,
         )
-        # because it's not in the serialized data
-        self.grid.grid_data.ptop = 300.0
         physics = Physics(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.grid.grid_data,
             self.namelist,
             active_packages=active_packages,
@@ -149,9 +148,10 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         # to False for now (we don't run this on a case where it is True yet)
         dycore_to_physics = update_atmos_state.DycoreToPhysics(
             self.stencil_factory,
+            self.grid.quantity_factory,
             self.namelist,
-            self.namelist.fv_sg_adj > 0,
-            self.namelist.dycore_only,
+            do_dry_convective_adjust=False,
+            dycore_only=self.namelist.dycore_only,
         )
         dycore_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(

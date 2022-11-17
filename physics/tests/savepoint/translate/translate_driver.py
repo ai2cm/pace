@@ -63,7 +63,7 @@ class TranslateDriver(TranslateFVDynamics):
             },
             "dt_atmos": self.namelist.dt_atmos,
             "diagnostics_config": {"path": "null.zarr", "names": []},
-            "performance_config": {"performance_mode": False},
+            "performance_config": {"collect_performance": False},
             "dycore_config": DynamicalCoreConfig.from_namelist(self.namelist),
             "physics_config": PhysicsConfig.from_namelist(self.namelist),
             "seconds": self.namelist.dt_atmos,

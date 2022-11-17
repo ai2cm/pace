@@ -17,7 +17,9 @@ appdirs==1.4.4
 asciitree==0.3.3
     # via zarr
 asttokens==2.0.5
-    # via devtools
+    # via
+    #   devtools
+    #   stack-data
 astunparse==1.6.3 ; python_version < "3.9"
     # via
     #   dace
@@ -30,9 +32,12 @@ attrs==21.2.0
     #   aiohttp
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
+    #   jsonschema
     #   pytest
 babel==2.9.1
     # via sphinx
+backcall==0.2.0
+    # via ipython
 backports.entry-points-selectable==1.1.1
     # via virtualenv
 black==22.3.0
@@ -96,9 +101,15 @@ dacite==1.6.0
     #   pace-driver
     #   pace-driver (driver/setup.py)
 dask==2021.12.0
-    # via -r util/requirements.txt
+    # via
+    #   -r requirements_dev.txt
+    #   -r util/requirements.txt
+debugpy==1.6.3
+    # via ipykernel
 decorator==5.0.9
-    # via gcsfs
+    # via
+    #   gcsfs
+    #   ipython
 devtools==0.8.0
     # via
     #   gt4py
@@ -112,8 +123,12 @@ docutils==0.16
     #   recommonmark
     #   sphinx
     #   sphinx-rtd-theme
+entrypoints==0.4
+    # via jupyter-client
 executing==0.8.2
-    # via devtools
+    # via
+    #   devtools
+    #   stack-data
 f90nml==1.3.1
     # via
     #   -r requirements_dev.txt
@@ -127,6 +142,8 @@ f90nml==1.3.1
     #   pace-util (util/setup.py)
 fasteners==0.16.3
     # via zarr
+fastjsonschema==2.16.2
+    # via nbformat
 filelock==3.0.12
     # via
     #   tox
@@ -189,16 +206,34 @@ imagesize==1.2.0
     # via sphinx
 importlib-metadata==4.11.3
     # via flask
+importlib-resources==5.10.0
+    # via jsonschema
 iniconfig==1.1.1
     # via pytest
+ipykernel==6.16.2
+    # via nbmake
+ipython==8.5.0
+    # via ipykernel
 itsdangerous==2.1.2
     # via flask
+jedi==0.18.1
+    # via ipython
 jinja2==3.0.1
     # via
     #   flask
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
     #   sphinx
+jsonschema==4.16.0
+    # via nbformat
+jupyter-client==7.4.4
+    # via
+    #   ipykernel
+    #   nbclient
+jupyter-core==4.11.2
+    # via
+    #   jupyter-client
+    #   nbformat
 locket==0.2.1
     # via partd
 mako==1.1.6
@@ -209,6 +244,10 @@ markupsafe==2.0.1
     # via
     #   jinja2
     #   mako
+matplotlib-inline==0.1.6
+    # via
+    #   ipykernel
+    #   ipython
 mccabe==0.6.1
     # via flake8
 mpmath==1.2.1
@@ -224,6 +263,19 @@ mypy-extensions==0.4.3
     #   black
     #   mypy
     #   typing-inspect
+nbclient==0.6.8
+    # via nbmake
+nbformat==5.7.0
+    # via
+    #   nbclient
+    #   nbmake
+nbmake==1.3.4
+    # via -r requirements_dev.txt
+nest-asyncio==1.5.6
+    # via
+    #   ipykernel
+    #   jupyter-client
+    #   nbclient
 netcdf4==1.5.7
     # via
     #   -r requirements_dev.txt
@@ -270,15 +322,24 @@ packaging==21.0
     #   dask
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
+    #   ipykernel
     #   pytest
     #   sphinx
     #   tox
 pandas==1.3.2
     # via xarray
+parso==0.8.3
+    # via jedi
 partd==1.2.0
     # via dask
 pathspec==0.9.0
     # via black
+pexpect==4.8.0
+    # via ipython
+pickleshare==0.7.5
+    # via ipython
+pkgutil-resolve-name==1.3.10
+    # via jsonschema
 platformdirs==2.2.0
     # via
     #   black
@@ -291,10 +352,18 @@ ply==3.11
     # via dace
 pre-commit==2.14.0
     # via -r requirements_lint.txt
+prompt-toolkit==3.0.31
+    # via ipython
 protobuf==3.17.3
     # via
     #   google-api-core
     #   googleapis-common-protos
+psutil==5.9.3
+    # via ipykernel
+ptyprocess==0.7.0
+    # via pexpect
+pure-eval==0.2.2
+    # via stack-data
 py==1.10.0
     # via
     #   pytest
@@ -317,15 +386,22 @@ pydantic==1.7.4
     # via
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
+    #   nbmake
 pyflakes==2.2.0
     # via flake8
 pygments==2.10.0
-    # via sphinx
+    # via
+    #   ipython
+    #   nbmake
+    #   sphinx
 pyparsing==2.4.7
     # via packaging
+pyrsistent==0.18.1
+    # via jsonschema
 pytest==6.2.4
     # via
     #   -r requirements_dev.txt
+    #   nbmake
     #   pytest-cov
     #   pytest-datadir
     #   pytest-profiling
@@ -346,7 +422,9 @@ pytest-subtests==0.5.0
     #   -r requirements_dev.txt
     #   -r util/requirements.txt
 python-dateutil==2.8.2
-    # via pandas
+    # via
+    #   jupyter-client
+    #   pandas
 pytz==2021.1
     # via
     #   babel
@@ -360,6 +438,10 @@ pyyaml==5.4.1
     #   pace-driver (driver/setup.py)
     #   pre-commit
     #   pytest-regressions
+pyzmq==24.0.1
+    # via
+    #   ipykernel
+    #   jupyter-client
 recommonmark==0.7.1
     # via -r requirements_docs.txt
 requests==2.26.0
@@ -418,6 +500,8 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
+stack-data==0.5.1
+    # via ipython
 sympy==1.9
     # via dace
 tabulate==0.8.9
@@ -440,8 +524,21 @@ toolz==0.11.1
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
     #   partd
+tornado==6.2
+    # via
+    #   ipykernel
+    #   jupyter-client
 tox==3.24.3
     # via -r util/requirements.txt
+traitlets==5.5.0
+    # via
+    #   ipykernel
+    #   ipython
+    #   jupyter-client
+    #   jupyter-core
+    #   matplotlib-inline
+    #   nbclient
+    #   nbformat
 typed-ast==1.4.3
     # via mypy
 typing-extensions==3.10.0.0
@@ -464,6 +561,8 @@ virtualenv==20.7.2
     # via
     #   pre-commit
     #   tox
+wcwidth==0.2.5
+    # via prompt-toolkit
 websockets==10.3
     # via dace
 werkzeug==2.1.2
@@ -493,7 +592,9 @@ zarr==2.9.2
     #   pace-driver
     #   pace-driver (driver/setup.py)
 zipp==3.8.0
-    # via importlib-metadata
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

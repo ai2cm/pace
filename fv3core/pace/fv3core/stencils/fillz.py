@@ -4,10 +4,11 @@ from typing import Dict
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
-from pace.util import Quantity
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 @typing.no_type_check
@@ -121,11 +122,12 @@ class FillNegativeTracerValues:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         im: int,
         jm: int,
         km: int,
         nq: int,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
     ):
         orchestrate(
             obj=self,
@@ -142,18 +144,13 @@ class FillNegativeTracerValues:
         shape = stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         shape_ij = shape[0:2]
 
-        def make_storage(*args, **kwargs):
-            return utils.make_storage_from_shape(
-                *args, **kwargs, backend=stencil_factory.backend
-            )
-
-        self._dm = make_storage(shape, origin=(0, 0, 0))
-        self._dm_pos = make_storage(shape, origin=(0, 0, 0))
+        self._dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._dm_pos = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
         # Setting initial value of upper_fix to zero is only needed for validation.
         # The values in the compute domain are set to zero in the stencil.
-        self._zfix = make_storage(shape_ij, dtype=int, origin=(0, 0))
-        self._sum0 = make_storage(shape_ij, origin=(0, 0))
-        self._sum1 = make_storage(shape_ij, origin=(0, 0))
+        self._zfix = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown", dtype=int)
+        self._sum0 = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
+        self._sum1 = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
 
         self._filtered_tracer_dict = {
             name: tracers[name] for name in utils.tracer_variables[0 : self._nq]
@@ -162,7 +159,7 @@ class FillNegativeTracerValues:
     def __call__(
         self,
         dp2: FloatField,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
     ):
         """
         Args:

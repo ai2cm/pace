@@ -2,12 +2,13 @@ from typing import Optional
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 from pace.fv3core.stencils.basic_operations import copy_defn
 from pace.fv3core.stencils.remap_profile import RemapProfile
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):
@@ -88,6 +89,7 @@ class MapSingle:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         kord: int,
         mode: int,
         i1: int,
@@ -105,26 +107,16 @@ class MapSingle:
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape=shape, origin=origin, backend=stencil_factory.backend
-            )
+        def make_quantity():
+            return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._dp1 = make_storage()
-        self._q4_1 = make_storage()
-        self._q4_2 = make_storage()
-        self._q4_3 = make_storage()
-        self._q4_4 = make_storage()
-        self._tmp_qs = utils.make_storage_from_shape(
-            shape[0:2], origin=(0, 0), backend=stencil_factory.backend
-        )
-        self._lev = utils.make_storage_from_shape(
-            shape[:-1],
-            origin=origin[:-1],
-            mask=(True, True, False),
-            dtype=int,
-            backend=stencil_factory.backend,
-        )
+        self._dp1 = make_quantity()
+        self._q4_1 = make_quantity()
+        self._q4_2 = make_quantity()
+        self._q4_3 = make_quantity()
+        self._q4_4 = make_quantity()
+        self._tmp_qs = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
+        self._lev = quantity_factory.zeros([X_DIM, Y_DIM], units="", dtype=int)
 
         self._extents = (i2 - i1 + 1, j2 - j1 + 1)
         origin = (i1, j1, 0)
@@ -140,7 +132,9 @@ class MapSingle:
             set_dp, origin=origin, domain=domain
         )
 
-        self._remap_profile = RemapProfile(stencil_factory, kord, mode, i1, i2, j1, j2)
+        self._remap_profile = RemapProfile(
+            stencil_factory, quantity_factory, kord, mode, i1, i2, j1, j2
+        )
 
         self._lagrangian_contributions = stencil_factory.from_origin_domain(
             lagrangian_contributions,

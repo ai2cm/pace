@@ -37,3 +37,29 @@ The `notebooks` directory contains several notebooks which explain different fun
 The Jupyter notebooks rely on an MPI-environment and use ipyparallel and mpi4py for setting up the parallel environment. If you are not familiar with these packages, please read up on them before getting started.
 
 If you prefer to run outside of a Docker container, you will need to install several pre-requisites. The Dockerfile can serve as a recipe of what they are and how to install them.
+
+## Building an environment to run these examples on the GFDL Post Processing and Analysis Cluster (PP/AN)
+
+Within the `build_scripts` directory are a couple scripts relevant for setting up an environment to run these notebook examples on the [GFDL Post Processing and Analysis Cluster (PP/AN)](https://www.noaa.gov/organization/information-technology/ppan).  To create an environment, log in to either the `jhan` or `jhanbigmem` node on the analysis cluster clone this repository, and then navigate to the `build_scripts` directory:
+
+```
+$ ssh analysis
+$ git clone --recursive https://github.com/ai2cm/pace.git
+$ cd pace/examples/build_scripts
+```
+
+From there, run the installation script.  This script takes two arguments.  The first is to a directory you would like to install all the software into, and the second is a name you would like to give the conda environment the script creates.  Since conda environments can take up a reasonable amount of space, it is recommended that you install things in your `/work` directory rather than your `/home` directory:
+
+```
+$ bash build_ppan.sh /work/$USER/pace-software pace
+```
+
+This will take a few minutes to complete, but assuming it finishes succesfully you should then be able to activate the environment and run the example notebooks.  To do so, first source the `activate_ppan.sh` script.  This loads some modules, activates the appropriate conda environment, and sets some environment variables necessary for running the examples.  You will then be able to start JupyterLab following [GFDL's recommended approach](https://wiki.gfdl.noaa.gov/index.php/Python_at_GFDL#Using_Jupyter_Hubs_or_Notebooks_on_GFDL_Workstations_and_PPAN):
+
+```
+$ source activate_ppan.sh /work/$USER/pace-software pace
+$ cd ..
+$ jhp launch lab
+```
+
+It will take a minute or so for the server to start up.  If you are on GFDL's network or have [configured your proxy settings appropriately](https://wiki.gfdl.noaa.gov/index.php/Creating_a_GFDL_SSH_Tunnel), you will then be able to navigate to the URL produced by the command in your local browser.  This will take you to the JupyterLab interface, where you can open and run the example notebooks.  Note that it can take some time to initially connect to the notebook kernel, so be patient.

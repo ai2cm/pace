@@ -70,6 +70,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
                 )
         run_fillz = fillz.FillNegativeTracerValues(
             self.stencil_factory,
+            self.grid.quantity_factory,
             inputs.pop("im"),
             inputs.pop("jm"),
             inputs.pop("km"),
