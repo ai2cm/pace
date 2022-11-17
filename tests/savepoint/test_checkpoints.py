@@ -272,6 +272,7 @@ def _calibrate_driver_thresholds(
         driver.checkpointer = calibration
         driver.state.dycore_state = trial_state
         driver.dycore.checkpointer = calibration
+        driver.end_of_step_update.checkpointer = calibration
         with calibration.trial():
             driver.step_all()
     all_thresholds = communicator.comm.allgather(calibration.thresholds)

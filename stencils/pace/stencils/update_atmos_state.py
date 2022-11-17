@@ -249,7 +249,12 @@ class UpdateAtmosphereState:
         dycore_only: bool,
         apply_tendencies: bool,
         tendency_state,
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
+        self.checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self.call_checkpointer = checkpointer is not None
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -258,7 +263,13 @@ class UpdateAtmosphereState:
                 "phy_state",
             ],
         )
-
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_driver_out",
+            dace_compiletime_args=["state"],
+        )
+        self.grid_indexing = stencil_factory.grid_indexing
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
@@ -293,6 +304,26 @@ class UpdateAtmosphereState:
         # if neither of those are true, we still need to run
         # fill_GFS_delp
         self._apply_tendencies = apply_tendencies
+
+    def _checkpoint_driver_out(self, state: fv3core.DycoreState):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "Driver-out",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+                qliquid=state.qliquid,
+                qrain=state.qrain,
+                qsnow=state.qsnow,
+                qice=state.qice,
+                qgraupel=state.qgraupel,
+            )
 
     # [DaCe] Parsing limit: accessing a quantity withing a dataclass more than
     # one-level down in the call stack is forbidden for now due to the quantity
@@ -347,3 +378,4 @@ class UpdateAtmosphereState:
                 pt_dt,
                 dt=dt,
             )
+        self._checkpoint_driver_out(state=dycore_state)

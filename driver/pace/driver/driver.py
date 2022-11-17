@@ -510,6 +510,7 @@ class Driver:
                     dycore_only=self.config.dycore_only,
                     apply_tendencies=self.config.apply_tendencies,
                     tendency_state=self.state.tendency_state,
+                    checkpointer=self.checkpointer,
                 )
             else:
                 # Make sure those are set to None to raise any issues
