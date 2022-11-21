@@ -476,14 +476,7 @@ class Quantity:
         """The descriptor is a property that dace uses."""
         if dace is None:
             raise ModuleNotFoundError("dace is not installed")
-        storage = (
-            dace.StorageType.GPU_Global
-            if hasattr(self.data, "__cuda_array_interface__")
-            else dace.StorageType.CPU_Heap
-        )
-        return dace.data.Array(
-            dace.typeclass(str(self.data.dtype)), self.shape, storage=storage
-        )
+        dace.data.create_datadescriptor(self.data)
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
