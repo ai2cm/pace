@@ -229,7 +229,7 @@ class CompareToNumpyStencil:
         )
 
 
-def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
+def _stencil_object_name(stencil_object) -> str:
     """Returns a unique name for each gt4py stencil object, including the hash."""
     return type(stencil_object).__name__
 
@@ -313,7 +313,7 @@ class FrozenStencil(SDFGConvertible):
         stencil_kwargs = self.stencil_config.stencil_kwargs(
             skip_passes=skip_passes, func=func
         )
-        self.stencil_object: Optional[gt4py.StencilObject] = None
+        self.stencil_object = None
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -481,7 +481,10 @@ class FrozenStencil(SDFGConvertible):
             field_name
             for field_name in field_info
             if field_info[field_name]
-            and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
+            and bool(
+                field_info[field_name].access
+                & gt4py.definitions.AccessKind.WRITE  # type: ignore
+            )
         ]
         return write_fields
 

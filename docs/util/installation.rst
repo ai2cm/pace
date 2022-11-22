@@ -1,5 +1,6 @@
 .. highlight:: shell
 
+============
 Installation
 ============
 
@@ -11,7 +12,8 @@ There is no stable release. This is alpha research software: use at your own ris
 From sources
 ------------
 
-The sources for pace-util can be downloaded from the `Github repo`_. To develop pace-util, you can clone the public repository:
+The sources for pace-util can be downloaded from the `Github repo`_.
+To develop pace-util, you can clone the public repository:
 
 .. code-block:: console
 
