@@ -189,7 +189,8 @@ class GeosDycoreWrapper:
         self.dycore_state.omga.view[:] = omga[isc:iec, jsc:jec, :-1]
         self.dycore_state.diss_estd.view[:] = diss_estd[isc:iec, jsc:jec, :-1]
 
-        # tracer quantities should be a 4d array in order: vapor, liquid, ice, rain, snow, graupel, cloud
+        # tracer quantities should be a 4d array in order:
+        # vapor, liquid, ice, rain, snow, graupel, cloud
         self.dycore_state.qvapor.view[:] = q[isc:iec, jsc:jec, :-1, 0]
         self.dycore_state.qliquid.view[:] = q[isc:iec, jsc:jec, :-1, 1]
         self.dycore_state.qice.view[:] = q[isc:iec, jsc:jec, :-1, 2]
@@ -227,7 +228,6 @@ class GeosDycoreWrapper:
         out_state["omga"] = self.dycore_state.omga.data[:]
         out_state["diss_estd"] = self.dycore_state.diss_estd.data[:]
 
-        # tracer quantities should be a 4d array in order: vapor, liquid, ice, rain, snow, graupel, cloud
         out_state["qvapor"] = self.dycore_state.qvapor.data[:]
         out_state["qliquid"] = self.dycore_state.qliquid.data[:]
         out_state["qice"] = self.dycore_state.qice.data[:]
