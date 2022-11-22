@@ -171,29 +171,30 @@ class NetCDFMonitor:
             constants_filename = str(
                 Path(self._path) / NetCDFMonitor._CONSTANT_FILENAME
             )
-            if self._fs.exists(constants_filename):
-                with self._fs.open(constants_filename, "rb") as f:
-                    ds = xr.open_dataset(f)
-                    ds = ds.load()
-                for name, quantity in state.items():
-                    ds[name] = xr.DataArray(
-                        to_numpy(quantity.view[:]),
-                        dims=quantity.dims,
-                        attrs=quantity.attrs,
-                    )
-            else:
-                ds = xr.Dataset(
-                    data_vars={
-                        name: xr.DataArray(
-                            to_numpy(value.view[:]),
-                            dims=value.dims,
-                            attrs=value.attrs,
+            for name, quantity in state.items():
+                path_for_grid = constants_filename + name
+
+                if self._fs.exists(path_for_grid):
+                    with self._fs.open(path_for_grid, "rb") as f:
+                        ds = xr.open_dataset(f)
+                        ds = ds.load()
+                        ds[name] = xr.DataArray(
+                            to_numpy(quantity.view[:], dtype=np.float32),
+                            dims=quantity.dims,
+                            attrs=quantity.attrs,
                         )
-                        for name, value in state.items()
-                    }
-                )
-            with self._fs.open(constants_filename, "wb") as f:
-                ds.to_netcdf(f)
+                else:
+                    ds = xr.Dataset(
+                        data_vars={
+                            name: xr.DataArray(
+                                to_numpy(quantity.view[:], dtype=np.float32),
+                                dims=quantity.dims,
+                                attrs=quantity.attrs,
+                            )
+                        }
+                    )
+                with self._fs.open(path_for_grid, "wb") as f:
+                    ds.to_netcdf(f)
 
     def cleanup(self):
         self._writer.flush()

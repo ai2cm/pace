@@ -489,7 +489,7 @@ class Driver:
                 )
                 self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
                     stencil_factory=self.stencil_factory,
-                    grid_data=self.state.grid_data,
+                    grid_data=self.state.grid_datastore_grid,
                     namelist=self.config.physics_config,
                     comm=communicator,
                     grid_info=self.state.driver_grid_data,
@@ -508,9 +508,6 @@ class Driver:
             )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
-        )
-        self.diagnostics.store_grid(
-            grid_data=self.state.grid_data,
         )
         if config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
@@ -635,6 +632,9 @@ class Driver:
     @dace_inhibitor
     def cleanup(self):
         logger.info("cleaning up driver")
+        self.diagnostics.store_grid(
+            grid_data=self.state.grid_data,
+        )
         self.diagnostics.cleanup()
         self.config.restart_config.write_final_if_enabled(
             state=self.state,
