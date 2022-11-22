@@ -433,9 +433,8 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
-        self.u_contra_dyc = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], units="unknown"
-        )
+        self.u_contra_dyc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
+        self.v_contra_dxc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
             func=get_delpc,
@@ -576,14 +575,14 @@ class DivergenceDamping:
         u: FloatField,
         v: FloatField,
         va: FloatField,
-        v_contra_dxc: FloatField,
+        damped_rel_vort_bgrid: FloatField,
         ua: FloatField,
         divg_d: FloatField,
         vc: FloatField,
         uc: FloatField,
         delpc: FloatField,
         ke: FloatField,
-        wk: FloatField,
+        rel_vort_agrid: FloatField,
         dt: float,
     ):
         """
@@ -602,7 +601,7 @@ class DivergenceDamping:
             u (in): x-velocity on d-grid
             v (in): y-velocity on d-grid
             va (in):
-            v_contra_dxc (out): wk converted from a grid to b grid and damped
+            damped_rel_vort_bgrid (out): damped relative vorticity on b-grid
             ua (in):
             divg_d (inout): finite volume divergence defined on cell corners,
                 output value is not used later in D_SW
@@ -613,7 +612,8 @@ class DivergenceDamping:
                 at input time must be accurate for the input winds.
                 Gets updated to remain accurate for the output winds,
                 as described in section 8.3 of the FV3 documentation.
-            wk (in): a-grid relative vorticity computed before divergence damping
+            rel_vort_agrid (in): a-grid relative vorticity computed before
+                divergence damping
                 gets converted by a2b_ord4 and put into v_contra_dxc
             dt (in): timestep
         """
@@ -643,7 +643,7 @@ class DivergenceDamping:
                 self._cosa_u,
                 self._sina_u,
                 self._dxc,
-                v_contra_dxc,
+                self.v_contra_dxc,
                 uc,
                 self._sin_sg3,
                 self._sin_sg1,
@@ -653,36 +653,13 @@ class DivergenceDamping:
                 self.u_contra_dyc,
                 self._rarea_c,
                 delpc,
-                v_contra_dxc,
+                self.v_contra_dxc,
             )
-
-            """
-            self._get_delpc(
-                u,
-                v,
-                ua,
-                va,
-                self._cosa_u,
-                self._sina_u,
-                self._dxc,
-                self._dyc,
-                uc,
-                vc,
-                self._sin_sg1,
-                self._sin_sg2,
-                self._sin_sg3,
-                self._sin_sg4,
-                self._cosa_v,
-                self._sina_v,
-                self._rarea_c,
-                delpc,
-            )
-            """
 
             da_min_c: float = self._get_da_min_c()
             self._damping(
                 delpc,
-                v_contra_dxc,
+                damped_rel_vort_bgrid,
                 ke,
                 self._d2_bg_column,
                 da_min_c,
@@ -714,16 +691,16 @@ class DivergenceDamping:
             self._redo_divg_d_stencils[n](uc, vc, divg_d, self._rarea_c)
 
         if self._dddmp < 1e-5:
-            self._set_value(v_contra_dxc, 0.0)
+            self._set_value(damped_rel_vort_bgrid, 0.0)
         else:
             # TODO: what is wk/v_contra_dxc here?
             # take the cell centered relative vorticity and regrid it to cell corners
             # for smagorinsky diffusion
             #
-            self.a2b_ord4(wk, v_contra_dxc)
+            self.a2b_ord4(rel_vort_agrid, damped_rel_vort_bgrid)
             self._smagorinksy_diffusion_approx_stencil(
                 delpc,
-                v_contra_dxc,
+                damped_rel_vort_bgrid,
                 abs(dt),
             )
 
@@ -734,7 +711,7 @@ class DivergenceDamping:
             dd8 = (da_min_c * self._d4_bg) ** (self._nonzero_nord + 1)
 
         self._damping_nord_highorder_stencil(
-            v_contra_dxc,
+            damped_rel_vort_bgrid,
             ke,
             delpc,
             divg_d,

@@ -18,20 +18,20 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
             "u": {},
             "v": {},
             "va": {},
-            "v_contra_dxc": {"serialname": "vort"},
+            "damped_rel_vort_bgrid": {"serialname": "vort"},
             "ua": {},
             "divg_d": {},
             "vc": {},
             "uc": {},
             "delpc": {},
             "ke": {},
-            "wk": {},
+            "rel_vort_agrid": {"serialname": "wk"},
             "nord_col": {},
             "d2_bg": {},
         }
         self.in_vars["parameters"] = ["dt"]
         self.out_vars = {
-            "v_contra_dxc": {"serialname": "vort"},
+            "damped_rel_vort_bgrid": {"serialname": "vort"},
             "ke": {"iend": grid.ied + 1, "jend": grid.jed + 1},
             "delpc": {},
         }
