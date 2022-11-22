@@ -61,13 +61,13 @@ def compute_u_contra_dyc(
 
 
 # TODO: rename this stencil
-def vorticity_computation(
+def compute_v_contra_dxc(
     v: FloatField,
     ua: FloatField,
     cosa_u: FloatFieldIJ,
     sina_u: FloatFieldIJ,
     dxc: FloatFieldIJ,
-    vort: FloatField,  # TODO: rename to v_contra
+    v_contra_dxc: FloatField,
     uc: FloatField,
     sin_sg3: FloatFieldIJ,
     sin_sg1: FloatFieldIJ,
@@ -87,9 +87,10 @@ def vorticity_computation(
     from __externals__ import i_end, i_start
 
     with computation(PARALLEL), interval(...):
-        vort = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
+        # TODO: refactor into a call to contravariant()
+        v_contra_dxc = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            vort = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
+            v_contra_dxc = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
 
 
 def delpc_computation(
@@ -227,7 +228,7 @@ def damping(
     """
     Args:
         delpc (in): divergence at cell corner
-        vort (out): contravariant v-wind on d-grid
+        vort (out):
         ke (inout):
         d2_bg (in):
     """
@@ -324,7 +325,7 @@ def redo_divg_d(
             divg_d = divg_d * adjustment_factor
 
 
-def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
+def smagorinsky_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
     """
     Args:
         delpc (in): divergence on cell corners
@@ -420,8 +421,8 @@ class DivergenceDamping:
             compute_halos=(1, 0),
         )
 
-        self._vorticity_computation = low_k_stencil_factory.from_dims_halo(
-            vorticity_computation,
+        self._compute_v_contra_dxc = low_k_stencil_factory.from_dims_halo(
+            compute_v_contra_dxc,
             compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
             compute_halos=(0, 1),
         )
@@ -526,7 +527,7 @@ class DivergenceDamping:
 
         self._smagorinksy_diffusion_approx_stencil = (
             high_k_stencil_factory.from_dims_halo(
-                func=smagorinksy_diffusion_approx,
+                func=smagorinsky_diffusion_approx,
                 compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
                 compute_halos=(0, 0),
             )
@@ -636,23 +637,23 @@ class DivergenceDamping:
                 self.u_contra_dyc,
             )
 
-            self._vorticity_computation(
+            self._compute_v_contra_dxc(
                 v,
                 ua,
                 self._cosa_u,
                 self._sina_u,
                 self._dxc,
-                v_contra_dxc,  # vort
+                v_contra_dxc,
                 uc,
                 self._sin_sg3,
                 self._sin_sg1,
             )
 
             self._delpc_computation(
-                self.u_contra_dyc,  # u_contra_dxc
+                self.u_contra_dyc,
                 self._rarea_c,
                 delpc,
-                v_contra_dxc,  # vort
+                v_contra_dxc,
             )
 
             """
