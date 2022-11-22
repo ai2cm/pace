@@ -32,6 +32,7 @@ cat << EOF > run.daint.slurm
 set -x
 export OMP_NUM_THREADS=1
 export TEST_ARGS="-v -s -rsx --backend=numpy "
+export EXPERIMENT=c12_6ranks_baroclinic_dycore_microphysics
 export MPIRUN_CALL="srun"
 CONTAINER_CMD="" MPIRUN_ARGS="" DEV=n make test_driver_checkpoint
 EOF
