@@ -31,7 +31,8 @@ cat << EOF > run.daint.slurm
 ########################################################
 set -x
 export OMP_NUM_THREADS=1
+export TEST_ARGS="-v -s -rsx --backend=numpy "
 export MPIRUN_CALL="srun"
-srun make test_driver_checkpoint
+CONTAINER_CMD="" MPIRUN_ARGS="" DEV=n make test_driver_checkpoint
 EOF
 launch_job run.daint.slurm 3600
