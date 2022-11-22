@@ -567,7 +567,7 @@ workflows:
             - GCLOUD_ENCODED_KEY
           filters:
             tags:
-              only: /^v.*/              
+              only: /^v.*/
       - test_util:
           filters:
             tags:
