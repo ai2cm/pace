@@ -102,6 +102,7 @@ commands:
         enum:
           - "test_main"
           - "test_savepoint"
+          - "test_driver_checkpoint"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
           - "physics_savepoint_tests"
@@ -438,6 +439,20 @@ jobs:
           target: test_savepoint
           num_ranks: 6
 
+  test_driver_checkpoint:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: large
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: numpy
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: test_driver_checkpoint
+          num_ranks: 6
+
   test_notebooks:
     docker:
       - image: gcr.io/vcm-ml/pace_notebook_examples
@@ -547,6 +562,12 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - test_driver_checkpoint:
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/              
       - test_util:
           filters:
             tags:

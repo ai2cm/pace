@@ -132,7 +132,7 @@ test_main: build
 
 test_savepoint:  ## top level savepoint tests
 	TARGET=dycore $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/savepoint"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) -k test_fv_dynamics $(PACE_PATH)/tests/savepoint"
 
 test_driver_checkpoint:
 	TARGET=all EXPERIMENT=c12_6ranks_baroclinic_dycore_microphysics $(MAKE) get_test_data
