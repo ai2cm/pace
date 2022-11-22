@@ -21,7 +21,6 @@ from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
-
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
@@ -448,6 +447,12 @@ class Driver:
                 communicator=communicator,
             )
 
+            self.grid = grid_data
+            self.diagnostics = config.diagnostics_config.diagnostics_factory(
+                communicator=communicator
+            )
+            return
+
             self.state = self.config.get_driver_state(
                 quantity_factory=self.quantity_factory,
                 communicator=communicator,
@@ -503,9 +508,7 @@ class Driver:
                 # Make sure those are set to None to raise any issues
                 self.dycore_to_physics = None
                 self.end_of_step_update = None
-            self.diagnostics = config.diagnostics_config.diagnostics_factory(
-                communicator=communicator
-            )
+            
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
         )
@@ -633,16 +636,17 @@ class Driver:
     def cleanup(self):
         logger.info("cleaning up driver")
         self.diagnostics.store_grid(
-            grid_data=self.state.grid_data,
+            # grid_data=self.state.grid_data,
+            grid_data=self.grid,
         )
         self.diagnostics.cleanup()
-        self.config.restart_config.write_final_if_enabled(
-            state=self.state,
-            comm=self.comm,
-            time=self.time,
-            driver_config=self.config,
-            restart_path="RESTART",
-        )
+        # self.config.restart_config.write_final_if_enabled(
+        #     state=self.state,
+        #     comm=self.comm,
+        #     time=self.time,
+        #     driver_config=self.config,
+        #     restart_path="RESTART",
+        # )
         self._write_performance_json_output()
         self.comm_config.cleanup(self.comm)
 

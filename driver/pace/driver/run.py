@@ -87,6 +87,7 @@ def command_line(config_path: str, log_rank: Optional[int], log_level: str):
 def main(driver_config: DriverConfig) -> Driver:
     driver = Driver(config=driver_config)
     try:
+        raise NotImplementedError("boo")
         driver.step_all()
     finally:
         driver.cleanup()
