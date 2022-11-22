@@ -282,7 +282,14 @@ class DriverConfig:
             kwargs["grid_config"] = GridInitializerSelector.from_dict(
                 kwargs["grid_config"]
             )
-
+        if "checkpointer_config" in kwargs:
+            kwargs["checkpointer_config"] = CheckpointerInitializerSelector.from_dict(
+                kwargs["checkpointer_config"]
+            )
+        else:
+            kwargs["checkpointer_config"] = CheckpointerInitializerSelector(
+                type="null", config=NullCheckpointerInit()
+            )
         if (
             isinstance(kwargs["stencil_config"], dict)
             and "dace_config" in kwargs["stencil_config"].keys()
