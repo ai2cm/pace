@@ -14,12 +14,16 @@ def test_geos_wrapper():
         f90nml.read(os.path.join(data_path, "input.nml"))
     )
 
-    comm = NullComm(0,0)
+    comm = NullComm(0, 0)
     backend = "numpy"
 
     wrapper = fv3core.GeosDycoreWrapper(namelist, comm, backend)
     nhalo = 3
-    shape = (wrapper.dycore_config.npx + 2 * nhalo + 1, wrapper.dycore_config.npy + 2 * nhalo + 1, wrapper.dycore_config.npz + 2 * nhalo + 1)
+    shape = (
+        wrapper.dycore_config.npx + 2 * nhalo + 1,
+        wrapper.dycore_config.npy + 2 * nhalo + 1,
+        wrapper.dycore_config.npz + 2 * nhalo + 1,
+    )
     assert isinstance(wrapper, fv3core.GeosDycoreWrapper)
     assert isinstance(wrapper.dynamical_core, fv3core.DynamicalCore)
 
@@ -49,8 +53,28 @@ def test_geos_wrapper():
     diss_estd = np.ones(shape)
 
     wrapper(
-        u, v, w, delz, pt, delp, q, ps, pe, pk, peln, pkz, phis, q_con, omga, 
-        ua, va, uc, vc, mfxd, mfyd, cxd, cyd, diss_estd
+        u,
+        v,
+        w,
+        delz,
+        pt,
+        delp,
+        q,
+        ps,
+        pe,
+        pk,
+        peln,
+        pkz,
+        phis,
+        q_con,
+        omga,
+        ua,
+        va,
+        uc,
+        vc,
+        mfxd,
+        mfyd,
+        cxd,
+        cyd,
+        diss_estd,
     )
-
-    
