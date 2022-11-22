@@ -27,7 +27,6 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
     return damp
 
 
-# TODO: rename this stencil
 def compute_u_contra_dyc(
     u: FloatField,
     va: FloatField,
@@ -55,12 +54,12 @@ def compute_u_contra_dyc(
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
+        # TODO: refactor into a call to contravariant()
         u_contra_dyc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
         with horizontal(region[:, j_start], region[:, j_end + 1]):
             u_contra_dyc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
 
 
-# TODO: rename this stencil
 def compute_v_contra_dxc(
     v: FloatField,
     ua: FloatField,
