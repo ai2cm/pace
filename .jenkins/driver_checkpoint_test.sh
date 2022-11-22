@@ -4,7 +4,7 @@
 # Jenkins plan (only working on Piz daint) to run dace orchestration and gather performance numbers.
 
 ## Syntax:
-# .jenkins/action/driver_performance.sh
+# .jenkins/action/driver_checkpoint_test.sh
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PACE_DIR=$JENKINS_DIR/../
