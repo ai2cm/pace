@@ -28,7 +28,7 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
 
 
 # TODO: rename this stencil
-def ptc_computation(
+def compute_u_contra_dyc(
     u: FloatField,
     va: FloatField,
     vc: FloatField,
@@ -37,7 +37,7 @@ def ptc_computation(
     dyc: FloatFieldIJ,
     sin_sg2: FloatFieldIJ,
     sin_sg4: FloatFieldIJ,
-    ptc: FloatField,  # TODO: rename to u_contra_dyc
+    u_contra_dyc: FloatField,
 ):
     """
 
@@ -50,14 +50,14 @@ def ptc_computation(
         dyc (in):
         sin_sg2 (in):
         sin_sg4 (in):
-        ptc (out): contravariant u-wind on d-grid
+        u_contra_dyc (out): contravariant u-wind on d-grid
     """
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
-        ptc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
+        u_contra_dyc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            ptc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
+            u_contra_dyc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
 
 
 # TODO: rename this stencil
@@ -100,10 +100,10 @@ def delpc_computation(
 ):
     """
     Args:
-        ptc (in): contravariant u-wind on d-grid * dxc
+        u_contra_dyc (in): contravariant u-wind on d-grid * dxc
         rarea_c (in):
         delpc (out): convergence of wind on cell centers
-        vort (in): contravariant v-wind on d-grid * dyc
+        v_contra_dxc (in): contravariant v-wind on d-grid * dyc
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -414,8 +414,8 @@ class DivergenceDamping:
             k_start=nonzero_nord_k
         )
 
-        self._ptc_computation = low_k_stencil_factory.from_dims_halo(
-            ptc_computation,
+        self._compute_u_contra_dyc = low_k_stencil_factory.from_dims_halo(
+            compute_u_contra_dyc,
             compute_dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(1, 0),
         )
@@ -432,7 +432,9 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
-        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self.u_contra_dyc = quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM], units="unknown"
+        )
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
             func=get_delpc,
@@ -622,7 +624,7 @@ class DivergenceDamping:
             # This is used in the sponge layer, 2nd order damping
             # TODO: delpc is an output of this but is never used. Inside the helper
             # function, use a stencil temporary or temporary storage instead
-            self._ptc_computation(
+            self._compute_u_contra_dyc(
                 u,
                 va,
                 vc,
@@ -631,7 +633,7 @@ class DivergenceDamping:
                 self._dyc,
                 self._sin_sg2,
                 self._sin_sg4,
-                self.ptc,  # u_contra_dxc
+                self.u_contra_dyc,
             )
 
             self._vorticity_computation(
@@ -647,7 +649,7 @@ class DivergenceDamping:
             )
 
             self._delpc_computation(
-                self.ptc,  # u_contra_dxc
+                self.u_contra_dyc,  # u_contra_dxc
                 self._rarea_c,
                 delpc,
                 v_contra_dxc,  # vort
