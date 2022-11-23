@@ -194,8 +194,6 @@ class TracerAdvection:
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
         self.grid_data = grid_data
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
-        origin = grid_indexing.origin_compute()
 
         self._tmp_xfx = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
@@ -266,7 +264,7 @@ class TracerAdvection:
         )
 
     def __call__(
-        self, tracers: Dict[str, pace.util.Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt
+        self, tracers: Dict[str, pace.util.Quantity], dp1, mfxd, mfyd, cxd, cyd
     ):
         """
         Args:
@@ -278,7 +276,6 @@ class TracerAdvection:
             cxd (inout): accumulated courant number in x-direction
             cyd (inout): accumulated courant number in y-direction
         """
-        # TODO: remove unused mdt argument
         # DaCe parsing issue
         # if len(tracers) != self._tracer_count:
         #     raise ValueError(

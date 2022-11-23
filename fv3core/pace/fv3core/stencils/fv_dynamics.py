@@ -541,7 +541,6 @@ class DynamicalCore:
                         state.mfyd,
                         state.cxd,
                         state.cyd,
-                        self._timestep / self._k_split,
                     )
                     self._checkpoint_tracer_advection_out(state)
             else:
