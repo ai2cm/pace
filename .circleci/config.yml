@@ -469,7 +469,7 @@ jobs:
           name: Test notebooks
           command: make test_notebooks
 
-  push-docs:
+  push_docs:
     docker:
     - image: cimg/python:3.8
     steps:
@@ -494,6 +494,7 @@ jobs:
             git clone --branch gh-pages git@github.com:ai2cm/pace.git gh-pages
             rm -rf gh-pages/docs
             mv docs/_build/html gh-pages/docs
+            touch gh-pages/docs/.nojekyll
             hash=$(git rev-parse --short HEAD)
             git config --global user.name "CircleCI"
             git config --global user.email "ai2cm@allenai.org"
@@ -633,3 +634,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+            branches:
+              only: 
+                - main
