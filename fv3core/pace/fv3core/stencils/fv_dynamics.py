@@ -632,8 +632,6 @@ class DynamicalCore:
             state.qcld,
             state.pt,
             state.delp,
-            state.delz,
-            state.peln,
         )
 
         if __debug__:
