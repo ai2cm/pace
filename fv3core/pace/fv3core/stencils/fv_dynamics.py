@@ -36,18 +36,20 @@ logger = logging.getLogger(__name__)
 NQ = 8  # state.nq_tot - spec.namelist.dnats
 
 
-def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
+def pt_adjust(
+    pkz: FloatField, dp_initial: FloatField, q_con: FloatField, pt: FloatField
+):
     """
     Args:
         pkz (in):
-        dp1 (in):
+        dp_initial (in):
         q_con (in):
         pt (out): temperature when input, "potential density temperature" when output
     """
     # TODO: why and how is pt being adjusted? update docstring and/or name
     # TODO: split pt into two variables for different in/out meanings
     with computation(PARALLEL), interval(...):
-        pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
+        pt = pt * (1.0 + dp_initial) * (1.0 - q_con) / pkz
 
 
 def omega_from_w(delp: FloatField, delz: FloatField, w: FloatField, omega: FloatField):
@@ -232,7 +234,7 @@ class DynamicalCore:
         self._te_2d = temporaries["te_2d"]
         self._te0_2d = temporaries["te0_2d"]
         self._wsd = temporaries["wsd"]
-        self._dp1 = temporaries["dp1"]
+        self._dp_initial = temporaries["dp1"]
         self._cvm = temporaries["cvm"]
 
         # Build advection stencils
@@ -380,7 +382,7 @@ class DynamicalCore:
                 ps=state.ps,
                 wsd=self._wsd,
                 omga=state.omga,
-                dp1=self._dp1,
+                dp1=self._dp_initial,
             )
 
     def _checkpoint_remapping_out(
@@ -407,7 +409,7 @@ class DynamicalCore:
                 ),  # [x, z, y] fortran data
                 te_2d=self._te0_2d,
                 omga=state.omga,
-                dp1=self._dp1,
+                dp1=self._dp_initial,
             )
 
     def _checkpoint_tracer_advection_in(
@@ -417,7 +419,7 @@ class DynamicalCore:
         if self.call_checkpointer:
             self.checkpointer(
                 "Tracer2D1L-In",
-                dp1=self._dp1,
+                dp1=self._dp_initial,
                 mfxd=state.mfxd,
                 mfyd=state.mfyd,
                 cxd=state.cxd,
@@ -431,7 +433,7 @@ class DynamicalCore:
         if self.call_checkpointer:
             self.checkpointer(
                 "Tracer2D1L-Out",
-                dp1=self._dp1,
+                dp1=self._dp_initial,
                 mfxd=state.mfxd,
                 mfyd=state.mfyd,
                 cxd=state.cxd,
@@ -474,7 +476,7 @@ class DynamicalCore:
             self._cappa,
             state.delp,
             state.delz,
-            self._dp1,
+            self._dp_initial,
         )
 
         if self._conserve_total_energy > 0:
@@ -494,7 +496,7 @@ class DynamicalCore:
                 log_on_rank_0("Adjust pt")
             self._pt_adjust_stencil(
                 state.pkz,
-                self._dp1,
+                self._dp_initial,
                 state.q_con,
                 state.pt,
             )
@@ -515,7 +517,7 @@ class DynamicalCore:
             # TODO: why are we copying delp to dp1? what is dp1?
             self._copy_stencil(
                 state.delp,
-                self._dp1,
+                self._dp_initial,
             )
             if __debug__:
                 log_on_rank_0("DynCore")
@@ -532,7 +534,7 @@ class DynamicalCore:
                     self._checkpoint_tracer_advection_in(state)
                     self.tracer_advection(
                         self.tracers,
-                        self._dp1,
+                        self._dp_initial,
                         state.mfxd,
                         state.mfyd,
                         state.cxd,
@@ -587,7 +589,7 @@ class DynamicalCore:
                         self._ak,
                         self._bk,
                         self._pfull,
-                        self._dp1,
+                        self._dp_initial,
                         self._ptop,
                         constants.KAPPA,
                         constants.ZVIR,
