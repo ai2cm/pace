@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Utilities &mdash; Pace  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API" href="api.html" />
+    <link rel="prev" title="Communication" href="communication.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Pace
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fv3.html">FV3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../docker.html">Docker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">pace-util</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="state.html">State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="communication.html">Communication</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nudging">Nudging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#diagnostic-io">Diagnostic IO</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#saving-state-to-disk">Saving state to disk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#loading-fortran-restarts">Loading Fortran Restarts</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="history.html">Changelog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pace</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">pace-util</a> &raquo;</li>
+        
+      <li>Utilities</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/util/utilities.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="utilities">
+<span id="id1"></span><h1>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="nudging">
+<h2>Nudging<a class="headerlink" href="#nudging" title="Permalink to this headline">¶</a></h2>
+<p>Nudging functionality is provided by <a class="reference internal" href="api.html#pace.util.apply_nudging" title="pace.util.apply_nudging"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.apply_nudging()</span></code></a> and <a class="reference internal" href="api.html#pace.util.get_nudging_tendencies" title="pace.util.get_nudging_tendencies"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.get_nudging_tendencies()</span></code></a>.
+The nudging tendencies can be stored to disk by the user, for example using a <a class="reference internal" href="api.html#pace.util.ZarrMonitor" title="pace.util.ZarrMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ZarrMonitor</span></code></a>.
+A runfile using this functionality can be found in the <cite>examples</cite> directory.</p>
+</div>
+<div class="section" id="diagnostic-io">
+<h2>Diagnostic IO<a class="headerlink" href="#diagnostic-io" title="Permalink to this headline">¶</a></h2>
+<p>State can be persisted to disk using e.g. <a class="reference internal" href="api.html#pace.util.write_state" title="pace.util.write_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.write_state()</span></code></a> (described below), <a class="reference internal" href="api.html#pace.util.ZarrMonitor" title="pace.util.ZarrMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ZarrMonitor</span></code></a>, or <a class="reference internal" href="api.html#pace.util.NetCDFMonitor" title="pace.util.NetCDFMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.NetCDFMonitor</span></code></a>. ZarrMonitor involves each rank writing its own file which is ideal if file count is not an issue, while NetCDFMonitor writes one file per tile but requires gathering all tile data onto one rank, which may not be feasible for larger resolutions.</p>
+<p>Initializing the <a class="reference internal" href="api.html#pace.util.ZarrMonitor" title="pace.util.ZarrMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ZarrMonitor</span></code></a> requires passing grid information.
+This can be done directly from the namelist in a configuration dictionary like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pace.util</span>
+<span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;fv3config.yml&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="n">partitioner</span> <span class="o">=</span> <span class="n">pace</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">TilePartitioner</span><span class="o">.</span><span class="n">from_namelist</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;namelist&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Alternatively, the grid information can be specified manually:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">partitioner</span> <span class="o">=</span> <span class="n">pace</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">TilePartitioner</span><span class="p">(</span>
+    <span class="n">layout</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Once you have a <a class="reference internal" href="api.html#pace.util.TilePartitioner" title="pace.util.TilePartitioner"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.TilePartitioner</span></code></a>, the monitor can be created using any Zarr store:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">zarr</span>
+<span class="n">store</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">storage</span><span class="o">.</span><span class="n">DirectoryStore</span><span class="p">(</span><span class="s1">&#39;output_dir&#39;</span><span class="p">)</span>  <span class="c1"># relative or absolute path</span>
+<span class="n">ZarrMonitor</span><span class="p">(</span><span class="n">partitioner</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">mpi_comm</span><span class="o">=</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note this can be used with any directory store available in <code class="docutils literal notranslate"><span class="pre">zarr</span></code>.</p>
+</div>
+<div class="section" id="saving-state-to-disk">
+<h2>Saving state to disk<a class="headerlink" href="#saving-state-to-disk" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes you may want to write out model state to disk so that you can restart the model from this state later.
+We provide a python-centric method for saving out and loading model state.
+<a class="reference internal" href="api.html#pace.util.read_state" title="pace.util.read_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.read_state()</span></code></a> saves the state on the current rank to a file on disk, while <a class="reference internal" href="api.html#pace.util.write_state" title="pace.util.write_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.write_state()</span></code></a> writes the rank’s state to disk.
+Make sure you use different filenames for each rank!</p>
+</div>
+<div class="section" id="loading-fortran-restarts">
+<h2>Loading Fortran Restarts<a class="headerlink" href="#loading-fortran-restarts" title="Permalink to this headline">¶</a></h2>
+<p>A function <a class="reference internal" href="api.html#pace.util.open_restart" title="pace.util.open_restart"><code class="xref py py-func docutils literal notranslate"><span class="pre">pace.util.open_restart()</span></code></a> is available to load restart files that have been output by the Fortran FV3GFS model.
+This routine will handle loading the data on a single processor per tile and then distribute the data to other processes on the same tile.
+This may cause out-of-memory errors, which can be mitigated in a couple different ways through changes to the code base (e.g. loading a subset of the variables or levels at a time before distributing across ranks).</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="api.html" class="btn btn-neutral float-right" title="API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="communication.html" class="btn btn-neutral float-left" title="Communication" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022, AI2 Climate Modeling Team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
