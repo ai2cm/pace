@@ -5,6 +5,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interv
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM
 
 
 @typing.no_type_check
@@ -133,19 +134,13 @@ class Sim1Solver:
         self,
         stencil_factory: StencilFactory,
         p_fac: float,
-        istart,
-        iend,
-        jstart,
-        jend,
-        nk,
+        n_halo: int,
     ):
         self._pfac = p_fac
-        nic = iend - istart + 1
-        njc = jend - jstart + 1
-        self._compute_sim1_solve = stencil_factory.from_origin_domain(
+        self._compute_sim1_solve = stencil_factory.from_dims_halo(
             func=sim1_solver,
-            origin=(istart, jstart, 0),
-            domain=(nic, njc, nk),
+            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_halos=(n_halo, n_halo, 0),
         )
 
     def __call__(

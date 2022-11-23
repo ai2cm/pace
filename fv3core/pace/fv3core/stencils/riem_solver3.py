@@ -164,11 +164,7 @@ class NonhydrostaticVerticalSolver:
         self._sim1_solve = Sim1Solver(
             stencil_factory,
             config.p_fac,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
-            grid_indexing.domain[2] + 1,
+            n_halo=0,
         )
         orchestrate(
             obj=self,
