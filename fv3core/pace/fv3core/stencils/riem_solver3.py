@@ -36,7 +36,7 @@ def precompute(
     pk3: FloatField,
     gamma: FloatField,
     dz: FloatField,
-    p: FloatField,
+    p_gas: FloatField,
     ptop: float,
     peln1: float,
     ptk: float,
@@ -55,7 +55,8 @@ def precompute(
         pk3 (out):
         gamma (out):
         dz (out):
-        p (out): pressure defined at vertical mid levels (Pa)
+        p_gas (out): pressure defined at vertical mid levels due to gas-phase
+            only, excluding condensates (Pa)
     """
     with computation(PARALLEL), interval(...):
         delta_mass = delp
@@ -83,7 +84,7 @@ def precompute(
         gamma = 1.0 / (1.0 - cappa)  # gamma, cp/cv
         delta_mass = delta_mass * constants.RGRAV
     with computation(PARALLEL), interval(0, -1):
-        p = (p_interface_gas[0, 0, 1] - p_interface_gas) / (
+        p_gas = (p_interface_gas[0, 0, 1] - p_interface_gas) / (
             log_p_interface_gas[0, 0, 1] - log_p_interface_gas
         )
         dz = zh[0, 0, 1] - zh
@@ -178,7 +179,7 @@ class NonhydrostaticVerticalSolver:
         self._tmp_pe_init = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
-        self._p = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._p_gas = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._p_interface = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
@@ -216,7 +217,7 @@ class NonhydrostaticVerticalSolver:
         delp: FloatField,
         pt: FloatField,
         zh: FloatField,
-        pe: FloatField,
+        p: FloatField,
         ppe: FloatField,
         pk3: FloatField,
         pk: FloatField,
@@ -244,7 +245,7 @@ class NonhydrostaticVerticalSolver:
             delp (in): vertical delta in pressure
             pt (in): potential temperature
             zh (inout): geopotential height
-            pe (inout): full hydrostatic pressure
+            p (inout): full hydrostatic pressure
             ppe (out): non-hydrostatic pressure perturbation
             pk3 (inout): interface pressure raised to power of kappa
                 using constant kappa
@@ -274,7 +275,7 @@ class NonhydrostaticVerticalSolver:
         self._precompute_stencil(
             delp,
             cappa,
-            pe,
+            p,
             self._tmp_pe_init,
             self._delta_mass,
             zh,
@@ -284,7 +285,7 @@ class NonhydrostaticVerticalSolver:
             pk3,
             self._gamma,
             delz,
-            self._p,
+            self._p_gas,
             ptop,
             peln1,
             ptk,
@@ -294,9 +295,9 @@ class NonhydrostaticVerticalSolver:
             dt,
             self._gamma,
             cappa,
-            pe,
+            p,
             self._delta_mass,
-            self._p,
+            self._p_gas,
             self._p_interface,
             w,
             delz,
@@ -313,7 +314,7 @@ class NonhydrostaticVerticalSolver:
             pk3,
             pk,
             self._p_interface,
-            pe,
+            p,
             ppe,
             self._tmp_pe_init,
             last_call,

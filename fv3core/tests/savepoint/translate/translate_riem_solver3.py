@@ -33,7 +33,12 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
             "delp": {},
             "pt": {},
             "zh": {},
-            "pe": {"istart": grid.is_ - 1, "jstart": grid.js - 1, "kaxis": 1},
+            "p": {
+                "istart": grid.is_ - 1,
+                "jstart": grid.js - 1,
+                "kaxis": 1,
+                "serialname": "pe",
+            },
             "ppe": {},
             "pk3": {},
             "pk": {},
