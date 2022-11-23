@@ -17,7 +17,7 @@ def sim1_solver(
     pm: FloatField,
     pe: FloatField,
     pem: FloatField,
-    wsr: FloatFieldIJ,
+    ws: FloatFieldIJ,
     cp3: FloatField,
     dt: float,
     t1g: float,
@@ -39,7 +39,7 @@ def sim1_solver(
         pm (in):
         pe (out): nonhydrostatic perturbation pressure defined on interfaces
         pem (in):
-        wsr (in):
+        ws (in): surface vertical wind (e.g. due to topography)
         cp3 (in):
     """
     with computation(PARALLEL), interval(0, -1):
@@ -97,7 +97,7 @@ def sim1_solver(
             gam = aa / bet[0, 0, -1]
             bet = dm - (aa + p1 + aa * gam)
             w = (
-                dm * w1 + dt * (pp[0, 0, 1] - pp) - p1 * wsr[0, 0] - aa * w[0, 0, -1]
+                dm * w1 + dt * (pp[0, 0, 1] - pp) - p1 * ws[0, 0] - aa * w[0, 0, -1]
             ) / bet
     with computation(BACKWARD), interval(0, -2):
         w = w - gam[0, 0, 1] * w[0, 0, 1]
@@ -160,7 +160,7 @@ class Sim1Solver:
         w: FloatField,
         dz: FloatField,
         ptr: FloatField,
-        wsr: FloatFieldIJ,
+        ws: FloatFieldIJ,
     ):
         """
         Semi-Implicit Method solver -- solves a vertically tridiagonal
@@ -180,7 +180,7 @@ class Sim1Solver:
           w (inout): vertical velocity
           dz (inout): vertical delta of atmospheric layer in meters
           ptr (in): potential temperature
-          wsr (in): vertical velocity of the lowest level
+          ws (in): surface vertical wind (e.g. due to topography)
         """
 
         # TODO: email Lucas about any remaining variable naming here
@@ -196,7 +196,7 @@ class Sim1Solver:
             pm,
             pe,
             pem,
-            wsr,
+            ws,
             cp3,
             dt,
             t1g,

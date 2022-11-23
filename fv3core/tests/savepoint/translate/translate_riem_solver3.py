@@ -38,7 +38,7 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
             "pk3": {},
             "pk": {},
             "peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
-            "wsd": {"istart": grid.is_, "jstart": grid.js},
+            "ws": {"istart": grid.is_, "jstart": grid.js, "serialname": "wsd"},
         }
         self.in_vars["parameters"] = ["dt", "ptop", "last_call"]
         self.out_vars = {

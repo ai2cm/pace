@@ -206,7 +206,7 @@ class NonhydrostaticVerticalSolver:
         cappa: FloatField,
         ptop: float,
         zs: FloatFieldIJ,
-        wsd: FloatFieldIJ,
+        ws: FloatFieldIJ,
         delz: FloatField,
         q_con: FloatField,
         delp: FloatField,
@@ -234,7 +234,7 @@ class NonhydrostaticVerticalSolver:
             cappa (in):
             ptop (in): pressure at top of atmosphere
             zs (in): surface geopotential height
-            wsd (in): vertical velocity of the lowest level
+            ws (in): surface vertical wind (e.g. due to topography)
             delz (inout): vertical delta of atmospheric layer in meters
             q_con (in): total condensate mixing ratio
             delp (in): vertical delta in pressure
@@ -248,7 +248,6 @@ class NonhydrostaticVerticalSolver:
             peln (out): logarithm of interface pressure, only written if last_call=True
             w (inout): vertical velocity
         """
-        # TODO: wsd is named wsr at the sim1_solver level, consolidate names
 
         # TODO: propagate variable renaming for these into stencils here and
         # in Sim1Solver
@@ -302,7 +301,7 @@ class NonhydrostaticVerticalSolver:
             w,
             delz,
             pt,
-            wsd,
+            ws,
         )
 
         self._finalize_stencil(
