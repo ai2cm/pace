@@ -37,3 +37,4 @@ export MPIRUN_CALL="srun"
 CONTAINER_CMD="" MPIRUN_ARGS="" DEV=n make test_driver_checkpoint
 EOF
 launch_job run.daint.slurm 3600
+cat driver.out
