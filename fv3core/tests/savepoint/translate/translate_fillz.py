@@ -20,7 +20,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
             "dp2": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
             "q2tracers": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
         }
-        self.in_vars["parameters"] = ["im", "km", "nq"]
+        self.in_vars["parameters"] = ["nq"]
         self.out_vars = {
             "q2tracers": {
                 "istart": grid.is_,
@@ -53,7 +53,6 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        inputs["jm"] = 1
         for name, value in tuple(inputs.items()):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
@@ -68,15 +67,18 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
                         value, self.grid.njd, backend=self.stencil_factory.backend
                     )
                 )
-        run_fillz = fillz.FillNegativeTracerValues(
-            self.stencil_factory,
-            self.grid.quantity_factory,
-            inputs.pop("im"),
-            inputs.pop("jm"),
-            inputs.pop("km"),
-            inputs.pop("nq"),
-            inputs["tracers"],
-        )
+        try:
+            # test data is only a single horizontal slice, for some reason
+            jm = self.stencil_factory.grid_indexing.domain[1]
+            self.stencil_factory.grid_indexing.domain[1] = 1
+            run_fillz = fillz.FillNegativeTracerValues(
+                self.stencil_factory,
+                self.grid.quantity_factory,
+                inputs.pop("nq"),
+                inputs["tracers"],
+            )
+        finally:
+            self.stencil_factory.grid_indexing.domain[1] = jm
         run_fillz(**inputs)
         ds = self.grid.default_domain_dict()
         ds.update(self.out_vars["q2tracers"])

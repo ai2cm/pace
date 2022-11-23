@@ -8,7 +8,7 @@ import pace.util
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
-from pace.util import X_DIM, Y_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 @typing.no_type_check
@@ -119,9 +119,6 @@ class FillNegativeTracerValues:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: pace.util.QuantityFactory,
-        im: int,
-        jm: int,
-        km: int,
         nq: int,
         tracers: Dict[str, pace.util.Quantity],
     ):
@@ -131,10 +128,9 @@ class FillNegativeTracerValues:
             dace_compiletime_args=["tracers"],
         )
         self._nq = int(nq)
-        self._fix_tracer_stencil = stencil_factory.from_origin_domain(
+        self._fix_tracer_stencil = stencil_factory.from_dims_halo(
             fix_tracer,
-            origin=stencil_factory.grid_indexing.origin_compute(),
-            domain=(int(im), int(jm), int(km)),
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         # Setting initial value of upper_fix to zero is only needed for validation.
