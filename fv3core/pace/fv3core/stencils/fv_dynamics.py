@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from typing import Dict, Mapping, Optional
+from typing import Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval
@@ -512,13 +512,36 @@ class DynamicalCore:
         for k_split in dace_no_unroll(range(self._k_split)):
             n_map = k_split + 1
             last_step = k_split == self._k_split - 1
-            self._dyn(
-                state=state,
-                tracers=self.tracers,
-                n_map=n_map,
-                timer=timer,
-                timestep=self._timestep / self._k_split,
+            # TODO: why are we copying delp to dp1? what is dp1?
+            self._copy_stencil(
+                state.delp,
+                self._dp1,
             )
+            if __debug__:
+                log_on_rank_0("DynCore")
+            with timer.clock("DynCore"):
+                self.acoustic_dynamics(
+                    state,
+                    timestep=self._timestep / self._k_split,
+                    n_map=n_map,
+                )
+            if self.config.z_tracer:
+                if __debug__:
+                    log_on_rank_0("TracerAdvection")
+                with timer.clock("TracerAdvection"):
+                    self._checkpoint_tracer_advection_in(state)
+                    self.tracer_advection(
+                        self.tracers,
+                        self._dp1,
+                        state.mfxd,
+                        state.mfyd,
+                        state.cxd,
+                        state.cyd,
+                        self._timestep / self._k_split,
+                    )
+                    self._checkpoint_tracer_advection_out(state)
+            else:
+                raise NotImplementedError("z_tracer=False is not implemented")
 
             # 1 is shallow water model, don't need vertical remapping
             # 2 and 3 are also simple baroclinic models that don't need
@@ -578,88 +601,23 @@ class DynamicalCore:
                 # using an if-statement?
                 if last_step:
                     da_min: float = self._get_da_min()
-                    self.post_remap(
-                        state,
-                        is_root_rank=self.comm_rank == 0,
-                        da_min=da_min,
-                    )
-        self.wrapup(
-            state,
-            is_root_rank=self.comm_rank == 0,
-        )
+                    if not self.config.hydrostatic:
+                        if __debug__:
+                            log_on_rank_0("Omega")
+                        # TODO: GFDL should implement the "vulcan omega" update,
+                        # use hydrostatic omega instead of this conversion
+                        self._omega_from_w(
+                            state.delp,
+                            state.delz,
+                            state.w,
+                            state.omga,
+                        )
+                    if self.config.nf_omega > 0:
+                        if __debug__:
+                            log_on_rank_0("Del2Cubed")
+                        self._omega_halo_updater.update()
+                        self._hyperdiffusion(state.omga, 0.18 * da_min)
 
-    # TODO: flatten the methods here for clarity
-    def _dyn(
-        self,
-        state: DycoreState,
-        tracers: Dict[str, pace.util.Quantity],
-        n_map,
-        timestep: float,  # time to step forward by
-        timer: pace.util.Timer,
-    ):
-        # TODO: why are we copying delp to dp1? what is dp1?
-        self._copy_stencil(
-            state.delp,
-            self._dp1,
-        )
-        if __debug__:
-            log_on_rank_0("DynCore")
-        with timer.clock("DynCore"):
-            self.acoustic_dynamics(
-                state,
-                timestep=timestep,
-                n_map=n_map,
-            )
-        if self.config.z_tracer:
-            if __debug__:
-                log_on_rank_0("TracerAdvection")
-            with timer.clock("TracerAdvection"):
-                self._checkpoint_tracer_advection_in(state)
-                self.tracer_advection(
-                    tracers,
-                    self._dp1,
-                    state.mfxd,
-                    state.mfyd,
-                    state.cxd,
-                    state.cyd,
-                    self._timestep / self._k_split,
-                )
-                self._checkpoint_tracer_advection_out(state)
-        else:
-            raise NotImplementedError("z_tracer=False is not implemented")
-
-    def post_remap(
-        self,
-        state: DycoreState,
-        is_root_rank: bool,
-        da_min: float,
-    ):
-        """
-        Compute diagnostic omega as required for physics, and
-        apply hyperdiffusion on it.
-        """
-        if not self.config.hydrostatic:
-            if __debug__:
-                log_on_rank_0("Omega")
-            # TODO: GFDL should implement the "vulcan omega" update,
-            # use hydrostatic omega instead of this conversion
-            self._omega_from_w(
-                state.delp,
-                state.delz,
-                state.w,
-                state.omga,
-            )
-        if self.config.nf_omega > 0:
-            if __debug__:
-                log_on_rank_0("Del2Cubed")
-            self._omega_halo_updater.update()
-            self._hyperdiffusion(state.omga, 0.18 * da_min)
-
-    def wrapup(
-        self,
-        state: DycoreState,
-        is_root_rank: bool,
-    ):
         if __debug__:
             log_on_rank_0("Neg Adj 3")
         self._adjust_tracer_mixing_ratio(
