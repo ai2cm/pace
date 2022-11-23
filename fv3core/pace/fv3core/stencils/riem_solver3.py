@@ -34,9 +34,9 @@ def precompute(
     p_interface: FloatField,
     log_p_interface: FloatField,
     pk3: FloatField,
-    gm: FloatField,
+    gamma: FloatField,
     dz: FloatField,
-    pm: FloatField,
+    p: FloatField,
     ptop: float,
     peln1: float,
     ptk: float,
@@ -53,9 +53,9 @@ def precompute(
         p_interface (out): pressure defined on vertical interfaces (Pa)
         log_p_interface (out): log(pressure) defined on vertical interfaces
         pk3 (out):
-        gm (out):
+        gamma (out):
         dz (out):
-        pm (out):
+        p (out): pressure defined at vertical mid levels (Pa)
     """
     with computation(PARALLEL), interval(...):
         delta_mass = delp
@@ -65,23 +65,27 @@ def precompute(
             p_interface = ptop
             log_p_interface = peln1
             pk3 = ptk
-            peg = ptop
-            pelng = peln1
+            p_interface_gas = ptop
+            log_p_interface_gas = peln1
         with interval(1, None):
             # TODO consolidate with riem_solver_c, same functions, math functions
             p_interface = p_interface[0, 0, -1] + delta_mass[0, 0, -1]
             log_p_interface = log(p_interface)
             # Excluding contribution from condensates
             # peln used during remap; pk3 used only for p_grad
-            peg = peg[0, 0, -1] + delta_mass[0, 0, -1] * (1.0 - q_con[0, 0, -1])
-            pelng = log(peg)
+            p_interface_gas = p_interface_gas[0, 0, -1] + delta_mass[0, 0, -1] * (
+                1.0 - q_con[0, 0, -1]
+            )
+            log_p_interface_gas = log(p_interface_gas)
             # interface pk is using constant akap
             pk3 = exp(constants.KAPPA * log_p_interface)
     with computation(PARALLEL), interval(...):
-        gm = 1.0 / (1.0 - cappa)  # gamma, cp/cv
+        gamma = 1.0 / (1.0 - cappa)  # gamma, cp/cv
         delta_mass = delta_mass * constants.RGRAV
     with computation(PARALLEL), interval(0, -1):
-        pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
+        p = (p_interface_gas[0, 0, 1] - p_interface_gas) / (
+            log_p_interface_gas[0, 0, 1] - log_p_interface_gas
+        )
         dz = zh[0, 0, 1] - zh
 
 
@@ -178,14 +182,16 @@ class NonhydrostaticVerticalSolver:
         self._tmp_pe_init = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
-        self._tmp_pm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._p = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._p_interface = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
         self._log_p_interface = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="log(Pa)"
         )
-        self._tmp_gm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
+
+        # gamma parameter is (cp/cv)
+        self._gamma = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
 
         riemorigin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(0, 0, 1))
@@ -259,9 +265,6 @@ class NonhydrostaticVerticalSolver:
         #     we should be able to remove this as gt4py optimizes automatically
         # peln2 is peln copied into a 2d variable, copied for vectorization reasons
         #     we should be able to remove this as gt4py optimizes automatically
-        # peg is hydrostatic pressure entirely due to gas phase
-        #       (with condensates removed)
-        # pelng is log of peg
         # pk3 is p**kappa
         # pm is layer-mean hydrostatic pressure due to gas phase
         #       (with condensates removed)
@@ -283,9 +286,9 @@ class NonhydrostaticVerticalSolver:
             self._p_interface,
             self._log_p_interface,
             pk3,
-            self._tmp_gm,
+            self._gamma,
             delz,
-            self._tmp_pm,
+            self._p,
             ptop,
             peln1,
             ptk,
@@ -293,11 +296,11 @@ class NonhydrostaticVerticalSolver:
 
         self._sim1_solve(
             dt,
-            self._tmp_gm,
+            self._gamma,
             cappa,
             pe,
             self._delta_mass,
-            self._tmp_pm,
+            self._p,
             self._p_interface,
             w,
             delz,
