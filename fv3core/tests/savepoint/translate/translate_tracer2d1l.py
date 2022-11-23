@@ -28,11 +28,15 @@ class TranslateTracer2D1L(ParallelTranslate):
         self._base.in_vars["data_vars"] = {
             "tracers": {},
             "dp1": {},
-            "mfxd": grid.x3d_compute_dict(),
-            "mfyd": grid.y3d_compute_dict(),
-            "cxd": grid.x3d_compute_domain_y_dict(),
-            "cyd": grid.y3d_compute_domain_x_dict(),
+            "x_mass_flux": grid.x3d_compute_dict(),
+            "y_mass_flux": grid.y3d_compute_dict(),
+            "x_courant": grid.x3d_compute_domain_y_dict(),
+            "y_courant": grid.y3d_compute_domain_x_dict(),
         }
+        self._base.in_vars["data_vars"]["x_mass_flux"]["serialname"] = "mfxd"
+        self._base.in_vars["data_vars"]["y_mass_flux"]["serialname"] = "mfyd"
+        self._base.in_vars["data_vars"]["x_courant"]["serialname"] = "cxd"
+        self._base.in_vars["data_vars"]["y_courant"]["serialname"] = "cyd"
         self._base.in_vars["parameters"] = ["nq"]
         self._base.out_vars = self._base.in_vars["data_vars"]
         self.stencil_factory = stencil_factory
