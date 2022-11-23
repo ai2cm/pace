@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import pace.dsl
 import pace.util
 from pace.fv3core.stencils.map_single import MapSingle
-from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 class MapSingleFactory:
@@ -29,7 +29,7 @@ class MapSingleFactory:
         *args,
         **kwargs,
     ):
-        key_tuple = (kord, mode, (X_DIM, Y_DIM, Z_DIM))
+        key_tuple = (kord, mode, (X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM))
         if key_tuple not in self._object_pool:
             # stencil_factory: StencilFactory,
             # quantity_factory: pace.util.QuantityFactory,

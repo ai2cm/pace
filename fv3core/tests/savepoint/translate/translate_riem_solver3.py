@@ -54,13 +54,14 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
         self.out_vars = {
             "zh": {"kend": grid.npz},
             "w": {},
-            "pe": {
+            "p": {
                 "istart": grid.is_ - 1,
                 "iend": grid.ie + 1,
                 "jstart": grid.js - 1,
                 "jend": grid.je + 1,
                 "kend": grid.npz,
                 "kaxis": 1,
+                "serialname": "pe",
             },
             "log_p_interface": {
                 "istart": grid.is_,

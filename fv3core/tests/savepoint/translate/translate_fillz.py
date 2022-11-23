@@ -67,18 +67,12 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
                         value, self.grid.njd, backend=self.stencil_factory.backend
                     )
                 )
-        try:
-            # test data is only a single horizontal slice, for some reason
-            jm = self.stencil_factory.grid_indexing.domain[1]
-            self.stencil_factory.grid_indexing.domain[1] = 1
-            run_fillz = fillz.FillNegativeTracerValues(
-                self.stencil_factory,
-                self.grid.quantity_factory,
-                inputs.pop("nq"),
-                inputs["tracers"],
-            )
-        finally:
-            self.stencil_factory.grid_indexing.domain[1] = jm
+        run_fillz = fillz.FillNegativeTracerValues(
+            self.stencil_factory,
+            self.grid.quantity_factory,
+            inputs.pop("nq"),
+            inputs["tracers"],
+        )
         run_fillz(**inputs)
         ds = self.grid.default_domain_dict()
         ds.update(self.out_vars["q2tracers"])

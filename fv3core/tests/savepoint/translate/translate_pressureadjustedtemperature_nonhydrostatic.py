@@ -35,10 +35,9 @@ class TranslatePressureAdjustedTemperature_NonHydrostatic(
             "delz": {},
             "pt": {},
             "heat_source": {"serialname": "heat_source_dyn"},
-            "pkz": grid.compute_dict(),
         }
         self.in_vars["parameters"] = ["bdt"]
-        self.out_vars = {"pt": {}, "pkz": grid.compute_dict()}
+        self.out_vars = {"pt": {}}
         self.stencil_factory = stencil_factory
 
     def compute_from_storage(self, inputs):
