@@ -80,7 +80,7 @@ class _ChunkedNetCDFWriter:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
                 data_vars[name] = xr.DataArray(
-                    to_numpy(chunked.data.view[:]),
+                    to_numpy(chunked.data.view[:], dtype=np.float32),
                     dims=chunked.data.dims,
                     attrs=chunked.data.attrs,
                 ).expand_dims({"tile": [self._tile]}, axis=1)
@@ -104,7 +104,7 @@ class NetCDFMonitor:
     sympl.Monitor-style object for storing model state dictionaries netCDF files.
     """
 
-    _CONSTANT_FILENAME = "constants.nc"
+    _CONSTANT_FILENAME = "constants"
 
     def __init__(
         self,
@@ -172,7 +172,7 @@ class NetCDFMonitor:
                 Path(self._path) / NetCDFMonitor._CONSTANT_FILENAME
             )
             for name, quantity in state.items():
-                path_for_grid = constants_filename + name
+                path_for_grid = constants_filename+ "_" + name + ".nc"
 
                 if self._fs.exists(path_for_grid):
                     with self._fs.open(path_for_grid, "rb") as f:
