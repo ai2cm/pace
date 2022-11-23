@@ -2127,7 +2127,7 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = np.empty((3, 4))
+        acco = numpy_module.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
