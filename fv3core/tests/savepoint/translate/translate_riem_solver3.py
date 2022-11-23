@@ -37,7 +37,12 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
             "ppe": {},
             "pk3": {},
             "pk": {},
-            "peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
+            "log_p_interface": {
+                "istart": grid.is_,
+                "jstart": grid.js,
+                "kaxis": 1,
+                "serialname": "peln",
+            },
             "ws": {"istart": grid.is_, "jstart": grid.js, "serialname": "wsd"},
         }
         self.in_vars["parameters"] = ["dt", "ptop", "last_call"]
@@ -52,13 +57,14 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
                 "kend": grid.npz,
                 "kaxis": 1,
             },
-            "peln": {
+            "log_p_interface": {
                 "istart": grid.is_,
                 "iend": grid.ie,
                 "jstart": grid.js,
                 "jend": grid.je,
                 "kend": grid.npz,
                 "kaxis": 1,
+                "serialname": "peln",
             },
             "ppe": {"kend": grid.npz},
             "delz": {},
