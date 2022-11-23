@@ -66,10 +66,6 @@ class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
             self.grid.quantity_factory,
             inputs["kord"],
             inputs["iv"],
-            i1,
-            i2,
-            j1,
-            j2,
         )
         self.make_storage_data_input_vars(inputs)
         if "qs" not in inputs:

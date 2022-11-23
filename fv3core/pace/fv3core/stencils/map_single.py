@@ -123,17 +123,11 @@ class MapSingle:
             compute_dims=dims,
         )
 
-        shape = grid_indexing.domain_compute()
-        origin = grid_indexing.origin_compute()
         self._remap_profile = RemapProfile(
             stencil_factory,
             quantity_factory,
             kord,
             mode,
-            origin[0],
-            origin[0] + shape[0],
-            origin[1],
-            origin[1] + shape[1],
         )
 
         self._lagrangian_contributions = stencil_factory.from_dims_halo(
