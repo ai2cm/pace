@@ -47,8 +47,6 @@ def moist_pt_func(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,

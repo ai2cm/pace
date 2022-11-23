@@ -81,8 +81,6 @@ def moist_cv_pt_pressure(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,
@@ -108,8 +106,6 @@ def moist_cv_pt_pressure(
         qice (in):
         qgraupel (in):
         q_con (out):
-        gz (out):
-        cvm (out):
         pt (inout):
         cappa (out):
         delp (inout):
@@ -136,8 +132,6 @@ def moist_cv_pt_pressure(
                 qice,
                 qgraupel,
                 q_con,
-                gz,
-                cvm,
                 pt,
                 cappa,
                 delp,
@@ -587,8 +581,6 @@ class LagrangianToEulerian:
             tracers["qice"],
             tracers["qgraupel"],
             q_con,
-            self._gz,
-            self._cvm,
             pt,
             cappa,
             delp,
