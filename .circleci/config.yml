@@ -495,8 +495,8 @@ jobs:
             rm -rf gh-pages/docs
             mv docs/_build/html gh-pages/docs
             hash=$(git rev-parse --short HEAD)
-            git config user.name "CircleCI"
-            git config user.email "ai2cm@allenai.org"
+            git config --global user.name "CircleCI"
+            git config --global user.email "ai2cm@allenai.org"
             git -C gh-pages commit -a -m "Docs for $hash"
             git -C gh-pages push 
 
