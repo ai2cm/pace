@@ -151,8 +151,8 @@ def p_grad_c_stencil(
     """
     from __externals__ import hydrostatic
 
-    # TODO: reference derivation in SJ Lin 1997 paper,
-    # FV3 documentation section 6.6 (?)
+    # derivation in Lin 1997 https://doi.org/10.1002/qj.49712354214
+    # FV3 documentation Section 6.6
 
     with computation(PARALLEL), interval(...):
         if __INLINED(hydrostatic):
