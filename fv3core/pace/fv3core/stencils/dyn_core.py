@@ -572,8 +572,8 @@ class AcousticDynamics:
                 tau=config.tau,
                 hydrostatic=config.hydrostatic,
             )
-        self._compute_pkz_tempadjust = stencil_factory.from_origin_domain(
-            temperature_adjust.compute_pkz_tempadjust,
+        self._apply_diffusive_heating = stencil_factory.from_origin_domain(
+            temperature_adjust.apply_diffusive_heating,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.restrict_vertical(
                 nk=self._nk_heat_dissipation
@@ -964,8 +964,7 @@ class AcousticDynamics:
                 # TODO: it looks like state.pkz is being used as a temporary here,
                 # and overwritten at the start of remapping. See if we can make it
                 # an internal temporary of this stencil.
-                # this is really just applying the heating, rename it appropriately
-                self._compute_pkz_tempadjust(
+                self._apply_diffusive_heating(
                     state.delp,
                     state.delz,
                     self.cappa,
