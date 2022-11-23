@@ -32,7 +32,7 @@ from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from pace.fv3core.stencils.del2cubed import HyperdiffusionDamping
 from pace.fv3core.stencils.pk3_halo import PK3Halo
-from pace.fv3core.stencils.riem_solver3 import RiemannSolver3
+from pace.fv3core.stencils.riem_solver3 import NonhydrostaticVerticalSolver
 from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
 from pace.util import (
     X_DIM,
@@ -469,12 +469,12 @@ class AcousticDynamics:
                 hord_tm=config.hord_tm,
                 column_namelist=column_namelist,
             )
-            self.riem_solver3 = RiemannSolver3(
+            self.vertical_solver = NonhydrostaticVerticalSolver(
                 stencil_factory,
                 quantity_factory=quantity_factory,
                 config=config.riemann,
             )
-            self.riem_solver_c = RiemannSolverC(
+            self.vertical_solver_cgrid = RiemannSolverC(
                 stencil_factory, quantity_factory=quantity_factory, p_fac=config.p_fac
             )
             origin, domain = grid_indexing.get_origin_domain(
@@ -794,7 +794,7 @@ class AcousticDynamics:
                 #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
                 # DaCe has already a fix on their side and it awaits release
                 # issue
-                self.riem_solver_c(
+                self.vertical_solver_cgrid(
                     dt2,
                     self.cappa,
                     self._ptop,
@@ -875,7 +875,7 @@ class AcousticDynamics:
                     ws=self._wsd,
                     dt=dt_acoustic_substep,
                 )
-                self.riem_solver3(
+                self.vertical_solver(
                     remap_step,
                     dt_acoustic_substep,
                     self.cappa,

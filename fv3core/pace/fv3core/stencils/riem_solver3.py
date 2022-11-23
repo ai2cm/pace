@@ -138,9 +138,7 @@ def finalize(
             zh = zh[0, 0, 1] - dz
 
 
-# TODO: rename to something like NonhydrostaticVerticalSolver
-# since this is not a riemann solver
-class RiemannSolver3:
+class NonhydrostaticVerticalSolver:
     """
     Fortran subroutine Riem_Solver3
 
