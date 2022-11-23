@@ -500,7 +500,7 @@ jobs:
             git config --global user.email "ai2cm@allenai.org"
             git -C gh-pages add docs/
             git -C gh-pages commit -a -m "Docs for $hash"
-            git -C gh-pages push 
+            git -C gh-pages push
 
 workflows:
   version: 2
@@ -636,5 +636,5 @@ workflows:
             tags:
               only: /^v.*/
             branches:
-              only: 
+              only:
                 - main
