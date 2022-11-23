@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
@@ -565,6 +567,7 @@ class RemapProfile:
         quantity_factory: pace.util.QuantityFactory,
         kord: int,
         iv: int,
+        dims: Sequence[str],
     ):
         """
         The constraints on the spline are set by kord and iv.
@@ -574,6 +577,7 @@ class RemapProfile:
             quantity_factory: creates quantities
             kord: ???
             iv: ???
+            dims: dimensions on which to operate on inputs
         """
         orchestrate(
             obj=self,
@@ -592,19 +596,19 @@ class RemapProfile:
 
         self._set_initial_values = stencil_factory.from_dims_halo(
             func=set_initial_vals,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=list(dims[:2]) + [Z_INTERFACE_DIM],
             externals={"iv": iv, "kord": abs(kord)},
         )
 
         self._apply_constraints = stencil_factory.from_dims_halo(
             func=apply_constraints,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=dims,
             externals={"iv": iv, "kord": abs(kord)},
         )
 
         self._set_interpolation_coefficients = stencil_factory.from_dims_halo(
             func=set_interpolation_coefficients,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_dims=dims,
             externals={"iv": iv, "kord": abs(kord)},
         )
 
@@ -621,8 +625,8 @@ class RemapProfile:
         """
         Calculates the interpolation coefficients for a cubic-spline which models the
         distribution of the remapped field within each deformed grid cell.
-        The constraints on the spline are set by kord and iv.
-        Arguments:
+
+        Args:
             qs (in): Bottom boundary condition
             a4_1 (out): The first interpolation coefficient
             a4_2 (out): The second interpolation coefficient

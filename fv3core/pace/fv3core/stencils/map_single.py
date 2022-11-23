@@ -128,6 +128,7 @@ class MapSingle:
             quantity_factory,
             kord,
             mode,
+            dims=dims,
         )
 
         self._lagrangian_contributions = stencil_factory.from_dims_halo(
