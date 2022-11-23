@@ -54,10 +54,13 @@ def compute_u_contra_dyc(
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
-        # TODO: refactor into a call to contravariant()
-        u_contra_dyc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
+        # TODO: why does vc_from_va sometimes have different sign than vc?
+        vc_from_va = 0.5 * (va[0, -1, 0] + va)
+        # TODO: why do we use vc_from_va and not just vc?
+        u_contra = contravariant(u, vc_from_va, cosa_v, sina_v)
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            u_contra_dyc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
+            u_contra = u * sin_sg4[0, -1] if vc > 0 else u * sin_sg2
+        u_contra_dyc = u_contra * dyc
 
 
 def compute_v_contra_dxc(
@@ -86,10 +89,13 @@ def compute_v_contra_dxc(
     from __externals__ import i_end, i_start
 
     with computation(PARALLEL), interval(...):
-        # TODO: refactor into a call to contravariant()
-        v_contra_dxc = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
+        # TODO: why does uc_from_ua sometimes have different sign than uc?
+        uc_from_ua = 0.5 * (ua[-1, 0, 0] + ua)
+        # TODO: why do we use uc_from_ua and not just uc?
+        v_contra = contravariant(v, uc_from_ua, cosa_u, sina_u)
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            v_contra_dxc = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
+            v_contra = v * sin_sg3[-1, 0] if uc > 0 else v * sin_sg1
+        v_contra_dxc = v_contra * dxc
 
 
 def delpc_computation(
@@ -115,7 +121,10 @@ def delpc_computation(
             - u_contra_dxc
         )
 
-    # TODO: why is this not "symmetric", i.e. why is there no corresponding x operation?
+    # dual quadrilateral becomes dual triangle, at the corners, so there is
+    # an extraneous term in the divergence calculation. This is always
+    # done using the y-component, though it could be done with either
+    # the y- or x-component (they should be identical).
     with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
             delpc = delpc - v_contra_dyc[0, -1, 0]
@@ -124,95 +133,6 @@ def delpc_computation(
 
     with computation(PARALLEL), interval(...):
         delpc = rarea_c * delpc
-
-
-def get_delpc(
-    u: FloatField,
-    v: FloatField,
-    ua: FloatField,
-    va: FloatField,
-    cosa_u: FloatFieldIJ,
-    sina_u: FloatFieldIJ,
-    dxc: FloatFieldIJ,
-    dyc: FloatFieldIJ,
-    uc: FloatField,
-    vc: FloatField,
-    sin_sg1: FloatFieldIJ,
-    sin_sg2: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    cosa_v: FloatFieldIJ,
-    sina_v: FloatFieldIJ,
-    rarea_c: FloatFieldIJ,
-    delpc: FloatField,
-):
-    """
-    Args:
-        u (in):
-        v (in):
-        ua (in):
-        va (in):
-        cosa_u (in):
-        sina_u (in):
-        dxc (in):
-        dyc (in):
-        uc (in):
-        vc (in):
-        sin_sg1 (in):
-        sin_sg2 (in):
-        sin_sg3 (in):
-        sin_sg4 (in):
-        cosa_v (in):
-        sina_v (in):
-        rarea_c (in):
-        delpc (out):
-    """
-    from __externals__ import i_end, i_start, j_end, j_start
-
-    # in the Fortran, u_contra_dyc is called ke and v_contra_dxc is called vort
-    # dual quadrilateral becomes dual triangle, at the corners, so there is
-    # an extraneous term in the divergence calculation. This is always
-    # done using the y-component, though it could be done with either
-    # the y- or x-component (they should be identical).
-    # TODO: draw out a diagram for this and add some docs
-
-    with computation(PARALLEL), interval(...):
-        # TODO: why does vc_from_va sometimes have different sign than vc?
-        vc_from_va = 0.5 * (va[0, -1, 0] + va)
-        # TODO: why do we use vc_from_va and not just vc?
-        u_contra = contravariant(u, vc_from_va, cosa_v, sina_v)
-        with horizontal(region[:, j_start], region[:, j_end + 1]):
-            u_contra = u * sin_sg4[0, -1] if vc > 0 else u * sin_sg2
-        u_contra_dyc = u_contra * dyc
-
-        # TODO: why does uc_from_ua sometimes have different sign than uc?
-        uc_from_ua = 0.5 * (ua[-1, 0, 0] + ua)
-        # TODO: why do we use uc_from_ua and not just uc?
-        v_contra = contravariant(v, uc_from_ua, cosa_u, sina_u)
-        with horizontal(region[i_start, :], region[i_end + 1, :]):
-            v_contra = v * sin_sg3[-1, 0] if uc > 0 else v * sin_sg1
-        v_contra_dxc = v_contra * dxc
-        with horizontal(
-            region[i_start, j_end + 1],
-            region[i_end + 1, j_end + 1],
-            region[i_start, j_start - 1],
-            region[i_end + 1, j_start - 1],
-        ):
-            # TODO: seems odd that this adjustment is only needed for `v_contra_dxc`
-            # but is not needed for `u_contra_dyc`. Is this a bug? Add a comment
-            # describing what this adjustment is doing and why.
-            v_contra_dxc = 0.0
-
-    with computation(PARALLEL), interval(...):
-        delpc = (
-            v_contra_dxc[0, -1, 0]
-            - v_contra_dxc
-            + u_contra_dyc[-1, 0, 0]
-            - u_contra_dyc
-        )
-        delpc = (
-            rarea_c * delpc
-        )  # TODO: can we multiply by rarea_c on the previous line?
 
 
 def damping(
@@ -434,12 +354,6 @@ class DivergenceDamping:
 
         self.u_contra_dyc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
         self.v_contra_dxc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
-
-        self._get_delpc = low_k_stencil_factory.from_dims_halo(
-            func=get_delpc,
-            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            compute_halos=(0, 0),
-        )
 
         self._damping = low_k_stencil_factory.from_dims_halo(
             damping,
