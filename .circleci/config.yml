@@ -484,12 +484,12 @@ jobs:
             . venv/bin/activate
             pip install -r requirements_docs.txt -c constraints.txt
       - run:
-          name: make docs
+          name: Make docs
           command: |
             . venv/bin/activate
             make docs
       - run:
-          name: move into place
+          name: Move into place
           command: |
             git clone --branch gh-pages git@github.com:ai2cm/pace.git gh-pages
             rm -rf gh-pages/docs
@@ -630,10 +630,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - push-docs:
+      - push_docs:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              only: 
-                - main
+            # branches:
+            #   only: 
+            #     - main
