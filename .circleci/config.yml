@@ -627,3 +627,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - push-docs:
+          filters:
+            tags:
+              only: /^v.*/
