@@ -371,7 +371,6 @@ class DynamicalCore:
                 ua=state.ua,
                 va=state.va,
                 cappa=self._cappa,
-                pkz=state.pkz,
                 pk=state.pk,
                 pe=state.pe.transpose(
                     [X_DIM, Z_INTERFACE_DIM, Y_DIM]

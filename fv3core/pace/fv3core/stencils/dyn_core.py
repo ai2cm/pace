@@ -970,6 +970,5 @@ class AcousticDynamics:
                     self.cappa,
                     self._heat_source,
                     state.pt,
-                    state.pkz,
                     delt_time_factor,
                 )

@@ -11,7 +11,6 @@ def apply_diffusive_heating(
     cappa: FloatField,
     heat_source: FloatField,
     pt: FloatField,
-    pkz: FloatField,
     delt_time_factor: float,
 ):
     """
@@ -26,7 +25,6 @@ def apply_diffusive_heating(
         heat_source (in): heat source from vorticity damping implied by
             energy conservation
         pt (inout): Air potential temperature
-        pkz (out): Layer mean pressure raised to the power of Kappa
         delta_time_factor (in): scaled time step
     """
     with computation(PARALLEL), interval(...):
