@@ -347,7 +347,11 @@ class DynamicalCore:
                 v=state.v,
                 w=state.w,
                 delz=state.delz,
-                ua=state.ua,
+                # ua is not checked as its halo values differ from Fortran,
+                # this can be re-enabled if no longer comparing to Fortran, if the
+                # Fortran is updated to match the Python, or if the checkpointer
+                # can check only the compute domain values
+                # ua=state.ua,
                 va=state.va,
                 uc=state.uc,
                 vc=state.vc,
@@ -407,8 +411,6 @@ class DynamicalCore:
                 pe=state.pe.transpose(
                     [X_DIM, Z_INTERFACE_DIM, Y_DIM]
                 ),  # [x, z, y] fortran data
-                te_2d=self._te0_2d,
-                omga=state.omga,
                 dp1=self._dp_initial,
             )
 
@@ -573,8 +575,6 @@ class DynamicalCore:
                         state.u,
                         state.v,
                         state.w,
-                        state.ua,
-                        state.va,
                         self._cappa,
                         state.q_con,
                         state.qcld,
@@ -582,13 +582,10 @@ class DynamicalCore:
                         state.pk,
                         state.pe,
                         state.phis,
-                        self._te0_2d,
                         state.ps,
                         self._wsd,
-                        state.omga,
                         self._ak,
                         self._bk,
-                        self._pfull,
                         self._dp_initial,
                         self._ptop,
                         constants.KAPPA,
@@ -596,7 +593,6 @@ class DynamicalCore:
                         last_step,
                         self._conserve_total_energy,
                         self._timestep / self._k_split,
-                        self._timestep,
                     )
                     self._checkpoint_remapping_out(state)
                 # TODO: can we pull this block out of the loop intead of

@@ -317,6 +317,7 @@ class LagrangianToEulerian:
 
         self._pe1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
         self._pe2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._pe3 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
         self._dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._pn2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._pe0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
@@ -501,8 +502,6 @@ class LagrangianToEulerian:
         u: FloatField,
         v: FloatField,
         w: FloatField,
-        ua: FloatField,  # TODO: remove this arg and use an internal temporary instead
-        va: FloatField,  # TODO: remove unused arg
         cappa: FloatField,
         q_con: FloatField,
         q_cld: FloatField,
@@ -510,13 +509,10 @@ class LagrangianToEulerian:
         pk: FloatField,
         pe: FloatField,
         hs: FloatFieldIJ,
-        te0_2d: FloatFieldIJ,  # TODO: remove unused arg
         ps: FloatFieldIJ,
         wsd: FloatFieldIJ,
-        omga: FloatField,  # TODO: remove unused arg
         ak: FloatFieldK,
         bk: FloatFieldK,
-        pfull: FloatFieldK,  # TODO: remove unused arg
         dp1: FloatField,
         ptop: float,
         akap: float,
@@ -524,7 +520,6 @@ class LagrangianToEulerian:
         last_step: bool,
         consv_te: float,
         mdt: float,
-        bdt: float,  # TODO: remove unused arg
     ):
         """
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
@@ -644,9 +639,9 @@ class LagrangianToEulerian:
         self._pressures_mapv(pe, ak, bk, self._pe0, self._pe3)
         self._map_single_v(v, self._pe0, self._pe3)
 
-        self._update_ua(self._pe2, ua)
+        self._update_ua(self._pe2, self._pe3)
 
-        self._copy_from_below_stencil(ua, pe)
+        self._copy_from_below_stencil(self._pe3, pe)
         dtmp = 0.0
         if last_step:
             if consv_te > CONSV_MIN:
