@@ -1,8 +1,19 @@
+import copy
 import os.path
 import subprocess
 from typing import List, Mapping, Protocol
 
+import numpy as np
+
 import pace.util
+from pace.driver.performance.report import (
+    Report,
+    TimeReport,
+    collect_keys_from_data,
+    gather_hit_counts,
+    get_experiment_info,
+    write_to_timestamped_json,
+)
 
 from .report import collect_data_and_write_to_file
 
@@ -20,6 +31,8 @@ class AbstractPerformanceCollector(Protocol):
         is_orchestrated: bool,
         dt_atmos: float,
     ):
+        ...
+    def write_out_rank_0(self):
         ...
 
 
@@ -40,6 +53,42 @@ class PerformanceCollector:
         self.times_per_step.append(self.timestep_timer.times)
         self.hits_per_step.append(self.timestep_timer.hits)
         self.timestep_timer.reset()
+
+    def write_out_rank_0(
+        self,
+        backend: str,
+        is_orchestrated: bool,
+        dt_atmos: float,
+    ):
+        if self.comm.Get_rank() == 0:
+            git_hash = "None"
+            self.times_per_step.append(self.total_timer.times)
+            self.hits_per_step.append(self.total_timer.hits)
+            while {} in self.hits_per_step:
+                self.hits_per_step.remove({})
+            keys = collect_keys_from_data(self.times_per_step)
+            data: List[float] = []
+            timing_info = {}
+            for timer_name in keys:
+                data.clear()
+                for data_point in self.times_per_step:
+                    if timer_name in data_point:
+                        data.append(data_point[timer_name])
+                timing_info[timer_name] = TimeReport(
+                    hits=0, times=copy.deepcopy(np.array(data).tolist())
+                )
+            exp_info = get_experiment_info(
+                self.experiment_name,
+                len(self.hits_per_step) - 1,
+                backend,
+                git_hash,
+                is_orchestrated,
+            )
+            timing_info = gather_hit_counts(self.hits_per_step, timing_info)
+            report = Report(setup=exp_info, times=timing_info, dt_atmos=dt_atmos)
+            write_to_timestamped_json(report)
+        else:
+            pass
 
     def write_out_performance(
         self,
@@ -95,4 +144,6 @@ class NullPerformanceCollector:
         is_orchestrated: bool,
         dt_atmos: float,
     ):
+        pass
+    def write_out_rank_0(self):
         pass

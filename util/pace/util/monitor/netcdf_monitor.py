@@ -104,7 +104,7 @@ class NetCDFMonitor:
     sympl.Monitor-style object for storing model state dictionaries netCDF files.
     """
 
-    _CONSTANT_FILENAME = "constants.nc"
+    _CONSTANT_FILENAME = "constants"
 
     def __init__(
         self,
@@ -172,7 +172,7 @@ class NetCDFMonitor:
                 Path(self._path) / NetCDFMonitor._CONSTANT_FILENAME
             )
             for name, quantity in state.items():
-                path_for_grid = constants_filename + name
+                path_for_grid = constants_filename + "_" + name + ".nc"
 
                 if self._fs.exists(path_for_grid):
                     with self._fs.open(path_for_grid, "rb") as f:
