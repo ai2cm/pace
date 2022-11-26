@@ -476,7 +476,7 @@ class Quantity:
         """The descriptor is a property that dace uses."""
         if dace is None:
             raise ModuleNotFoundError("dace is not installed")
-        dace.data.create_datadescriptor(self.data)
+        return dace.data.create_datadescriptor(self.data)
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
