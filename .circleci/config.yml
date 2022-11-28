@@ -469,6 +469,39 @@ jobs:
           name: Test notebooks
           command: make test_notebooks
 
+  push_docs:
+    docker:
+    - image: cimg/python:3.8
+    steps:
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - setup_environment_mpi
+      - run:
+          name: Install doc requirements
+          command: |
+            . venv/bin/activate
+            pip install -r requirements_docs.txt -c constraints.txt
+      - run:
+          name: Make docs
+          command: |
+            . venv/bin/activate
+            make docs
+      - run:
+          name: Move into place
+          command: |
+            git clone --branch gh-pages git@github.com:ai2cm/pace.git gh-pages
+            rm -rf gh-pages/docs
+            mv docs/_build/html gh-pages/docs
+            touch gh-pages/docs/.nojekyll
+            hash=$(git rev-parse --short HEAD)
+            git config --global user.name "CircleCI"
+            git config --global user.email "ai2cm@allenai.org"
+            git -C gh-pages add docs/
+            git -C gh-pages commit -a -m "Docs for $hash"
+            git -C gh-pages push
+
 workflows:
   version: 2
   tagged-build:
@@ -598,3 +631,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - push_docs:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              only:
+                - main
