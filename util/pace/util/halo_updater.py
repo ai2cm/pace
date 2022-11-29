@@ -7,12 +7,8 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import Buffer
-from .halo_data_transformer import (
-    HaloDataTransformer,
-    HaloExchangeSpec,
-    QuantityHaloSpec,
-)
-from .quantity import Quantity
+from .halo_data_transformer import HaloDataTransformer, HaloExchangeSpec
+from .quantity import Quantity, QuantityHaloSpec
 from .rotate import rotate_scalar_data
 from .types import AsyncRequest, NumpyModule
 from .utils import device_synchronize
