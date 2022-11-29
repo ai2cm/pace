@@ -32,7 +32,12 @@ class AbstractPerformanceCollector(Protocol):
         dt_atmos: float,
     ):
         ...
-    def write_out_rank_0(self):
+    def write_out_rank_0(
+        self,
+        backend: str,
+        is_orchestrated: bool,
+        dt_atmos: float
+    ):
         ...
 
 
@@ -62,8 +67,6 @@ class PerformanceCollector:
     ):
         if self.comm.Get_rank() == 0:
             git_hash = "None"
-            self.times_per_step.append(self.total_timer.times)
-            self.hits_per_step.append(self.total_timer.hits)
             while {} in self.hits_per_step:
                 self.hits_per_step.remove({})
             keys = collect_keys_from_data(self.times_per_step)
@@ -145,5 +148,10 @@ class NullPerformanceCollector:
         dt_atmos: float,
     ):
         pass
-    def write_out_rank_0(self):
+    def write_out_rank_0(
+        self,
+        backend: str,
+        is_orchestrated: bool,
+        dt_atmos: float
+    ):
         pass

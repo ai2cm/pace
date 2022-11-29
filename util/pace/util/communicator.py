@@ -1,8 +1,10 @@
 import abc
+import copy
 import logging
 from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
+
 
 from . import constants
 from ._timing import NullTimer, Timer
@@ -18,6 +20,32 @@ from .utils import device_synchronize
 
 logger = logging.getLogger("pace.util")
 
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
+def to_numpy(array, dtype=None) -> np.ndarray:
+    """
+    Input array can be a numpy array or a cupy array. Returns numpy array.
+    """
+    try:
+        output = np.asarray(array)
+    except ValueError as err:
+        if err.args[0] == "object __array__ method not producing an array":
+            output = cupy.asnumpy(array)
+        else:
+            raise err
+    except TypeError as err:
+        if err.args[0].startswith(
+            "Implicit conversion to a NumPy array is not allowed."
+        ):
+            output = cupy.asnumpy(array)
+        else:
+            raise err
+    if dtype:
+        output = output.astype(dtype=dtype)
+    return output
 
 def bcast_metadata_list(comm, quantity_list):
     is_root = comm.Get_rank() == constants.ROOT_RANK
@@ -238,14 +266,17 @@ class Communicator(abc.ABC):
                 if self.rank == constants.ROOT_RANK:
                     recv_state["time"] = send_state["time"]
             else:
+                gather_value =  to_numpy(quantity.view[:], dtype=np.float32)
+                gather_quantity = Quantity(data=gather_value, dims=quantity.dims, units=quantity.units)
                 if recv_state is not None and name in recv_state:
                     tile_quantity = self.gather(
-                        quantity, recv_quantity=recv_state[name]
+                        gather_quantity, recv_quantity=recv_state[name]
                     )
                 else:
-                    tile_quantity = self.gather(quantity)
+                    tile_quantity = self.gather(gather_quantity)
                 if self.rank == constants.ROOT_RANK:
                     recv_state[name] = tile_quantity
+                del gather_quantity
         return recv_state
 
     def scatter_state(self, send_state=None, recv_state=None):

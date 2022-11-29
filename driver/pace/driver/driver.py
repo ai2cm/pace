@@ -568,21 +568,19 @@ class Driver:
             logger.info(f"Finished stepping {step}")
         
         self.performance_collector.collect_performance()
-        self.performance_collector.write_out_rank_0()
         
         self.time += self.config.timestep
         if ((step + 1) % self.config.output_frequency) == 0:
             logger.info(f"diagnostics for step {self.time} started")
-            logger.handlers[0].flush()
+            self.performance_collector.write_out_rank_0(self.config.stencil_config.compilation_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
+            self.config.dt_atmos)
             self.diagnostics.store(time=self.time, state=self.state)
             logger.info(f"diagnostics for step {self.time} finished")
-            logger.handlers[0].flush()
         if ((step + 1) % self.config.safety_check_frequency) == 0:
-            logger.info(f"checking state for for step {self.time} started")
-            logger.handlers[0].flush()
+            logger.info(f"checking state for for step {step+1} started")
             self.safety_checker.check_state(self.state.dycore_state)
-            logger.info(f"checking state for for step {self.time} finished")
-            logger.handlers[0].flush()
+            logger.info(f"checking state for for step {step+1} finished")
         self.config.restart_config.write_intermediate_if_enabled(
             state=self.state,
             step=step,
@@ -654,7 +652,11 @@ class Driver:
     @dace_inhibitor
     def cleanup(self):
         logger.info("cleaning up driver")
-        self.performance_collector.write_out_rank_0()
+        self.performance_collector.write_out_rank_0(
+            self.config.stencil_config.compilation_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
+            self.config.dt_atmos,
+        )
         self._write_performance_json_output()
         self.diagnostics.store_grid(
             grid_data=self.state.grid_data,

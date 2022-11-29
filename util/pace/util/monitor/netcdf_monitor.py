@@ -80,7 +80,7 @@ class _ChunkedNetCDFWriter:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
                 data_vars[name] = xr.DataArray(
-                    to_numpy(chunked.data.view[:]),
+                    chunked.data.view[:],
                     dims=chunked.data.dims,
                     attrs=chunked.data.attrs,
                 ).expand_dims({"tile": [self._tile]}, axis=1)
@@ -92,8 +92,10 @@ class _ChunkedNetCDFWriter:
                     chunk=chunk_index, tile=self._tile
                 )
             )
-            with self._fs.open(chunk_path, "wb") as f:
-                ds.to_netcdf(f)
+            # with self._fs.open(chunk_path, "wb") as f:
+            ds.to_netcdf(chunk_path, format="NETCDF4", engine="netcdf4")
+                # ds.to_netcdf(f)
+            del ds
 
         self._chunked = None
         self._times.clear()
@@ -175,26 +177,28 @@ class NetCDFMonitor:
                 path_for_grid = constants_filename + "_" + name + ".nc"
 
                 if self._fs.exists(path_for_grid):
-                    with self._fs.open(path_for_grid, "rb") as f:
-                        ds = xr.open_dataset(f)
-                        ds = ds.load()
-                        ds[name] = xr.DataArray(
-                            to_numpy(quantity.view[:], dtype=np.float32),
-                            dims=quantity.dims,
-                            attrs=quantity.attrs,
-                        )
+                    # with self._fs.open(path_for_grid, "rb") as f:
+                    ds = xr.open_dataset(path_for_grid)
+                    ds = ds.load()
+                    ds[name] = xr.DataArray(
+                        quantity.view[:],
+                        dims=quantity.dims,
+                        attrs=quantity.attrs,
+                    )
                 else:
                     ds = xr.Dataset(
                         data_vars={
                             name: xr.DataArray(
-                                to_numpy(quantity.view[:], dtype=np.float32),
+                                quantity.view[:],
                                 dims=quantity.dims,
                                 attrs=quantity.attrs,
                             )
                         }
                     )
-                with self._fs.open(path_for_grid, "wb") as f:
-                    ds.to_netcdf(f)
+                # with self._fs.open(path_for_grid, "wb") as f:
+                ds.to_netcdf(path_for_grid, format="NETCDF4", engine="netcdf4")
+                    # ds.to_netcdf(f)
+                del ds
 
     def cleanup(self):
         self._writer.flush()

@@ -2,8 +2,8 @@ from typing import ClassVar, Dict, Optional, Tuple
 
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.util.quantity import Quantity
+import numpy as np
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -89,4 +89,8 @@ class SafetyChecker:
                 logger.info(
                     f"Variable {variable} is outside of its specified bounds: \
                     {bounds[1]} specified, {max_value} found"
+                )
+            if np.isnan(var.view[:]).any():
+                logger.info(
+                    f"Variable {variable} contains a NaN value"
                 )
