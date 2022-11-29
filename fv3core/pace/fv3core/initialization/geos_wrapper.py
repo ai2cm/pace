@@ -8,6 +8,10 @@ from pace import fv3core
 
 
 class GeosDycoreWrapper:
+    """
+    Provides an interface for the Geos model to access the Pace dycore.
+    """
+
     def __init__(self, namelist: f90nml.Namelist, comm: pace.util.Comm, backend: str):
         self.namelist = namelist
 
