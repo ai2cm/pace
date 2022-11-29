@@ -1,18 +1,17 @@
 from datetime import timedelta
 
+import f90nml
 import numpy as np
 
-import fv3core
 import pace.util
+from pace import fv3core
 
 
 class GeosDycoreWrapper:
-    def __init__(
-        self, namelist: pace.util.Namelist, comm: pace.util.Comm, backend: str
-    ):
+    def __init__(self, namelist: f90nml.Namelist, comm: pace.util.Comm, backend: str):
         self.namelist = namelist
 
-        self.dycore_config = fv3core.DynamicalCoreConfig.from_namelist(self.namelist)
+        self.dycore_config = fv3core.DynamicalCoreConfig.from_f90nml(self.namelist)
 
         self.layout = self.dycore_config.layout
         partitioner = pace.util.CubedSpherePartitioner(
@@ -50,15 +49,24 @@ class GeosDycoreWrapper:
             quantity_factory=quantity_factory
         )
 
-        self.dycore_state.bdt = float(namelist.dt_atmos)
-        self.dycore_state.bdt = float(namelist.dt_atmos) / namelist.k_split
+        self.dycore_state.bdt = float(namelist["dt_atmos"])
+        if "fv_core_nml" in namelist.keys():
+            self.dycore_state.bdt = (
+                float(namelist["dt_atmos"]) / namelist["fv_core_nml"]["k_split"]
+            )
+        elif "dycore_config" in namelist.keys():
+            self.dycore_state.bdt = (
+                float(namelist["dt_atmos"]) / namelist["dycore_config"]["k_split"]
+            )
+        else:
+            raise KeyError("Cannot find k_split in namelist")
 
         damping_coefficients = pace.util.grid.DampingCoefficients.new_from_metric_terms(
             metric_terms
         )
 
         self.dynamical_core = fv3core.DynamicalCore(
-            comm=comm,
+            comm=self.communicator,
             grid_data=grid_data,
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
@@ -158,8 +166,8 @@ class GeosDycoreWrapper:
     ):
         isc = self._grid_indexing.isc
         jsc = self._grid_indexing.jsc
-        iec = self._grid_indexing.isc
-        jec = self._grid_indexing.jsc
+        iec = self._grid_indexing.iec + 1
+        jec = self._grid_indexing.jec + 1
 
         # Assign compute domain:
         self.dycore_state.u.view[:] = u[isc:iec, jsc : jec + 1, :-1]
@@ -197,7 +205,8 @@ class GeosDycoreWrapper:
         self.dycore_state.qrain.view[:] = q[isc:iec, jsc:jec, :-1, 3]
         self.dycore_state.qsnow.view[:] = q[isc:iec, jsc:jec, :-1, 4]
         self.dycore_state.qgraupel.view[:] = q[isc:iec, jsc:jec, :-1, 5]
-        self.dycore_state.qcld.view[:] = q[isc:iec, jsc:jec, :-1, 6]
+        if self.namelist["dycore_config"]["nwat"] > 6:
+            self.dycore_state.qcld.view[:] = q[isc:iec, jsc:jec, :-1, 6]
 
     def _outputs_for_geos(self):
         out_state = {}
