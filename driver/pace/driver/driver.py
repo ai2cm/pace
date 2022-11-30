@@ -21,6 +21,7 @@ from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
+
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
@@ -395,7 +396,9 @@ class Driver:
         self.profiler = self.config.performance_config.build_profiler()
         with self.performance_collector.total_timer.clock("initialization"):
             communicator = CubedSphereCommunicator.from_layout(
-                comm=self.comm, layout=self.config.layout
+                comm=self.comm,
+                layout=self.config.layout,
+                timer=self.performance_collector.timestep_timer,
             )
             self._update_driver_config_with_communicator(communicator)
 
@@ -566,15 +569,15 @@ class Driver:
         """
         if __debug__:
             logger.info(f"Finished stepping {step}")
-        
         self.performance_collector.collect_performance()
-        
         self.time += self.config.timestep
         if ((step + 1) % self.config.output_frequency) == 0:
             logger.info(f"diagnostics for step {self.time} started")
-            self.performance_collector.write_out_rank_0(self.config.stencil_config.compilation_config.backend,
-            self.config.stencil_config.dace_config.is_dace_orchestrated(),
-            self.config.dt_atmos)
+            self.performance_collector.write_out_rank_0(
+                self.config.stencil_config.compilation_config.backend,
+                self.config.stencil_config.dace_config.is_dace_orchestrated(),
+                self.config.dt_atmos,
+            )
             self.diagnostics.store(time=self.time, state=self.state)
             logger.info(f"diagnostics for step {self.time} finished")
         if ((step + 1) % self.config.safety_check_frequency) == 0:
@@ -589,7 +592,6 @@ class Driver:
             driver_config=self.config,
             restart_path=f"RESTART_{step}",
         )
-        
 
     def _critical_path_step_all(
         self,
@@ -632,11 +634,14 @@ class Driver:
         logger.info("integrating driver forward in time")
         with self.performance_collector.total_timer.clock("total"):
             self.profiler.enable()
+            PerformanceConfig.mark_cuda_profiler("Begin integration")
+            PerformanceConfig.start_cuda_profiler()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
+            PerformanceConfig.stop_cuda_profiler()
             self.profiler.dump_stats(
                 f"{self.config.performance_config.experiment_name}_\
                 {self.comm.Get_rank()}.prof"

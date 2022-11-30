@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+import os
 from typing import Any, Dict, List, Optional, Set
 
 import fsspec
@@ -92,10 +93,9 @@ class _ChunkedNetCDFWriter:
                     chunk=chunk_index, tile=self._tile
                 )
             )
-            # with self._fs.open(chunk_path, "wb") as f:
+            if os.path.exists(chunk_path):
+                os.remove(chunk_path)
             ds.to_netcdf(chunk_path, format="NETCDF4", engine="netcdf4")
-                # ds.to_netcdf(f)
-            del ds
 
         self._chunked = None
         self._times.clear()
@@ -195,10 +195,9 @@ class NetCDFMonitor:
                             )
                         }
                     )
-                # with self._fs.open(path_for_grid, "wb") as f:
+                if os.path.exists(path_for_grid):
+                    os.remove(path_for_grid)
                 ds.to_netcdf(path_for_grid, format="NETCDF4", engine="netcdf4")
-                    # ds.to_netcdf(f)
-                del ds
 
     def cleanup(self):
         self._writer.flush()

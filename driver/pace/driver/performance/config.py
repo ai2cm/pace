@@ -8,6 +8,7 @@ from .collector import (
     NullPerformanceCollector,
     PerformanceCollector,
 )
+from pace.util._optional_imports import cupy as cp
 
 
 @dataclasses.dataclass
@@ -27,3 +28,18 @@ class PerformanceConfig:
             return Profiler()
         else:
             return NullProfiler()
+
+    @classmethod
+    def start_cuda_profiler(cls):
+        if cp is not None:
+            cp.cuda.profiler.start()
+
+    @classmethod
+    def stop_cuda_profiler(cls):
+        if cp is not None:
+            cp.cuda.profiler.stop()
+
+    @classmethod
+    def mark_cuda_profiler(cls, message: str):
+        if cp is not None:
+            cp.cuda.nvtx.Mark(message)
