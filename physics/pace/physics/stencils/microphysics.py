@@ -1974,7 +1974,7 @@ class Microphysics:
         self._c_praut = make_quantity()
         self._m1_sol = make_quantity()
 
-        self.gfdl_cloud_microphys_init(namelist.dt_atmos, self._m1_sol.np)
+        self.gfdl_cloud_microphys_init(namelist.dt_atmos)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
@@ -2070,14 +2070,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self, dt_atmos: float, numpy_module):
-        self.setupm(dt_atmos, numpy_module)
+    def gfdl_cloud_microphys_init(self, dt_atmos: float):
+        self.setupm(dt_atmos)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self, dt_atmos: float, numpy_module):
+    def setupm(self, dt_atmos: float):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2091,7 +2091,7 @@ class Microphysics:
         rnzg = 4.0e6
 
         # Density parameters
-        acc = numpy_module.array([5.0, 2.0, 0.5])
+        acc = np.array([5.0, 2.0, 0.5])
 
         pie = 4.0 * np.arctan(1.0)
 
