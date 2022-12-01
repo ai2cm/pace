@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Dict
 
 import f90nml
 import numpy as np
@@ -82,7 +83,7 @@ class GeosDycoreWrapper:
             state=self.dycore_state,
         )
 
-        self.output_dictionary = {}
+        self.output_dictionary: Dict[str, np.ndarray] = {}
 
     def __call__(
         self,
