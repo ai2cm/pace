@@ -153,3 +153,5 @@ def test_geos_wrapper():
         cyd,
         diss_estd,
     )
+
+    assert type(output_dict["u"]) == np.ndarray

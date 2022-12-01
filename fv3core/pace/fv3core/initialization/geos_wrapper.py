@@ -143,7 +143,7 @@ class GeosDycoreWrapper:
             state=self.dycore_state,
         )
 
-        self._outputs_for_geos()
+        self._prep_outputs_for_geos()
 
         return self.output_dictionary
 
