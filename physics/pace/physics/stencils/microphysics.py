@@ -2127,7 +2127,7 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = numpy_module.empty((3, 4))
+        acco = np.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
@@ -2200,7 +2200,18 @@ class Microphysics:
         self._csacr = csacr
         self._cgacr = cgacr
         self._cgacs = cgacs
-        self._acco = acco
+        self._acco00 = (acco[0, 0],)
+        self._acco01 = (acco[0, 1],)
+        self._acco02 = (acco[0, 2],)
+        self._acco03 = (acco[0, 3],)
+        self._acco10 = (acco[1, 0],)
+        self._acco11 = (acco[1, 1],)
+        self._acco12 = (acco[1, 2],)
+        self._acco13 = (acco[1, 3],)
+        self._acco20 = (acco[2, 0],)
+        self._acco21 = (acco[2, 1],)
+        self._acco22 = (acco[2, 2],)
+        self._acco23 = (acco[2, 3],)
         self._csacw = csacw
         self._csaci = csaci
         self._cgacw = cgacw
@@ -2427,18 +2438,18 @@ class Microphysics:
                 self._csacr,
                 self._cgacr,
                 self._cgacs,
-                float(self._acco[0, 0]),
-                float(self._acco[0, 1]),
-                float(self._acco[0, 2]),
-                float(self._acco[0, 3]),
-                float(self._acco[1, 0]),
-                float(self._acco[1, 1]),
-                float(self._acco[1, 2]),
-                float(self._acco[1, 3]),
-                float(self._acco[2, 0]),
-                float(self._acco[2, 1]),
-                float(self._acco[2, 2]),
-                float(self._acco[2, 3]),
+                self._acco00,
+                self._acco01,
+                self._acco02,
+                self._acco03,
+                self._acco10,
+                self._acco11,
+                self._acco12,
+                self._acco13,
+                self._acco20,
+                self._acco21,
+                self._acco22,
+                self._acco23,
                 self._csacw,
                 self._csaci,
                 self._cgacw,
