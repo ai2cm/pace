@@ -564,9 +564,7 @@ def set_hybrid_pressure_coefficients(km: int) -> HybridPressureCoefficients:
             "Only grids with 72, 79, or 91 vertical levels have been implemented so far"
         )
     if 0.0 in bk:
-        ks = np.where(bk == 0)[0][-1]
-        if km == 91:
-            ks = 0
+        ks = 0 if km == 91 else np.where(bk == 0)[0][-1]
         ptop = ak[0]
     else:
         raise ValueError("bk must contain at least one 0.")
