@@ -127,7 +127,7 @@ def test_geos_wrapper():
     cyd = np.ones(shape)
     diss_estd = np.ones(shape)
 
-    output = wrapper(
+    output_dict = wrapper(
         u,
         v,
         w,

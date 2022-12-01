@@ -82,33 +82,35 @@ class GeosDycoreWrapper:
             state=self.dycore_state,
         )
 
+        self.output_dictionary = {}
+
     def __call__(
         self,
-        u,
-        v,
-        w,
-        delz,
-        pt,
-        delp,
-        q,
-        ps,
-        pe,
-        pk,
-        peln,
-        pkz,
-        phis,
-        q_con,
-        omga,
-        ua,
-        va,
-        uc,
-        vc,
-        mfxd,
-        mfyd,
-        cxd,
-        cyd,
-        diss_estd,
-    ):
+        u: np.ndarray,
+        v: np.ndarray,
+        w: np.ndarray,
+        delz: np.ndarray,
+        pt: np.ndarray,
+        delp: np.ndarray,
+        q: np.ndarray,
+        ps: np.ndarray,
+        pe: np.ndarray,
+        pk: np.ndarray,
+        peln: np.ndarray,
+        pkz: np.ndarray,
+        phis: np.ndarray,
+        q_con: np.ndarray,
+        omga: np.ndarray,
+        ua: np.ndarray,
+        va: np.ndarray,
+        uc: np.ndarray,
+        vc: np.ndarray,
+        mfxd: np.ndarray,
+        mfyd: np.ndarray,
+        cxd: np.ndarray,
+        cyd: np.ndarray,
+        diss_estd: np.ndarray,
+    ) -> dict:
 
         self._put_fortran_data_in_dycore(
             u,
@@ -140,7 +142,10 @@ class GeosDycoreWrapper:
         self.dynamical_core.step_dynamics(
             state=self.dycore_state,
         )
-        return self._outputs_for_geos()
+
+        self._outputs_for_geos()
+
+        return self.output_dictionary
 
     def _put_fortran_data_in_dycore(
         self,
@@ -213,41 +218,38 @@ class GeosDycoreWrapper:
         if self.namelist["dycore_config"]["nwat"] > 6:
             self.dycore_state.qcld.view[:] = q[isc:iec, jsc:jec, :-1, 6]
 
-    def _outputs_for_geos(self):
-        out_state = {}
-        out_state["u"] = self.dycore_state.u.data[:]
-        out_state["v"] = self.dycore_state.v.data[:]
-        out_state["w"] = self.dycore_state.w.data[:]
-        out_state["ua"] = self.dycore_state.ua.data[:]
-        out_state["va"] = self.dycore_state.va.data[:]
-        out_state["uc"] = self.dycore_state.uc.data[:]
-        out_state["vc"] = self.dycore_state.vc.data[:]
+    def _prep_outputs_for_geos(self):
+        self.output_dictionary["u"] = self.dycore_state.u.data[:]
+        self.output_dictionary["v"] = self.dycore_state.v.data[:]
+        self.output_dictionary["w"] = self.dycore_state.w.data[:]
+        self.output_dictionary["ua"] = self.dycore_state.ua.data[:]
+        self.output_dictionary["va"] = self.dycore_state.va.data[:]
+        self.output_dictionary["uc"] = self.dycore_state.uc.data[:]
+        self.output_dictionary["vc"] = self.dycore_state.vc.data[:]
 
-        out_state["delc"] = self.dycore_state.delz.data[:]
-        out_state["pt"] = self.dycore_state.pt.data[:]
-        out_state["delp"] = self.dycore_state.delp.data[:]
+        self.output_dictionary["delc"] = self.dycore_state.delz.data[:]
+        self.output_dictionary["pt"] = self.dycore_state.pt.data[:]
+        self.output_dictionary["delp"] = self.dycore_state.delp.data[:]
 
-        out_state["mfxd"] = self.dycore_state.mfxd.data[:]
-        out_state["mfyd"] = self.dycore_state.mfyd.data[:]
-        out_state["cxd"] = self.dycore_state.cxd.data[:]
-        out_state["cyd"] = self.dycore_state.cyd.data[:]
+        self.output_dictionary["mfxd"] = self.dycore_state.mfxd.data[:]
+        self.output_dictionary["mfyd"] = self.dycore_state.mfyd.data[:]
+        self.output_dictionary["cxd"] = self.dycore_state.cxd.data[:]
+        self.output_dictionary["cyd"] = self.dycore_state.cyd.data[:]
 
-        out_state["ps"] = self.dycore_state.ps.data[:]
-        out_state["pe"] = self.dycore_state.pe.data[:]
-        out_state["pk"] = self.dycore_state.pk.data[:]
-        out_state["peln"] = self.dycore_state.peln.data[:]
-        out_state["pkz"] = self.dycore_state.pkz.data[:]
-        out_state["phis"] = self.dycore_state.phis.data[:]
-        out_state["q_con"] = self.dycore_state.q_con.data[:]
-        out_state["omga"] = self.dycore_state.omga.data[:]
-        out_state["diss_estd"] = self.dycore_state.diss_estd.data[:]
+        self.output_dictionary["ps"] = self.dycore_state.ps.data[:]
+        self.output_dictionary["pe"] = self.dycore_state.pe.data[:]
+        self.output_dictionary["pk"] = self.dycore_state.pk.data[:]
+        self.output_dictionary["peln"] = self.dycore_state.peln.data[:]
+        self.output_dictionary["pkz"] = self.dycore_state.pkz.data[:]
+        self.output_dictionary["phis"] = self.dycore_state.phis.data[:]
+        self.output_dictionary["q_con"] = self.dycore_state.q_con.data[:]
+        self.output_dictionary["omga"] = self.dycore_state.omga.data[:]
+        self.output_dictionary["diss_estd"] = self.dycore_state.diss_estd.data[:]
 
-        out_state["qvapor"] = self.dycore_state.qvapor.data[:]
-        out_state["qliquid"] = self.dycore_state.qliquid.data[:]
-        out_state["qice"] = self.dycore_state.qice.data[:]
-        out_state["qrain"] = self.dycore_state.qrain.data[:]
-        out_state["qsnow"] = self.dycore_state.qsnow.data[:]
-        out_state["qgraupel"] = self.dycore_state.qgraupel.data[:]
-        out_state["qcld"] = self.dycore_state.qcld.data[:]
-
-        return out_state
+        self.output_dictionary["qvapor"] = self.dycore_state.qvapor.data[:]
+        self.output_dictionary["qliquid"] = self.dycore_state.qliquid.data[:]
+        self.output_dictionary["qice"] = self.dycore_state.qice.data[:]
+        self.output_dictionary["qrain"] = self.dycore_state.qrain.data[:]
+        self.output_dictionary["qsnow"] = self.dycore_state.qsnow.data[:]
+        self.output_dictionary["qgraupel"] = self.dycore_state.qgraupel.data[:]
+        self.output_dictionary["qcld"] = self.dycore_state.qcld.data[:]
