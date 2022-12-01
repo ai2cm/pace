@@ -98,6 +98,11 @@ class SubtileGridSizer(GridSizer):
             nx_tile = namelist["nx_tile"]
             ny_tile = namelist["nx_tile"]
             nz = namelist["nz"]
+        else:
+            raise KeyError(
+                "Namelist format is unrecognized, "
+                "expected to find nx_tile or fv_core_nml"
+            )
         return cls.from_tile_params(
             nx_tile,
             ny_tile,

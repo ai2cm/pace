@@ -20,7 +20,7 @@ def test_geos_wrapper():
         },
         "initialization": {"type": "baroclinic"},
         "nx_tile": 12,
-        "nz": 79,
+        "nz": 91,
         "dt_atmos": 225,
         "minutes": 15,
         "layout": [1, 1],
