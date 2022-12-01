@@ -2,11 +2,9 @@ from typing import Callable, Optional, Sequence
 
 import numpy as np
 
-from pace.util.halo_data_transformer import QuantityHaloSpec
-
 from .._optional_imports import gt4py
 from ..constants import SPATIAL_DIMS
-from ..quantity import Quantity
+from ..quantity import Quantity, QuantityHaloSpec
 from .sizer import GridSizer
 
 
@@ -141,16 +139,4 @@ class QuantityFactory:
         if n_halo is None:
             n_halo = self.sizer.n_halo
 
-        spec = QuantityHaloSpec(
-            n_halo,
-            temp_quantity.data.strides,
-            temp_quantity.data.itemsize,
-            temp_quantity.data.shape,
-            temp_quantity.metadata.origin,
-            temp_quantity.metadata.extent,
-            temp_quantity.metadata.dims,
-            temp_quantity.np,
-            temp_quantity.metadata.dtype,
-        )
-
-        return spec
+        return temp_quantity.halo_spec(n_halo)

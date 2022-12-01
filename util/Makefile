@@ -84,9 +84,4 @@ dist: clean ## builds source and wheel package
 release: dist ## package and upload a release
 	twine upload dist/*
 
-docs: ## generate Sphinx HTML documentation, including API docs
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
-
-.PHONY: docs clean test lint reformat test_mpi coverage help
+.PHONY: clean test lint reformat test_mpi coverage help
