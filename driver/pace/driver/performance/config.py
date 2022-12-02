@@ -9,6 +9,7 @@ from .collector import (
     PerformanceCollector,
 )
 from pace.util._optional_imports import cupy as cp
+from pace.util.utils import GPU_AVAILABLE
 
 
 @dataclasses.dataclass
@@ -40,15 +41,15 @@ class PerformanceConfig:
 
     @classmethod
     def start_cuda_profiler(cls):
-        if cp is not None:
+        if GPU_AVAILABLE:
             cp.cuda.profiler.start()
 
     @classmethod
     def stop_cuda_profiler(cls):
-        if cp is not None:
+        if GPU_AVAILABLE:
             cp.cuda.profiler.stop()
 
     @classmethod
     def mark_cuda_profiler(cls, message: str):
-        if cp is not None:
+        if GPU_AVAILABLE:
             cp.cuda.nvtx.Mark(message)
