@@ -95,7 +95,6 @@ dace==0.14
     #   -r requirements_dev.txt
     #   pace-dsl
     #   pace-dsl (dsl/setup.py)
-    #   pace-util
 dacite==1.6.0
     # via
     #   fv3config
@@ -111,6 +110,10 @@ decorator==5.0.9
     # via
     #   gcsfs
     #   ipython
+deepdiff==6.2.1
+    # via
+    #   gt4py
+    #   gt4py (external/gt4py/setup.cfg)
 devtools==0.8.0
     # via
     #   gt4py
@@ -153,6 +156,10 @@ flake8==3.8.4
     # via -r util/requirements.txt
 flask==2.1.2
     # via dace
+frozendict==2.3.4
+    # via
+    #   gt4py
+    #   gt4py (external/gt4py/setup.cfg)
 fsspec==2021.7.0
     # via
     #   dask
@@ -318,6 +325,8 @@ numpy==1.21.2
     #   zarr
 oauthlib==3.1.1
     # via requests-oauthlib
+ordered-set==4.1.0
+    # via deepdiff
 packaging==21.0
     # via
     #   dask
@@ -384,10 +393,7 @@ pycodestyle==2.6.0
 pycparser==2.20
     # via cffi
 pydantic==1.7.4
-    # via
-    #   gt4py
-    #   gt4py (external/gt4py/setup.cfg)
-    #   nbmake
+    # via nbmake
 pyflakes==2.2.0
     # via flake8
 pygments==2.10.0

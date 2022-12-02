@@ -10,11 +10,6 @@ from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
 
-try:
-    import dace
-except ImportError:
-    dace = None
-
 if cupy is None:
     import numpy as cupy
 
@@ -313,7 +308,7 @@ class Quantity:
             assert gt4py_backend_cls is not None
             is_optimal_layout = gt4py_backend_cls.storage_info["is_optimal_layout"]
 
-            dimensions = tuple(
+            dimensions: Tuple[Union[str, int], ...] = tuple(
                 [
                     axis
                     if any(dim in axis_dims for axis_dims in constants.SPATIAL_DIMS)
@@ -500,11 +495,34 @@ class Quantity:
     def shape(self):
         return self.data.shape
 
-    def __descriptor__(self) -> "dace.data.Array":
+    def __descriptor__(self) -> Any:
         """The descriptor is a property that dace uses."""
-        if dace is None:
-            raise ModuleNotFoundError("dace is not installed")
-        return dace.data.create_datadescriptor(self.data)
+        assert self.gt4py_backend is not None
+
+        try:
+            # QuantityMetadata is not storing `dimensions`, so recompute.
+            dimensions: Tuple[Union[str, int], ...] = tuple(
+                [
+                    axis
+                    if any(dim in axis_dims for axis_dims in constants.SPATIAL_DIMS)
+                    else str(self.data.shape[index])
+                    for index, (dim, axis) in enumerate(
+                        zip(
+                            self.dims, ("I", "J", "K", *([None] * (len(self.dims) - 3)))
+                        )
+                    )
+                ]
+            )
+            return gt4py.storage.dace_descriptor(
+                self.data.shape,
+                self.data.dtype,
+                backend=self.gt4py_backend,
+                aligned_index=self.origin,
+                dimensions=dimensions,
+            )
+
+        except AttributeError:
+            return None
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
