@@ -154,4 +154,4 @@ def test_geos_wrapper():
         diss_estd,
     )
 
-    assert type(output_dict["u"]) == np.ndarray
+    assert isinstance(output_dict["u"], np.ndarray)

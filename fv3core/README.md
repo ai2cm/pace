@@ -450,3 +450,7 @@ TEST_ARGS="-v -s --pdb" RUN_FLAGS="--rm -it" make tests
 ```
 
 This can be done with any pytest target, such as `make savepoint_tests` and `make savepoint_tests_mpi`.
+
+### GEOS API
+
+The `GeosDycoreWrapper` class provides an API to run the dynamical core in a Python component of a GEOS model run. A `GeosDycoreWrapper` object is initialized with a namelist, communicator, and backend, which creates the communicators, partitioners, dycore state, and dycore object required to run the Pace dycore. A wrapper object takes numpy arrays of `u, v, w, delz, pt, delp, q, ps, pe, pk, peln, pkz, phis, q_con, omga, ua, va, uc, vc, mfxd, mfyd, cxd, cyd,` and `diss_estd` and returns a dictionary containing numpy arrays of those same variables. Wrapper objects contain a `timer` attrubite that tracks the amount of time moving input data to the dycore state, running the dynamical core, and retrieving the data from the state.
