@@ -27,7 +27,7 @@ astunparse==1.6.3 ; python_version < "3.9"
     #   gt4py (external/gt4py/setup.cfg)
 async-timeout==3.0.1
     # via aiohttp
-attrs==21.2.0
+attrs==22.1.0
     # via
     #   aiohttp
     #   gt4py
