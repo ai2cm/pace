@@ -13,8 +13,17 @@ from pace.util._optional_imports import cupy as cp
 
 @dataclasses.dataclass
 class PerformanceConfig:
+    """Performance stats collector.
+
+    collect_performance: overall flag turning collection on/pff
+    collect_cProfile: use cProfile for CPU Python profiling
+    collect_communication: collect halo exchange details
+    experiment_name: to be printed in the JSON summary
+    """
+
     collect_performance: bool = False
     collect_cProfile: bool = False
+    collect_communication: bool = False
     experiment_name: str = "test"
 
     def build(self, comm: pace.util.Comm) -> AbstractPerformanceCollector:

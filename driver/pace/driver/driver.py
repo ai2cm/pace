@@ -395,10 +395,15 @@ class Driver:
         self.performance_collector = self.config.performance_config.build(self.comm)
         self.profiler = self.config.performance_config.build_profiler()
         with self.performance_collector.total_timer.clock("initialization"):
+            comm_timer = (
+                self.performance_collector.timestep_timer
+                if self.config.performance_config.collect_communication
+                else None
+            )
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm,
                 layout=self.config.layout,
-                timer=self.performance_collector.timestep_timer,
+                timer=comm_timer,
             )
             self._update_driver_config_with_communicator(communicator)
 
