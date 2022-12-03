@@ -473,7 +473,7 @@ class Driver:
                     quantity_factory=self.quantity_factory,
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,
-                    active_packages=["microphysics"],
+                    active_packages=self.config.physics_config.active_packages,
                 )
             else:
                 # Make sure those are set to None to raise any issues

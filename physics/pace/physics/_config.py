@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import f90nml
 
@@ -97,6 +97,10 @@ class PhysicsConfig:
     tice: float = NamelistDefaults.tice
     alin: float = NamelistDefaults.alin
     clin: float = NamelistDefaults.clin
+    emulator_path: Optional[str] = None
+    active_packages: List[str] = dataclasses.field(
+        default_factory=lambda: ["microphysics"]
+    )
     namelist_override: Optional[str] = None
 
     def __post_init__(self):

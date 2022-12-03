@@ -1,13 +1,13 @@
 from typing import List
 
 import gt4py.gtscript as gtscript
+import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
-from typing_extensions import Literal
 
 import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.physics.physics_state import PhysicsState
 from pace.physics.stencils.get_phi_fv3 import get_phi_fv3
@@ -17,9 +17,6 @@ from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import GridData
 
 from .._config import PhysicsConfig
-
-
-PHYSICS_PACKAGES = Literal["microphysics"]
 
 
 def atmos_phys_driver_statein(
@@ -193,6 +190,65 @@ def update_physics_state_with_tendencies(
         physics_updated_va = forward_euler(va, vdt, dt)
 
 
+def unpack_predictions(predictions, output_names, np1, np2, npz):
+
+    if len(output_names) == 1:
+        # single output model doesn't return a list
+        # zip would start unpacking array rows
+        model_outputs = {output_names[0]: predictions}
+    else:
+        model_outputs = {
+            name: output  # transposed adjust
+            for name, output in zip(output_names, predictions)
+        }
+    for name in [
+        "air_temperature_output",
+        "specific_humidity_output",
+        "cloud_water_mixing_ratio_output",
+    ]:
+        model_outputs[name] = np.reshape(model_outputs[name], (np1, np2, npz))[
+            :, :, ::-1
+        ]
+    return model_outputs
+
+
+def microphysics_emulator(
+    grid_indexing: GridIndexing,
+    emulation_dict: dict,
+    emulation_model,
+    physics_state: PhysicsState,
+):
+    np1 = grid_indexing.max_shape[0]
+    np2 = grid_indexing.max_shape[1]
+    npz = grid_indexing.domain_full()[2]
+    collapsed_shape = np1 * np2
+    emulation_dict["air_temperature_input"] = np.reshape(
+        physics_state.pt.data[:, :, 0:-1], (collapsed_shape, npz)
+    )[:, ::-1]
+    emulation_dict["specific_humidity_input"] = np.reshape(
+        physics_state.qvapor.data[:, :, 0:-1], (collapsed_shape, npz)
+    )[:, ::-1]
+    emulation_dict["cloud_water_mixing_ratio_input"] = np.reshape(
+        physics_state.qliquid.data[:, :, 0:-1], (collapsed_shape, npz)
+    )[:, ::-1]
+    emulation_dict["pressure_thickness_of_atmospheric_layer"] = np.reshape(
+        physics_state.delp.data[:, :, 0:-1], (collapsed_shape, npz)
+    )[:, ::-1]
+    predictions = emulation_model(emulation_dict)
+    emulation_outputs = unpack_predictions(
+        predictions, emulation_model.output_names, np1, np2, npz
+    )
+    physics_state.physics_updated_pt.data[:, :, 0:-1] = emulation_outputs[
+        "air_temperature_output"
+    ][:, :, :]
+    physics_state.physics_updated_specific_humidity.data[
+        :, :, 0:-1
+    ] = emulation_outputs["specific_humidity_output"][:, :, :]
+    physics_state.physics_updated_qliquid.data[:, :, 0:-1] = emulation_outputs[
+        "cloud_water_mixing_ratio_output"
+    ][:, :, :]
+
+
 class Physics:
     def __init__(
         self,
@@ -200,7 +256,7 @@ class Physics:
         quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         namelist: PhysicsConfig,
-        active_packages: List[Literal[PHYSICS_PACKAGES]],
+        active_packages: List[str],
     ):
         orchestrate(
             obj=self,
@@ -208,7 +264,7 @@ class Physics:
             dace_compiletime_args=["physics_state"],
         )
 
-        grid_indexing = stencil_factory.grid_indexing
+        self.grid_indexing = stencil_factory.grid_indexing
         self._setup_statein()
         self._ptop = grid_data.ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
@@ -222,18 +278,18 @@ class Physics:
         self._del_gz = make_quantity()
         self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
-            origin=grid_indexing.origin_full(),
-            domain=grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.grid_indexing.origin_full(),
+            domain=self.grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._get_phi_fv3 = stencil_factory.from_origin_domain(
             func=get_phi_fv3,
-            origin=grid_indexing.origin_full(),
-            domain=grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.grid_indexing.origin_full(),
+            domain=self.grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._atmos_phys_driver_statein = stencil_factory.from_origin_domain(
             func=atmos_phys_driver_statein,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=self.grid_indexing.origin_compute(),
+            domain=self.grid_indexing.domain_compute(add=(0, 0, 1)),
             externals={
                 "nwat": self._nwat,
                 "ptop": self._ptop,
@@ -241,25 +297,36 @@ class Physics:
                 "pktop": self._pktop,
             },
         )
+        self._do_microphysics = False
+        self._do_microphysics_emulator = False
         if "microphysics" in active_packages:
             self._do_microphysics = True
             self._prepare_microphysics = stencil_factory.from_origin_domain(
                 func=prepare_microphysics,
-                origin=grid_indexing.origin_compute(),
-                domain=grid_indexing.domain_compute(),
+                origin=self.grid_indexing.origin_compute(),
+                domain=self.grid_indexing.domain_compute(),
             )
             self._update_physics_state_with_tendencies = (
                 stencil_factory.from_origin_domain(
                     func=update_physics_state_with_tendencies,
-                    origin=grid_indexing.origin_compute(),
-                    domain=grid_indexing.domain_compute(),
+                    origin=self.grid_indexing.origin_compute(),
+                    domain=self.grid_indexing.domain_compute(),
                 )
             )
             self._microphysics = Microphysics(
                 stencil_factory, quantity_factory, grid_data, namelist=namelist
             )
-        else:
-            self._do_microphysics = False
+        elif "microphysics_emulator" in active_packages:
+            try:
+                import tensorflow as tf
+            except ImportError:
+                raise ImportError(
+                    "microphysics emulator requires tensorflow to be installed, \
+                        try: pip install -r requirements_optional.txt"
+                )
+            self._do_microphysics_emulator = True
+            self._emulator_dict: dict = {}
+            self._emulation_model = tf.keras.models.load_model(namelist.emulator_path)
 
     def _setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -358,4 +425,11 @@ class Physics:
                 physics_state.physics_updated_ua,
                 physics_state.physics_updated_va,
                 timestep,
+            )
+        if self._do_microphysics_emulator:
+            microphysics_emulator(
+                self.grid_indexing,
+                self._emulator_dict,
+                self._emulation_model,
+                physics_state,
             )
