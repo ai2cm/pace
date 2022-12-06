@@ -50,6 +50,12 @@ class QuantityFactory:
         numpy = StorageNumpy(backend)
         return cls(sizer, numpy)
 
+    def _backend(self) -> Optional[str]:
+        if hasattr(self._numpy, "backend"):
+            return self._numpy.backend
+        else:
+            return None
+
     def empty(
         self,
         dims: Sequence[str],
@@ -114,7 +120,14 @@ class QuantityFactory:
             )
         except TypeError:
             data = allocator(shape, dtype=dtype)
-        return Quantity(data, dims=dims, units=units, origin=origin, extent=extent)
+        return Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+            gt4py_backend=self._backend(),
+        )
 
     def get_quantity_halo_spec(
         self, dims: Sequence[str], n_halo: Optional[int] = None, dtype: type = float

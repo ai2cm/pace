@@ -497,7 +497,14 @@ class Quantity:
 
     def __descriptor__(self) -> Any:
         """The descriptor is a property that dace uses."""
-        assert self.gt4py_backend is not None
+        # The gt4py.storage.dace_descriptor relies on the backend to
+        # read in some memory info (alignment, layout_map, device hint).
+        # This _can_ be extended to any buffer but need a rework of that function
+        # and a thorough check at large.
+        if self.gt4py_backend is None:
+            raise RuntimeError(
+                "DaCe descriptor can only process Quantity with backends. See in-code comment."
+            )
 
         try:
             # QuantityMetadata is not storing `dimensions`, so recompute.
