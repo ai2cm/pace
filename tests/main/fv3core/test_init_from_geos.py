@@ -84,48 +84,88 @@ def test_geos_wrapper():
 
     wrapper = fv3core.GeosDycoreWrapper(namelist, comm, backend)
     nhalo = 3
-    shape = (
+    shape_centered = (
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nz"],
+    )
+    shape_x_interface = (
         namelist["nx_tile"] + 2 * nhalo + 1,
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nz"],
+    )
+    shape_y_interface = (
+        namelist["nx_tile"] + 2 * nhalo,
         namelist["nx_tile"] + 2 * nhalo + 1,
+        namelist["nz"],
+    )
+    shape_z_interface = (
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nx_tile"] + 2 * nhalo,
         namelist["nz"] + 1,
     )
     shape2d = (
-        namelist["nx_tile"] + 2 * nhalo + 1,
-        namelist["nx_tile"] + 2 * nhalo + 1,
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nx_tile"] + 2 * nhalo,
     )
     shape_tracers = (
-        namelist["nx_tile"] + 2 * nhalo + 1,
-        namelist["nx_tile"] + 2 * nhalo + 1,
-        namelist["nz"] + 1,
-        namelist["dycore_config"]["nwat"],
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nx_tile"] + 2 * nhalo,
+        namelist["nz"],
+        7,
     )
+
     assert isinstance(wrapper, fv3core.GeosDycoreWrapper)
     assert isinstance(wrapper.dynamical_core, fv3core.DynamicalCore)
 
-    u = np.ones(shape)
-    v = np.ones(shape)
-    w = np.ones(shape)
-    delz = np.ones(shape)
-    pt = np.ones(shape)
-    delp = np.ones(shape)
+    u = np.ones(shape_y_interface)
+    v = np.ones(shape_x_interface)
+    w = np.ones(shape_centered)
+    delz = np.ones(shape_centered)
+    pt = np.ones(shape_centered)
+    delp = np.ones(shape_centered)
     q = np.ones(shape_tracers)
     ps = np.ones(shape2d)
-    pe = np.ones(shape)
-    pk = np.ones(shape)
-    peln = np.ones(shape)
-    pkz = np.ones(shape)
+    pe = np.ones(shape_z_interface)
+    pk = np.ones(shape_z_interface)
+    peln = np.ones(shape_z_interface)
+    pkz = np.ones(shape_centered)
     phis = np.ones(shape2d)
-    q_con = np.ones(shape)
-    omga = np.ones(shape)
-    ua = np.ones(shape)
-    va = np.ones(shape)
-    uc = np.ones(shape)
-    vc = np.ones(shape)
-    mfxd = np.ones(shape)
-    mfyd = np.ones(shape)
-    cxd = np.ones(shape)
-    cyd = np.ones(shape)
-    diss_estd = np.ones(shape)
+    q_con = np.ones(shape_centered)
+    omga = np.ones(shape_centered)
+    ua = np.ones(shape_centered)
+    va = np.ones(shape_centered)
+    uc = np.ones(shape_x_interface)
+    vc = np.ones(shape_y_interface)
+    mfxd = np.ones(
+        (
+            namelist["nx_tile"] + 1,
+            namelist["nx_tile"],
+            namelist["nz"],
+        )
+    )
+    mfyd = np.ones(
+        (
+            namelist["nx_tile"],
+            namelist["nx_tile"] + 1,
+            namelist["nz"],
+        )
+    )
+    cxd = np.ones(
+        (
+            namelist["nx_tile"] + 1,
+            namelist["nx_tile"] + 2 * nhalo,
+            namelist["nz"],
+        )
+    )
+    cyd = np.ones(
+        (
+            namelist["nx_tile"] + 2 * nhalo,
+            namelist["nx_tile"] + 1,
+            namelist["nz"],
+        )
+    )
+    diss_estd = np.ones(shape_centered)
 
     output_dict = wrapper(
         u,
