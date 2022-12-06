@@ -503,7 +503,8 @@ class Quantity:
         # and a thorough check at large.
         if self.gt4py_backend is None:
             raise RuntimeError(
-                "DaCe descriptor can only process Quantity with backends. See in-code comment."
+                "DaCe descriptor can only process Quantity with backends."
+                "See in-code comment."
             )
 
         try:
