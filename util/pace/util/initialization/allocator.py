@@ -51,9 +51,9 @@ class QuantityFactory:
         return cls(sizer, numpy)
 
     def _backend(self) -> Optional[str]:
-        if hasattr(self._numpy, "backend"):
+        try:
             return self._numpy.backend
-        else:
+        except AttributeError:
             return None
 
     def empty(
