@@ -211,10 +211,12 @@ class GeosDycoreWrapper:
         pace.util.utils.safe_assign_array(state.cyd.view[:], cyd[isc:iec, :, :])
 
         pace.util.utils.safe_assign_array(state.ps.view[:], ps[isc:iec, jsc:jec])
-        pace.util.utils.safe_assign_array(state.pe.view[:], pe[isc:iec, jsc:jec, :])
-        pace.util.utils.safe_assign_array(state.pk.view[:], pk[isc:iec, jsc:jec, :])
-        pace.util.utils.safe_assign_array(state.peln.view[:], peln[isc:iec, jsc:jec, :])
-        pace.util.utils.safe_assign_array(state.pkz.view[:], pkz[isc:iec, jsc:jec, :])
+        pace.util.utils.safe_assign_array(
+            state.pe.data[isc - 1 : iec + 1, jsc - 1 : jec + 1, :], pe
+        )
+        pace.util.utils.safe_assign_array(state.pk.view[:], pk)
+        pace.util.utils.safe_assign_array(state.peln.view[:], peln)
+        pace.util.utils.safe_assign_array(state.pkz.view[:], pkz)
         pace.util.utils.safe_assign_array(state.phis.view[:], phis[isc:iec, jsc:jec])
         pace.util.utils.safe_assign_array(
             state.q_con.view[:], q_con[isc:iec, jsc:jec, :]
@@ -305,16 +307,17 @@ class GeosDycoreWrapper:
             output_dict["ps"], self.dycore_state.ps.data[:-1, :-1]
         )
         pace.util.utils.safe_assign_array(
-            output_dict["pe"], self.dycore_state.pe.data[:-1, :-1, :]
+            output_dict["pe"],
+            self.dycore_state.pe.data[isc - 1 : iec + 1, jsc - 1 : jec + 1, :],
         )
         pace.util.utils.safe_assign_array(
-            output_dict["pk"], self.dycore_state.pk.data[:-1, :-1, :]
+            output_dict["pk"], self.dycore_state.pk.data[isc:iec, jsc:jec, :]
         )
         pace.util.utils.safe_assign_array(
-            output_dict["peln"], self.dycore_state.peln.data[:-1, :-1, :]
+            output_dict["peln"], self.dycore_state.peln.data[isc:iec, jsc:jec, :]
         )
         pace.util.utils.safe_assign_array(
-            output_dict["pkz"], self.dycore_state.pkz.data[:-1, :-1, :-1]
+            output_dict["pkz"], self.dycore_state.pkz.data[isc:iec, jsc:jec, :-1]
         )
         pace.util.utils.safe_assign_array(
             output_dict["phis"], self.dycore_state.phis.data[:-1, :-1]
@@ -388,10 +391,18 @@ class GeosDycoreWrapper:
         )
 
         self.output_dict["ps"] = np.empty((shape_2d))
-        self.output_dict["pe"] = np.empty((shape_z_interface))
-        self.output_dict["pk"] = np.empty((shape_z_interface))
-        self.output_dict["peln"] = np.empty((shape_z_interface))
-        self.output_dict["pkz"] = np.empty((shape_centered))
+        self.output_dict["pe"] = np.empty(
+            (self._grid_indexing.domain_full(add=(2 - 2 * nhalo, 2 - 2 * nhalo, 1)))
+        )
+        self.output_dict["pk"] = np.empty(
+            (self._grid_indexing.domain_full(add=(-2 * nhalo, -2 * nhalo, 1)))
+        )
+        self.output_dict["peln"] = np.empty(
+            (self._grid_indexing.domain_full(add=(-2 * nhalo, -2 * nhalo, 1)))
+        )
+        self.output_dict["pkz"] = np.empty(
+            (self._grid_indexing.domain_full(add=(-2 * nhalo, -2 * nhalo, 0)))
+        )
         self.output_dict["phis"] = np.empty((shape_2d))
         self.output_dict["q_con"] = np.empty((shape_centered))
         self.output_dict["omga"] = np.empty((shape_centered))

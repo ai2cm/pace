@@ -126,10 +126,34 @@ def test_geos_wrapper():
     delp = np.ones(shape_centered)
     q = np.ones(shape_tracers)
     ps = np.ones(shape2d)
-    pe = np.ones(shape_z_interface)
-    pk = np.ones(shape_z_interface)
-    peln = np.ones(shape_z_interface)
-    pkz = np.ones(shape_centered)
+    pe = np.ones(
+        (
+            namelist["nx_tile"] + 2,
+            namelist["nx_tile"] + 2,
+            namelist["nz"] + 1,
+        )
+    )
+    pk = np.ones(
+        (
+            namelist["nx_tile"],
+            namelist["nx_tile"],
+            namelist["nz"] + 1,
+        )
+    )
+    peln = np.ones(
+        (
+            namelist["nx_tile"],
+            namelist["nx_tile"],
+            namelist["nz"] + 1,
+        )
+    )
+    pkz = np.ones(
+        (
+            namelist["nx_tile"],
+            namelist["nx_tile"],
+            namelist["nz"],
+        )
+    )
     phis = np.ones(shape2d)
     q_con = np.ones(shape_centered)
     omga = np.ones(shape_centered)
