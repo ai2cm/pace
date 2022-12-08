@@ -41,6 +41,7 @@ setup(
     extras_require={
         "netcdf": ["xarray>=0.15.1", "scipy>=1.3.1"],
         "zarr": ["zarr>=2.3.2", "xarray>=0.15.1", "scipy>=1.3.1"],
+        "dace": ["dace>=0.14"],
     },
     name="pace-util",
     license="BSD license",

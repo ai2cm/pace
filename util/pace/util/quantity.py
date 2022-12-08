@@ -330,6 +330,8 @@ class Quantity:
                 )
             )
         else:
+            if data is None:
+                raise TypeError("requires 'data' to be passed")
             # We have no info about the gt4py_backend, so just assign it.
             self._data = data
 
