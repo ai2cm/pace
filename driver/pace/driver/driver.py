@@ -21,7 +21,6 @@ from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
-
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
@@ -123,7 +122,7 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
-    safety_check_frequency: int = 1
+    safety_check_frequency: Optional[int] = None
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -585,8 +584,10 @@ class Driver:
             )
             self.diagnostics.store(time=self.time, state=self.state)
             logger.info(f"diagnostics for step {self.time} finished")
-        if ((step + 1) % self.config.safety_check_frequency) == 0:
-            logger.info(f"checking state for for step {step+1} started")
+        if (
+            self.config.safety_check_frequency
+            and ((step + 1) % self.config.safety_check_frequency) == 0
+        ):
             self.safety_checker.check_state(self.state.dycore_state)
             logger.info(f"checking state for for step {step+1} finished")
         self.config.restart_config.write_intermediate_if_enabled(

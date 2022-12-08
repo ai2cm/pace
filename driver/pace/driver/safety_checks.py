@@ -1,10 +1,25 @@
-from typing import ClassVar, Dict, Optional, Tuple
+import logging
+from typing import ClassVar, Dict, Optional
+
+import numpy as np
 
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.util.quantity import Quantity
-import numpy as np
-import logging
+
+
 logger = logging.getLogger(__name__)
+
+
+class VariableBounds:
+    def __init__(
+        self,
+        minimum_value: Optional[int] = None,
+        maximum_value: Optional[int] = None,
+        compute_domain_only: bool = False,
+    ) -> None:
+        self.minimum_value = minimum_value
+        self.maximum_value = maximum_value
+        self.compute_domain_only = compute_domain_only
 
 
 class SafetyChecker:
@@ -16,7 +31,7 @@ class SafetyChecker:
         RuntimeError: Variables outside the specified bounds
     """
 
-    checks: ClassVar[Dict[str, Tuple[Optional[int], Optional[int], bool]]] = {}
+    checks: ClassVar[Dict[str, VariableBounds]] = {}
 
     @classmethod
     def register_variable(
@@ -43,7 +58,9 @@ class SafetyChecker:
         if name in cls.checks:
             raise NotImplementedError("Can only register variables once")
         else:
-            cls.checks[name] = (minimum_value, maximum_value, compute_domain_only)
+            cls.checks[name] = VariableBounds(
+                minimum_value, maximum_value, compute_domain_only
+            )
 
     @classmethod
     def clear_all_checks(cls):
@@ -60,37 +77,34 @@ class SafetyChecker:
             NotImplementedError: If one of the registered variables are not in the state
             RuntimeError: If one of the variables exceeds its specified bounds
         """
-        for variable, bounds in self.checks.items():
+        for variable, variable_bounds in self.checks.items():
             try:
                 var: Quantity = state.__getattribute__(variable)
             except AttributeError:
                 raise NotImplementedError("Variable is not in the state")
-            if bounds[2]:
-                min_value = var.data[
-                    var.origin[0] : var.origin[0] + var.extent[0],
-                    var.origin[1] : var.origin[1] + var.extent[1],
-                    var.origin[2] : var.origin[2] + var.extent[2],
-                ].min()
-                max_value = var.data[
-                    var.origin[0] : var.origin[0] + var.extent[0],
-                    var.origin[1] : var.origin[1] + var.extent[1],
-                    var.origin[2] : var.origin[2] + var.extent[2],
-                ].max()
+            if variable_bounds.compute_domain_only:
+
+                min_value = var.view[:].min()
+                max_value = var.view[:].max()
             else:
                 min_value = var.data.min()
                 max_value = var.data.max()
 
-            if bounds[0] and min_value < bounds[0]:
+            if (
+                variable_bounds.minimum_value
+                and min_value < variable_bounds.minimum_value
+            ):
                 logger.info(
                     f"Variable {variable} is outside of its specified bounds: \
-                    {bounds[0]} specified, {min_value} found"
+                    {variable_bounds.minimum_value} specified, {min_value} found"
                 )
-            if bounds[1] and max_value > bounds[1]:
+            if (
+                variable_bounds.maximum_value
+                and max_value > variable_bounds.maximum_value
+            ):
                 logger.info(
                     f"Variable {variable} is outside of its specified bounds: \
-                    {bounds[1]} specified, {max_value} found"
+                    {variable_bounds.maximum_value} specified, {max_value} found"
                 )
             if np.isnan(var.view[:]).any():
-                logger.info(
-                    f"Variable {variable} contains a NaN value"
-                )
+                logger.info(f"Variable {variable} contains a NaN value")
