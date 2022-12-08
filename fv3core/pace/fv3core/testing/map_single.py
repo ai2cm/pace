@@ -22,20 +22,11 @@ class MapSingleFactory:
         self,
         kord: int,
         mode: int,
-        i1: int,
-        i2: int,
-        j1: int,
-        j2: int,
         *args,
         **kwargs,
     ):
         key_tuple = (kord, mode, (X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM))
         if key_tuple not in self._object_pool:
-            # stencil_factory: StencilFactory,
-            # quantity_factory: pace.util.QuantityFactory,
-            # kord: int,
-            # mode: int,
-            # dims: List[str],
             self._object_pool[key_tuple] = MapSingle(
                 self.stencil_factory, self.quantity_factory, *key_tuple
             )
