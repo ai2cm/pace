@@ -1,6 +1,6 @@
 import logging
-from pathlib import Path
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 import fsspec
@@ -177,7 +177,6 @@ class NetCDFMonitor:
                 path_for_grid = constants_filename + "_" + name + ".nc"
 
                 if self._fs.exists(path_for_grid):
-                    # with self._fs.open(path_for_grid, "rb") as f:
                     ds = xr.open_dataset(path_for_grid)
                     ds = ds.load()
                     ds[name] = xr.DataArray(
