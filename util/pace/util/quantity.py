@@ -6,7 +6,7 @@ import numpy as np
 
 from . import _xarray, constants
 from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
-from ._optional_imports import cupy, gt4py, dace
+from ._optional_imports import cupy, dace, gt4py
 from .types import NumpyModule
 
 
