@@ -6,9 +6,8 @@ import numpy as np
 
 from . import _xarray, constants
 from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
-from ._optional_imports import cupy, gt4py
+from ._optional_imports import cupy, gt4py, dace
 from .types import NumpyModule
-from dace.data import create_datadescriptor as dace_create_datadescriptor
 
 
 if cupy is None:
@@ -497,41 +496,18 @@ class Quantity:
         return self.data.shape
 
     def __descriptor__(self) -> Any:
-        """The descriptor is a property that dace uses."""
-        # The gt4py.storage.dace_descriptor relies on the backend to
-        # read in some memory info (alignment, layout_map, device hint).
-        # This _can_ be extended to any buffer but need a rework of that function
-        # and a thorough check at large.
-        # if self.gt4py_backend is None:
-        #     raise RuntimeError(
-        #         "DaCe descriptor can only process Quantity with backends."
-        #         "See in-code comment."
-        #     )
-
-        # try:
-        # # QuantityMetadata is not storing `dimensions`, so recompute.
-        # dimensions: Tuple[Union[str, int], ...] = tuple(
-        #     [
-        #         axis
-        #         if any(dim in axis_dims for axis_dims in constants.SPATIAL_DIMS)
-        #         else str(self.data.shape[index])
-        #         for index, (dim, axis) in enumerate(
-        #             zip(
-        #                 self.dims, ("I", "J", "K", *([None] * (len(self.dims) - 3)))
-        #             )
-        #         )
-        #     ]
-        # )
-        # return gt4py.storage.dace_descriptor(
-        #     self.data.shape,
-        #     self.data.dtype,
-        #     backend=self.gt4py_backend,
-        #     aligned_index=self.origin,
-        #     dimensions=dimensions,
-        # )
-        # except AttributeError:
-        #     return None
-        return dace_create_datadescriptor(self.data)
+        """The descriptor is a property that dace uses.
+        This relies on `dace` capacity to read out data from the buffer protocol.
+        If the internal data given doesn't follow the protocol it will most likely
+        fail.
+        """
+        if dace:
+            return dace.data.create_datadescriptor(self.data)
+        else:
+            raise ImportError(
+                "Attempt to use DaCe orchestrated backend but "
+                "DaCe module is not available."
+            )
 
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
