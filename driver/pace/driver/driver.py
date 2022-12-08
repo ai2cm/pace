@@ -21,6 +21,7 @@ from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
+
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
@@ -30,6 +31,7 @@ from .comm import CreatesCommSelector
 from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
+from .performance.collector import PerformanceCollector
 from .state import DriverState
 
 
@@ -581,6 +583,7 @@ class Driver:
                 self.config.stencil_config.compilation_config.backend,
                 self.config.stencil_config.dace_config.is_dace_orchestrated(),
                 self.config.dt_atmos,
+                "Ongoing",
             )
             self.diagnostics.store(time=self.time, state=self.state)
             logger.info(f"diagnostics for step {self.time} finished")
@@ -640,14 +643,14 @@ class Driver:
         logger.info("integrating driver forward in time")
         with self.performance_collector.total_timer.clock("total"):
             self.profiler.enable()
-            PerformanceConfig.mark_cuda_profiler("Begin integration")
-            PerformanceConfig.start_cuda_profiler()
+            PerformanceCollector.mark_cuda_profiler("Begin integration")
+            PerformanceCollector.start_cuda_profiler()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
-            PerformanceConfig.stop_cuda_profiler()
+            PerformanceCollector.stop_cuda_profiler()
             self.profiler.dump_stats(
                 f"{self.config.performance_config.experiment_name}_\
                 {self.comm.Get_rank()}.prof"
@@ -667,8 +670,13 @@ class Driver:
             self.config.stencil_config.compilation_config.backend,
             self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
+            "Finished",
         )
-        self._write_performance_json_output()
+        if (
+            self.comm.Get_size()
+            >= self.config.performance_config.json_all_rank_threshold
+        ):
+            self._write_performance_json_output()
         self.diagnostics.store_grid(
             grid_data=self.state.grid_data,
         )

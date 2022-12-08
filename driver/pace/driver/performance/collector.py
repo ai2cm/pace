@@ -14,6 +14,8 @@ from pace.driver.performance.report import (
     get_experiment_info,
     write_to_timestamped_json,
 )
+from pace.util._optional_imports import cupy as cp
+from pace.util.utils import GPU_AVAILABLE
 
 from .report import collect_data_and_write_to_file
 
@@ -32,16 +34,29 @@ class AbstractPerformanceCollector(Protocol):
         dt_atmos: float,
     ):
         ...
+
     def write_out_rank_0(
-        self,
-        backend: str,
-        is_orchestrated: bool,
-        dt_atmos: float
+        self, backend: str, is_orchestrated: bool, dt_atmos: float, sim_status: str
     ):
         ...
 
+    @classmethod
+    def start_cuda_profiler(cls):
+        if GPU_AVAILABLE:
+            cp.cuda.profiler.start()
 
-class PerformanceCollector:
+    @classmethod
+    def stop_cuda_profiler(cls):
+        if GPU_AVAILABLE:
+            cp.cuda.profiler.stop()
+
+    @classmethod
+    def mark_cuda_profiler(cls, message: str):
+        if GPU_AVAILABLE:
+            cp.cuda.nvtx.Mark(message)
+
+
+class PerformanceCollector(AbstractPerformanceCollector):
     def __init__(self, experiment_name: str, comm: pace.util.Comm):
         self.times_per_step: List[Mapping[str, float]] = []
         self.hits_per_step: List[Mapping[str, float]] = []
@@ -60,10 +75,7 @@ class PerformanceCollector:
         self.timestep_timer.reset()
 
     def write_out_rank_0(
-        self,
-        backend: str,
-        is_orchestrated: bool,
-        dt_atmos: float,
+        self, backend: str, is_orchestrated: bool, dt_atmos: float, sim_status: str
     ):
         if self.comm.Get_rank() == 0:
             git_hash = "None"
@@ -88,7 +100,12 @@ class PerformanceCollector:
                 is_orchestrated,
             )
             timing_info = gather_hit_counts(self.hits_per_step, timing_info)
-            report = Report(setup=exp_info, times=timing_info, dt_atmos=dt_atmos)
+            report = Report(
+                setup=exp_info,
+                times=timing_info,
+                dt_atmos=dt_atmos,
+                sim_status=sim_status,
+            )
             write_to_timestamped_json(report)
         else:
             pass
@@ -133,7 +150,7 @@ class PerformanceCollector:
         )
 
 
-class NullPerformanceCollector:
+class NullPerformanceCollector(AbstractPerformanceCollector):
     def __init__(self):
         self.total_timer = pace.util.NullTimer()
         self.timestep_timer = pace.util.NullTimer()
@@ -148,10 +165,8 @@ class NullPerformanceCollector:
         dt_atmos: float,
     ):
         pass
+
     def write_out_rank_0(
-        self,
-        backend: str,
-        is_orchestrated: bool,
-        dt_atmos: float
+        self, backend: str, is_orchestrated: bool, dt_atmos: float, sim_status: str
     ):
         pass

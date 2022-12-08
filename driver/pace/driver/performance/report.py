@@ -30,6 +30,7 @@ class Report:
     setup: Experiment
     times: dict
     dt_atmos: float
+    sim_status: str = "Finished"
     SYPD: float = 0.0
 
     def __post_init__(self):
@@ -114,7 +115,9 @@ def gather_hit_counts(
 
 def get_sypd(timing_info: Dict[str, TimeReport], dt_atmos: float) -> float:
     if "mainloop" in timing_info:
-        is_list_of_list = any(isinstance(el, list) for el in timing_info["mainloop"].times)
+        is_list_of_list = any(
+            isinstance(el, list) for el in timing_info["mainloop"].times
+        )
         if is_list_of_list:
             mainloop = np.mean(sum(timing_info["mainloop"].times, []))
         else:

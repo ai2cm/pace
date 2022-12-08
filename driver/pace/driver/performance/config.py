@@ -8,8 +8,6 @@ from .collector import (
     NullPerformanceCollector,
     PerformanceCollector,
 )
-from pace.util._optional_imports import cupy as cp
-from pace.util.utils import GPU_AVAILABLE
 
 
 @dataclasses.dataclass
@@ -20,12 +18,15 @@ class PerformanceConfig:
     collect_cProfile: use cProfile for CPU Python profiling
     collect_communication: collect halo exchange details
     experiment_name: to be printed in the JSON summary
+    json_all_rank_threshold: number of nodes above the full performance
+        report for all nodes won't be written (rank 0 is always written)
     """
 
     collect_performance: bool = False
     collect_cProfile: bool = False
     collect_communication: bool = False
     experiment_name: str = "test"
+    json_all_rank_threshold: int = 1000
 
     def build(self, comm: pace.util.Comm) -> AbstractPerformanceCollector:
         if self.collect_performance:
@@ -38,18 +39,3 @@ class PerformanceConfig:
             return Profiler()
         else:
             return NullProfiler()
-
-    @classmethod
-    def start_cuda_profiler(cls):
-        if GPU_AVAILABLE:
-            cp.cuda.profiler.start()
-
-    @classmethod
-    def stop_cuda_profiler(cls):
-        if GPU_AVAILABLE:
-            cp.cuda.profiler.stop()
-
-    @classmethod
-    def mark_cuda_profiler(cls, message: str):
-        if GPU_AVAILABLE:
-            cp.cuda.nvtx.Mark(message)

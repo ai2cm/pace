@@ -1,10 +1,8 @@
 import abc
-import copy
 import logging
 from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
-
 
 from . import constants
 from ._timing import NullTimer, Timer
@@ -24,6 +22,7 @@ try:
     import cupy
 except ImportError:
     cupy = None
+
 
 def to_numpy(array, dtype=None) -> np.ndarray:
     """
@@ -46,6 +45,7 @@ def to_numpy(array, dtype=None) -> np.ndarray:
     if dtype:
         output = output.astype(dtype=dtype)
     return output
+
 
 def bcast_metadata_list(comm, quantity_list):
     is_root = comm.Get_rank() == constants.ROOT_RANK
@@ -266,8 +266,10 @@ class Communicator(abc.ABC):
                 if self.rank == constants.ROOT_RANK:
                     recv_state["time"] = send_state["time"]
             else:
-                gather_value =  to_numpy(quantity.view[:], dtype=np.float32)
-                gather_quantity = Quantity(data=gather_value, dims=quantity.dims, units=quantity.units)
+                gather_value = to_numpy(quantity.view[:], dtype=np.float32)
+                gather_quantity = Quantity(
+                    data=gather_value, dims=quantity.dims, units=quantity.units
+                )
                 if recv_state is not None and name in recv_state:
                     tile_quantity = self.gather(
                         gather_quantity, recv_quantity=recv_state[name]
