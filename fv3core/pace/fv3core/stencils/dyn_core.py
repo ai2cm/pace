@@ -33,7 +33,7 @@ from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from pace.fv3core.stencils.del2cubed import HyperdiffusionDamping
 from pace.fv3core.stencils.pk3_halo import PK3Halo
 from pace.fv3core.stencils.riem_solver3 import NonhydrostaticVerticalSolver
-from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
+from pace.fv3core.stencils.riem_solver_c import NonhydrostaticVerticalSolverCGrid
 from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,
@@ -474,7 +474,7 @@ class AcousticDynamics:
                 quantity_factory=quantity_factory,
                 config=config.riemann,
             )
-            self.vertical_solver_cgrid = RiemannSolverC(
+            self.vertical_solver_cgrid = NonhydrostaticVerticalSolverCGrid(
                 stencil_factory, quantity_factory=quantity_factory, p_fac=config.p_fac
             )
             origin, domain = grid_indexing.get_origin_domain(

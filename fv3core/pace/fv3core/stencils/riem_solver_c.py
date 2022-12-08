@@ -116,7 +116,7 @@ def finalize(
             gz = gz[0, 0, 1] - dz * constants.GRAV
 
 
-class RiemannSolverC:
+class NonhydrostaticVerticalSolverCGrid:
     """
     Fortran subroutine Riem_Solver_C
 
