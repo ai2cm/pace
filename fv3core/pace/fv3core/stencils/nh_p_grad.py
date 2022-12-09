@@ -121,8 +121,6 @@ class NonHydrostaticPressureGradient:
     Documented in Lin 97, Section 6.6 of FV3 documentation.
 
     Fortran name is nh_p_grad.
-
-    TODO: should implement split pgrad
     """
 
     def __init__(

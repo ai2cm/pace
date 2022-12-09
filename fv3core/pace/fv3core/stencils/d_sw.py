@@ -318,11 +318,6 @@ def compute_vorticity(
         vorticity (out):
     """
     with computation(PARALLEL), interval(...):
-        # TODO: ask Lucas why vorticity is computed with this particular treatment
-        # of dx, dy, and rarea. The original code read like:
-        #     u_dx = u * dx
-        #     v_dy = v * dy
-        #     vorticity = rarea * (u_dx - u_dx[0, 1, 0] - v_dy + v_dy[1, 0, 0])
         # cell-mean vorticity is equal to the circulation around the gridcell
         # divided by the area of the gridcell. It isn't exactly true that
         # area = dx * dy, so the form below is necessary to get an exact result.
@@ -1007,8 +1002,6 @@ class DGridShallowWaterLagrangianDynamics:
         #   uc_contra, vc_contra = f(uc, vc, ...)
         #   xfx, yfx = g(uc_contra, vc_contra, ...)
 
-        # TODO: ptc may only be used as a temporary under this scope, investigate
-        # and decouple it from higher level if possible (i.e. if not a real output)
         self.fv_prep(uc, vc, crx, cry, xfx, yfx, self._uc_contra, self._vc_contra, dt)
 
         # TODO: the structure of much of this is to get fluxes from fvtp2d and then
@@ -1211,7 +1204,8 @@ class DGridShallowWaterLagrangianDynamics:
             self._delnflux_damp_vt,
             damped_rel_vorticity_agrid,
         )
-        # TODO(eddied): These stencils were split to ensure GTC verification
+        # TODO(eddied): These stencils were split to ensure GTC verification,
+        # merge them if you can
         self._vort_differencing_stencil(
             self._vorticity_bgrid_damped,
             self._vort_x_delta,
