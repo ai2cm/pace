@@ -15,8 +15,6 @@ from pace.util import X_DIM, Y_DIM, Z_DIM
 def fix_tracer(
     q: FloatField,
     dp: FloatField,
-    dm: FloatField,
-    dm_pos: FloatField,
     zfix: IntFieldIJ,
     sum0: FloatFieldIJ,
     sum1: FloatFieldIJ,
@@ -25,8 +23,6 @@ def fix_tracer(
     Args:
         q (inout):
         dp (in):
-        dm (out):
-        dm_pos (out):
         zfix (out):
         sum0 (out):
         sum1 (out):
@@ -123,9 +119,6 @@ class FillNegativeTracerValues:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: pace.util.QuantityFactory,
-        im: int,
-        jm: int,
-        km: int,
         nq: int,
         tracers: Dict[str, pace.util.Quantity],
     ):
@@ -135,17 +128,11 @@ class FillNegativeTracerValues:
             dace_compiletime_args=["tracers"],
         )
         self._nq = int(nq)
-        self._fix_tracer_stencil = stencil_factory.from_origin_domain(
+        self._fix_tracer_stencil = stencil_factory.from_dims_halo(
             fix_tracer,
-            origin=stencil_factory.grid_indexing.origin_compute(),
-            domain=(int(im), int(jm), int(km)),
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        shape = stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-        shape_ij = shape[0:2]
-
-        self._dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
-        self._dm_pos = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
         # Setting initial value of upper_fix to zero is only needed for validation.
         # The values in the compute domain are set to zero in the stencil.
         self._zfix = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown", dtype=int)
@@ -170,8 +157,6 @@ class FillNegativeTracerValues:
             self._fix_tracer_stencil(
                 tracers[tracer_name],
                 dp2,
-                self._dm,
-                self._dm_pos,
                 self._zfix,
                 self._sum0,
                 self._sum1,

@@ -38,66 +38,6 @@ def moist_cv_nwat6_fn(
     return cvm, gz
 
 
-# TODO: Note untested
-@gtscript.function
-def moist_cv_nwat5_fn(qvapor, qliquid, qrain, qsnow, qice):
-    ql = qliquid + qrain
-    qs = qice + qsnow
-    gz = ql + qs
-    cvm = moist_cvm(qvapor, gz, ql, qs)
-    return cvm, gz
-
-
-# TODO: Note untested
-@gtscript.function
-def moist_cv_nwat4_fn(qvapor, qliquid, qrain):
-    gz = qliquid + qrain
-    cvm = (
-        (1.0 - (qvapor + gz)) * constants.CV_AIR
-        + qvapor * constants.CV_VAP
-        + gz * constants.C_LIQ
-    )
-    return cvm, gz
-
-
-# TODO: Note untested
-@gtscript.function
-def moist_cv_nwat3_fn(qvapor, qliquid, qice):
-    gz = qliquid + qice
-    cvm = moist_cvm(qvapor, gz, qliquid, qice)
-    return cvm, gz
-
-
-# TODO: Note untested
-@gtscript.function
-def moist_cv_nwat2_fn(qvapor, qliquid):
-    qv = qvapor if qvapor > 0 else 0.0
-    qs = qliquid if qliquid > 0 else 0.0
-    gz = qs
-    cvm = (1.0 - qv) * constants.CV_AIR + qv * constants.CV_VAP
-    return cvm, gz
-
-
-# TODO: Note untested
-@gtscript.function
-def moist_cv_nwat2_gfs_fn(qvapor, qliquid, t1):
-    gz = qliquid if qliquid > 0 else 0.0
-    qtmp = gz if t1 < constants.TICE - 15.0 else gz * (constants.TICE - t1) / 15.0
-    qs = 0 if t1 > constants.TICE else qtmp
-    ql = gz - qs
-    qv = qvapor if qvapor > 0 else 0.0
-    cvm = moist_cvm(qv, gz, ql, qs)
-    return cvm, gz
-
-
-# TODO: Note untested
-@gtscript.function
-def moist_cv_default_fn():
-    gz = 0
-    cvm = constants.CV_AIR
-    return cvm, gz
-
-
 @gtscript.function
 def moist_pt_func(
     qvapor: FloatField,
@@ -107,8 +47,6 @@ def moist_pt_func(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,

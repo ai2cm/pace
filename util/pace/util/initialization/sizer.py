@@ -86,11 +86,23 @@ class SubtileGridSizer(GridSizer):
                 different ranks have different domain shapes. If tile_partitioner
                 is a TilePartitioner, this argument does not matter.
         """
-        layout = namelist["fv_core_nml"]["layout"]
-        # npx and npy in the namelist are cell centers, but npz is mid levels
-        nx_tile = namelist["fv_core_nml"]["npx"] - 1
-        ny_tile = namelist["fv_core_nml"]["npy"] - 1
-        nz = namelist["fv_core_nml"]["npz"]
+        if "fv_core_nml" in namelist.keys():
+            layout = namelist["fv_core_nml"]["layout"]
+            # npx and npy in the namelist are cell centers, but npz is mid levels
+            nx_tile = namelist["fv_core_nml"]["npx"] - 1
+            ny_tile = namelist["fv_core_nml"]["npy"] - 1
+            nz = namelist["fv_core_nml"]["npz"]
+        elif "nx_tile" in namelist.keys():
+            layout = namelist["layout"]
+            # everything is cell centered in this format
+            nx_tile = namelist["nx_tile"]
+            ny_tile = namelist["nx_tile"]
+            nz = namelist["nz"]
+        else:
+            raise KeyError(
+                "Namelist format is unrecognized, "
+                "expected to find nx_tile or fv_core_nml"
+            )
         return cls.from_tile_params(
             nx_tile,
             ny_tile,

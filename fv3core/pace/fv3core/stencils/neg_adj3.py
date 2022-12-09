@@ -385,8 +385,6 @@ class AdjustNegativeTracerMixingRatio:
         qcld,
         pt,
         delp,
-        delz,
-        peln,
     ):
         """
         Args:
@@ -399,8 +397,6 @@ class AdjustNegativeTracerMixingRatio:
             qcld (inout):
             pt (inout):
             delp (in):
-            delz (unused):
-            peln (unused):
         """
         # TODO: remove delz and peln from args
         self._fix_neg_water(

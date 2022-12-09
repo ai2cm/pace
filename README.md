@@ -94,6 +94,10 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
 
+## ML emulation
+
+An example of integration of an ML model replacing the microphysics parametrization is available on the `feature/microphysics-emulator` branch.
+
 [circleci-shield]: https://dl.circleci.com/status-badge/img/gh/ai2cm/pace/tree/main.svg?style=svg
 [circleci-url]: https://dl.circleci.com/status-badge/redirect/gh/ai2cm/pace/tree/main
 [contributors-shield]: https://img.shields.io/github/contributors/ai2cm/pace.svg

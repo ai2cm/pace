@@ -164,3 +164,6 @@ _dacegraphs
 **/testing/output/*
 *.png
 *.nc
+
+# VSCode
+.devcontainer/

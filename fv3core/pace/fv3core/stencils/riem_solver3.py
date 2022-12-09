@@ -28,60 +28,65 @@ def precompute(
     cappa: FloatField,
     pe: FloatField,
     pe_init: FloatField,
-    dm: FloatField,
+    delta_mass: FloatField,
     zh: FloatField,
     q_con: FloatField,
-    pem: FloatField,
-    peln: FloatField,
+    p_interface: FloatField,
+    log_p_interface: FloatField,
     pk3: FloatField,
-    gm: FloatField,
+    gamma: FloatField,
     dz: FloatField,
-    pm: FloatField,
+    p_gas: FloatField,
     ptop: float,
     peln1: float,
     ptk: float,
 ):
     """
     Args:
-        delp (in):
+        delp (in): pressure thickness of atmospheric layer (Pa)
         cappa (in):
         pe (in):
         pe_init (out):
-        dm (out):
+        delta_mass (out): mass thickness of atmospheric layer
         zh (in):
         q_con (in):
-        pem (out):
-        peln (out):
+        p_interface (out): pressure defined on vertical interfaces (Pa)
+        log_p_interface (out): log(pressure) defined on vertical interfaces
         pk3 (out):
-        gm (out):
+        gamma (out):
         dz (out):
-        pm (out):
+        p_gas (out): pressure defined at vertical mid levels due to gas-phase
+            only, excluding condensates (Pa)
     """
     with computation(PARALLEL), interval(...):
-        dm = delp
+        delta_mass = delp
         pe_init = pe
     with computation(FORWARD):
         with interval(0, 1):
-            pem = ptop
-            peln = peln1
+            p_interface = ptop
+            log_p_interface = peln1
             pk3 = ptk
-            peg = ptop
-            pelng = peln1
+            p_interface_gas = ptop
+            log_p_interface_gas = peln1
         with interval(1, None):
             # TODO consolidate with riem_solver_c, same functions, math functions
-            pem = pem[0, 0, -1] + dm[0, 0, -1]
-            peln = log(pem)
+            p_interface = p_interface[0, 0, -1] + delta_mass[0, 0, -1]
+            log_p_interface = log(p_interface)
             # Excluding contribution from condensates
             # peln used during remap; pk3 used only for p_grad
-            peg = peg[0, 0, -1] + dm[0, 0, -1] * (1.0 - q_con[0, 0, -1])
-            pelng = log(peg)
+            p_interface_gas = p_interface_gas[0, 0, -1] + delta_mass[0, 0, -1] * (
+                1.0 - q_con[0, 0, -1]
+            )
+            log_p_interface_gas = log(p_interface_gas)
             # interface pk is using constant akap
-            pk3 = exp(constants.KAPPA * peln)
+            pk3 = exp(constants.KAPPA * log_p_interface)
     with computation(PARALLEL), interval(...):
-        gm = 1.0 / (1.0 - cappa)  # gamma, cp/cv
-        dm = dm * constants.RGRAV
+        gamma = 1.0 / (1.0 - cappa)  # gamma, cp/cv
+        delta_mass = delta_mass * constants.RGRAV
     with computation(PARALLEL), interval(0, -1):
-        pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
+        p_gas = (p_interface_gas[0, 0, 1] - p_interface_gas) / (
+            log_p_interface_gas[0, 0, 1] - log_p_interface_gas
+        )
         dz = zh[0, 0, 1] - zh
 
 
@@ -89,11 +94,11 @@ def finalize(
     zs: FloatFieldIJ,
     dz: FloatField,
     zh: FloatField,
-    peln_run: FloatField,
-    peln: FloatField,
+    log_p_interface_internal: FloatField,
+    log_p_interface_out: FloatField,
     pk3: FloatField,
     pk: FloatField,
-    pem: FloatField,
+    p_interface: FloatField,
     pe: FloatField,
     ppe: FloatField,
     pe_init: FloatField,
@@ -106,11 +111,13 @@ def finalize(
         zs (in):
         dz (in):
         zh (out):
-        peln_run (in):
-        peln (out):
+        peln_run (in): log(pressure) defined on vertical interfaces, as used
+            for computation in this module
+        peln (out): log(pressure) defined on vertical interfaces, memory
+            to be returned to calling module
         pk3 (in):
         pk (out):
-        pem (in):
+        p_interface (in):
         pe (inout):
         ppe (out):
         pe_init (in):
@@ -120,15 +127,15 @@ def finalize(
 
     with computation(PARALLEL), interval(...):
         if __INLINED(use_logp):
-            pk3 = peln_run
+            pk3 = log_p_interface_internal
         if __INLINED(beta < -0.1):
-            ppe = pe + pem
+            ppe = pe + p_interface
         else:
             ppe = pe
         if last_call:
-            peln = peln_run
+            log_p_interface_out = log_p_interface_internal
             pk = pk3
-            pe = pem
+            pe = p_interface
         else:
             pe = pe_init
     with computation(BACKWARD):
@@ -138,9 +145,7 @@ def finalize(
             zh = zh[0, 0, 1] - dz
 
 
-# TODO: rename to something like NonhydrostaticVerticalSolver
-# since this is not a riemann solver
-class RiemannSolver3:
+class NonhydrostaticVerticalSolver:
     """
     Fortran subroutine Riem_Solver3
 
@@ -160,11 +165,7 @@ class RiemannSolver3:
         self._sim1_solve = Sim1Solver(
             stencil_factory,
             config.p_fac,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
-            grid_indexing.domain[2] + 1,
+            n_halo=0,
         )
         orchestrate(
             obj=self,
@@ -174,18 +175,20 @@ class RiemannSolver3:
         if config.a_imp <= 0.999:
             raise NotImplementedError("a_imp <= 0.999 is not implemented")
 
-        self._tmp_dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="kg")
+        self._delta_mass = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="kg")
         self._tmp_pe_init = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
-        self._tmp_pm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
-        self._tmp_pem = quantity_factory.zeros(
+        self._p_gas = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._p_interface = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa"
         )
-        self._tmp_peln_run = quantity_factory.zeros(
+        self._log_p_interface = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_INTERFACE_DIM], units="log(Pa)"
         )
-        self._tmp_gm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
+
+        # gamma parameter is (cp/cv)
+        self._gamma = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="")
 
         riemorigin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(0, 0, 1))
@@ -208,17 +211,17 @@ class RiemannSolver3:
         cappa: FloatField,
         ptop: float,
         zs: FloatFieldIJ,
-        wsd: FloatFieldIJ,
+        ws: FloatFieldIJ,
         delz: FloatField,
         q_con: FloatField,
         delp: FloatField,
         pt: FloatField,
         zh: FloatField,
-        pe: FloatField,
+        p: FloatField,
         ppe: FloatField,
         pk3: FloatField,
         pk: FloatField,
-        peln: FloatField,
+        log_p_interface: FloatField,
         w: FloatFieldIJ,
     ):
         """
@@ -236,34 +239,29 @@ class RiemannSolver3:
             cappa (in):
             ptop (in): pressure at top of atmosphere
             zs (in): surface geopotential height
-            wsd (in): vertical velocity of the lowest level
+            ws (in): surface vertical wind (e.g. due to topography)
             delz (inout): vertical delta of atmospheric layer in meters
             q_con (in): total condensate mixing ratio
             delp (in): vertical delta in pressure
             pt (in): potential temperature
             zh (inout): geopotential height
-            pe (inout): full hydrostatic pressure
+            p (inout): full hydrostatic pressure
             ppe (out): non-hydrostatic pressure perturbation
             pk3 (inout): interface pressure raised to power of kappa
                 using constant kappa
             pk (out): interface pressure raised to power of kappa, final acoustic value
-            peln (out): logarithm of interface pressure, only written if last_call=True
+            log_p_interface (out): logarithm of interface pressure,
+                only written if last_call=True
             w (inout): vertical velocity
         """
-        # TODO: wsd is named wsr at the sim1_solver level, consolidate names
 
         # TODO: propagate variable renaming for these into stencils here and
         # in Sim1Solver
         # temporaries:
-        # dm is delta mass, including condensates
         # cp2 is cappa copied into a 2d variable, copied for vectorization reasons
         #     we should be able to remove this as gt4py optimizes automatically
-        # pem is hydrostatic edge pressure
         # peln2 is peln copied into a 2d variable, copied for vectorization reasons
         #     we should be able to remove this as gt4py optimizes automatically
-        # peg is hydrostatic pressure entirely due to gas phase
-        #       (with condensates removed)
-        # pelng is log of peg
         # pk3 is p**kappa
         # pm is layer-mean hydrostatic pressure due to gas phase
         #       (with condensates removed)
@@ -277,17 +275,17 @@ class RiemannSolver3:
         self._precompute_stencil(
             delp,
             cappa,
-            pe,
+            p,
             self._tmp_pe_init,
-            self._tmp_dm,
+            self._delta_mass,
             zh,
             q_con,
-            self._tmp_pem,
-            self._tmp_peln_run,
+            self._p_interface,
+            self._log_p_interface,
             pk3,
-            self._tmp_gm,
+            self._gamma,
             delz,
-            self._tmp_pm,
+            self._p_gas,
             ptop,
             peln1,
             ptk,
@@ -295,28 +293,28 @@ class RiemannSolver3:
 
         self._sim1_solve(
             dt,
-            self._tmp_gm,
+            self._gamma,
             cappa,
-            pe,
-            self._tmp_dm,
-            self._tmp_pm,
-            self._tmp_pem,
+            p,
+            self._delta_mass,
+            self._p_gas,
+            self._p_interface,
             w,
             delz,
             pt,
-            wsd,
+            ws,
         )
 
         self._finalize_stencil(
             zs,
             delz,
             zh,
-            self._tmp_peln_run,
-            peln,
+            self._log_p_interface,
+            log_p_interface,
             pk3,
             pk,
-            self._tmp_pem,
-            pe,
+            self._p_interface,
+            p,
             ppe,
             self._tmp_pe_init,
             last_call,
