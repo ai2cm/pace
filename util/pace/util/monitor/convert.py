@@ -3,7 +3,7 @@ import numpy as np
 from .._optional_imports import cupy
 
 
-def to_numpy(array) -> np.ndarray:
+def to_numpy(array, dtype=None) -> np.ndarray:
     """
     Input array can be a numpy array or a cupy array. Returns numpy array.
     """
@@ -21,4 +21,6 @@ def to_numpy(array) -> np.ndarray:
             output = cupy.asnumpy(array)
         else:
             raise err
+    if dtype:
+        output = output.astype(dtype=dtype)
     return output
