@@ -231,7 +231,7 @@ class AcousticDynamics:
             self,
             comm: pace.util.CubedSphereCommunicator,
             grid_indexing: GridIndexing,
-            backend: str,
+            quantity_factory: pace.util.QuantityFactory,
             state: DycoreState,
             cappa: pace.util.Quantity,
             gz: pace.util.Quantity,
@@ -240,44 +240,27 @@ class AcousticDynamics:
             heat_source: pace.util.Quantity,
             pkc: pace.util.Quantity,
         ):
-            origin = grid_indexing.origin_compute()
-            shape = grid_indexing.max_shape
             # Define the memory specification required
             # Those can be re-used as they are read-only descriptors
-            full_size_xyz_halo_spec = grid_indexing.get_quantity_halo_spec(
-                shape,
-                origin,
+            full_size_xyz_halo_spec = quantity_factory.get_quantity_halo_spec(
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
-                backend=backend,
             )
-            full_size_xyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
-                shape,
-                origin,
+            full_size_xyiz_halo_spec = quantity_factory.get_quantity_halo_spec(
                 dims=[fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
-                backend=backend,
             )
-            full_size_xiyz_halo_spec = grid_indexing.get_quantity_halo_spec(
-                shape,
-                origin,
+            full_size_xiyz_halo_spec = quantity_factory.get_quantity_halo_spec(
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
-                backend=backend,
             )
-            full_size_xyzi_halo_spec = grid_indexing.get_quantity_halo_spec(
-                shape,
-                origin,
+            full_size_xyzi_halo_spec = quantity_factory.get_quantity_halo_spec(
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
                 n_halo=grid_indexing.n_halo,
-                backend=backend,
             )
-            full_size_xiyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
-                shape,
-                origin,
+            full_size_xiyiz_halo_spec = quantity_factory.get_quantity_halo_spec(
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
-                backend=backend,
             )
 
             # Build the HaloUpdater. We could build one updater per specification group
@@ -336,12 +319,9 @@ class AcousticDynamics:
                 ["heat_source"],
             )
             if grid_indexing.domain[0] == grid_indexing.domain[1]:
-                full_3Dfield_2pts_halo_spec = grid_indexing.get_quantity_halo_spec(
-                    shape,
-                    origin,
+                full_3Dfield_2pts_halo_spec = quantity_factory.get_quantity_halo_spec(
                     dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
                     n_halo=2,
-                    backend=backend,
                 )
                 self.pkc = WrappedHaloUpdater(
                     comm.get_scalar_halo_updater([full_3Dfield_2pts_halo_spec]),
@@ -518,22 +498,6 @@ class AcousticDynamics:
             )
         )
 
-        # TODO (floriand): Due to DaCe VRAM pooling creating a memory
-        # leak with the usage pattern of those two fields
-        # We use the C_SW internal to workaround it e.g.:
-        #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
-        #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
-        # DaCe has already a fix on their side and it awaits release
-        # issue
-        # self.delpc = utils.make_storage_from_shape(
-        #     grid_indexing.domain_full(add=(1, 1, 1)),
-        #     backend=stencil_factory.backend,
-        # )
-        # self.ptc = utils.make_storage_from_shape(
-        #     grid_indexing.domain_full(add=(1, 1, 1)),
-        #     backend=stencil_factory.backend,
-        # )
-
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
             quantity_factory=quantity_factory,
@@ -626,7 +590,7 @@ class AcousticDynamics:
         self._halo_updaters = AcousticDynamics._HaloUpdaters(
             comm,
             grid_indexing,
-            stencil_factory.backend,
+            quantity_factory,
             state,
             cappa=self.cappa,
             gz=self._gz,
@@ -823,6 +787,13 @@ class AcousticDynamics:
                 self.update_geopotential_height_on_c_grid(
                     self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
                 )
+                # TODO (floriand): Due to DaCe VRAM pooling creating a memory
+                # leak with the usage pattern of those two fields
+                # We use the C_SW internal to workaround it e.g.:
+                #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
+                #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
+                # DaCe has already a fix on their side and it awaits release
+                # issue
                 self.riem_solver_c(
                     dt2,
                     self.cappa,

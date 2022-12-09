@@ -486,6 +486,7 @@ class Driver:
             if not config.dycore_only and not config.disable_step_physics:
                 self.physics = pace.physics.Physics(
                     stencil_factory=self.stencil_factory,
+                    quantity_factory=self.quantity_factory,
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,
                     active_packages=["microphysics"],

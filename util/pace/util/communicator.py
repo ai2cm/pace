@@ -8,10 +8,9 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import array_buffer, recv_buffer, send_buffer
-from .halo_data_transformer import QuantityHaloSpec
 from .halo_updater import HaloUpdater, HaloUpdateRequest, VectorInterfaceHaloUpdater
 from .partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
-from .quantity import Quantity, QuantityMetadata
+from .quantity import Quantity, QuantityHaloSpec, QuantityMetadata
 from .types import NumpyModule
 from .utils import device_synchronize
 

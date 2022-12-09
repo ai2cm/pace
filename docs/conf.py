@@ -37,6 +37,7 @@ author = "AI2 Climate Modeling Team"
 extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
     "sphinx.ext.graphviz",
     "recommonmark",

@@ -136,6 +136,7 @@ jobs:
   lint:
     docker:
     - image: cimg/python:3.8
+    resource_class: small
     steps:
       - checkout
       - run:
@@ -143,7 +144,7 @@ jobs:
           command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+            - v3-lint-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: run linting
           command: |
@@ -152,10 +153,30 @@ jobs:
             pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
+          key: v3-lint-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
+
+  doctest:
+    docker:
+    - image: cimg/python:3.8
+    steps:
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - setup_environment_mpi
+      - run:
+          name: Install doc requirements
+          command: |
+            . venv/bin/activate
+            pip install -r requirements_docs.txt -c constraints.txt
+      - run:
+          name: run doctest
+          command: |
+            . venv/bin/activate
+            make doctest
 
   dycore_savepoints:
     machine:
@@ -448,11 +469,48 @@ jobs:
           name: Test notebooks
           command: make test_notebooks
 
+  push_docs:
+    docker:
+    - image: cimg/python:3.8
+    steps:
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - setup_environment_mpi
+      - run:
+          name: Install doc requirements
+          command: |
+            . venv/bin/activate
+            pip install -r requirements_docs.txt -c constraints.txt
+      - run:
+          name: Make docs
+          command: |
+            . venv/bin/activate
+            make docs
+      - run:
+          name: Move into place
+          command: |
+            git clone --branch gh-pages git@github.com:ai2cm/pace.git gh-pages
+            rm -rf gh-pages/docs
+            mv docs/_build/html gh-pages/docs
+            touch gh-pages/docs/.nojekyll
+            hash=$(git rev-parse --short HEAD)
+            git config --global user.name "CircleCI"
+            git config --global user.email "ai2cm@allenai.org"
+            git -C gh-pages add docs/
+            git -C gh-pages commit -a -m "Docs for $hash" || echo "No changes"
+            git -C gh-pages push
+
 workflows:
   version: 2
   tagged-build:
     jobs:
       - lint:
+          filters:
+            tags:
+              only: /^v.*/
+      - doctest:
           filters:
             tags:
               only: /^v.*/
@@ -573,3 +631,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - push_docs:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              only:
+                - main
