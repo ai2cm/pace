@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class VariableBounds:
     def __init__(
         self,
-        minimum_value: Optional[int] = None,
-        maximum_value: Optional[int] = None,
+        minimum_value: Optional[float] = None,
+        maximum_value: Optional[float] = None,
         compute_domain_only: bool = False,
     ) -> None:
         self.minimum_value = minimum_value
@@ -37,17 +37,17 @@ class SafetyChecker:
     def register_variable(
         cls,
         name: str,
-        minimum_value: Optional[int] = None,
-        maximum_value: Optional[int] = None,
+        minimum_value: Optional[float] = None,
+        maximum_value: Optional[float] = None,
         compute_domain_only: bool = False,
     ):
         """Register a variable in the checker
 
         Args:
             name (str): name of the variable in the dycore state
-            minimum_value (Optional[int], optional): Minimum value if specified.
+            minimum_value (Optional[float], optional): Minimum value if specified.
                 Defaults to None.
-            maximum_value (Optional[int], optional): Maximum value if specified.
+            maximum_value (Optional[float], optional): Maximum value if specified.
                 Defaults to None.
             compute_domain_only (bool, optional): If evaluation should only happen
                 on the compute or the entire domain. Defaults to False.

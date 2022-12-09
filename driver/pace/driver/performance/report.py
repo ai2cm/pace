@@ -2,7 +2,7 @@ import copy
 import dataclasses
 import json
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import numpy as np
 
@@ -56,7 +56,7 @@ def get_experiment_info(
     return experiment
 
 
-def collect_keys_from_data(times_per_step: List[Dict[str, float]]) -> List[str]:
+def collect_keys_from_data(times_per_step: List[Mapping[str, float]]) -> List[str]:
     """Collects all the keys in the list of dicts and returns a sorted version"""
     keys = set()
     for data_point in times_per_step:
@@ -68,7 +68,7 @@ def collect_keys_from_data(times_per_step: List[Dict[str, float]]) -> List[str]:
 
 
 def gather_timing_data(
-    times_per_step: List[Dict[str, float]],
+    times_per_step: List[Mapping[str, float]],
     comm,
     root: int = 0,
 ) -> Dict[str, Any]:
@@ -104,8 +104,8 @@ def write_to_timestamped_json(experiment: Report) -> None:
 
 
 def gather_hit_counts(
-    hits_per_step: List[Dict[str, int]], timing_info: Dict[str, TimeReport]
-) -> Dict[str, Any]:
+    hits_per_step: List[Mapping[str, int]], timing_info: Dict[str, TimeReport]
+) -> Dict[str, TimeReport]:
     """collects the hit count across all timers called in a program execution"""
     for data_point in hits_per_step:
         for name, value in data_point.items():

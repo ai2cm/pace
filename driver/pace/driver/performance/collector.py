@@ -1,7 +1,8 @@
 import copy
 import os.path
 import subprocess
-from typing import Dict, List, Protocol
+from collections import Mapping
+from typing import List, Protocol
 
 import numpy as np
 
@@ -58,8 +59,8 @@ class AbstractPerformanceCollector(Protocol):
 
 class PerformanceCollector(AbstractPerformanceCollector):
     def __init__(self, experiment_name: str, comm: pace.util.Comm):
-        self.times_per_step: List[Dict[str, float]] = []
-        self.hits_per_step: List[Dict[str, float]] = []
+        self.times_per_step: List[Mapping[str, float]] = []
+        self.hits_per_step: List[Mapping[str, int]] = []
         self.timestep_timer = pace.util.Timer()
         self.total_timer = pace.util.Timer()
         self.experiment_name = experiment_name
