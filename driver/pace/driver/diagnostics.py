@@ -206,7 +206,7 @@ class MonitorDiagnostics(Diagnostics):
             "lat_agrid": grid_data.lat_agrid,
         }
         for k, v in zarr_grid.items():
-            self.monitor.store_constant({k:v})
+            self.monitor.store_constant({k: v})
 
     def cleanup(self):
         self.monitor.cleanup()

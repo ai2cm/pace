@@ -71,6 +71,25 @@ def test_check_state_domain_only():
     checker.check_state(dycore_state)
 
 
+def test_check_nan_value():
+    SafetyChecker.clear_all_checks()
+    SafetyChecker.register_variable("u", maximum_value=10, compute_domain_only=True)
+    checker = SafetyChecker()
+    u_data = np.ones((4, 4, 2))
+    u_data[2, 2, 1] = np.nan
+    u_quantity = Quantity(
+        u_data,
+        ("x", "y", "z"),
+        "unknown",
+        origin=(0, 0, 0),
+        extent=(4, 4, 2),
+        gt4py_backend="numpy",
+    )
+    dycore_state = unittest.mock.MagicMock(u=u_quantity)
+    with pytest.raises(RuntimeError):
+        checker.check_state(dycore_state)
+
+
 def test_variable_not_present():
     SafetyChecker.clear_all_checks()
     SafetyChecker.register_variable("v", maximum_value=10)

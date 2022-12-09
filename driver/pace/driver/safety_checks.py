@@ -94,7 +94,7 @@ class SafetyChecker:
                 variable_bounds.minimum_value
                 and min_value < variable_bounds.minimum_value
             ):
-                logger.info(
+                raise RuntimeError(
                     f"Variable {variable} is outside of its specified bounds: \
                     {variable_bounds.minimum_value} specified, {min_value} found"
                 )
@@ -102,9 +102,9 @@ class SafetyChecker:
                 variable_bounds.maximum_value
                 and max_value > variable_bounds.maximum_value
             ):
-                logger.info(
+                raise RuntimeError(
                     f"Variable {variable} is outside of its specified bounds: \
                     {variable_bounds.maximum_value} specified, {max_value} found"
                 )
             if np.isnan(var.view[:]).any():
-                logger.info(f"Variable {variable} contains a NaN value")
+                raise RuntimeError(f"Variable {variable} contains a NaN value")
