@@ -17,5 +17,3 @@ h5netcdf
 dask>=2021.10.0
 numpy>=1.15. #pin for gt4py, h5py, cupy9.1 and py3.6 to agree
 toolz
-xarray
-netCDF4
