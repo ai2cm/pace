@@ -24,7 +24,9 @@ class GeosDycoreWrapper:
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.layout)
         )
-        self.communicator = pace.util.CubedSphereCommunicator(comm, partitioner)
+        self.communicator = pace.util.CubedSphereCommunicator(
+            comm, partitioner, timer=self.timer
+        )
 
         sizer = pace.util.SubtileGridSizer.from_namelist(
             self.namelist, partitioner.tile, self.communicator.tile.rank
@@ -144,9 +146,7 @@ class GeosDycoreWrapper:
             )
 
         with self.timer.clock("dycore"):
-            self.dynamical_core.step_dynamics(
-                state=self.dycore_state,
-            )
+            self.dynamical_core.step_dynamics(state=self.dycore_state, timer=self.timer)
 
         with self.timer.clock("move_to_fortran"):
             self.output_dict = self._prep_outputs_for_geos()
