@@ -1,7 +1,7 @@
 import copy
 import os.path
 import subprocess
-from collections import Mapping
+from collections.abc import Mapping
 from typing import List, Protocol
 
 import numpy as np

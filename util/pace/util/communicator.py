@@ -245,7 +245,7 @@ class Communicator(abc.ABC):
             result = None
         return result
 
-    def gather_state(self, send_state=None, recv_state=None):
+    def gather_state(self, send_state=None, recv_state=None, transfer_type=None):
         """Transfer a state dictionary from subtile ranks to the tile root rank.
 
         'time' is assumed to be the same on all ranks, and its value will be set
@@ -265,7 +265,7 @@ class Communicator(abc.ABC):
                 if self.rank == constants.ROOT_RANK:
                     recv_state["time"] = send_state["time"]
             else:
-                gather_value = to_numpy(quantity.view[:], dtype=np.float32)
+                gather_value = to_numpy(quantity.view[:], dtype=transfer_type)
                 gather_quantity = Quantity(
                     data=gather_value, dims=quantity.dims, units=quantity.units
                 )
