@@ -1,10 +1,10 @@
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
 import numpy as np
 
 from .._optional_imports import gt4py
 from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
-from ..quantity import Quantity
+from ..quantity import Quantity, QuantityHaloSpec
 from .sizer import GridSizer
 
 
@@ -117,3 +117,28 @@ class QuantityFactory:
         except TypeError:
             data = allocator(shape, dtype=dtype)
         return Quantity(data, dims=dims, units=units, origin=origin, extent=extent)
+
+    def get_quantity_halo_spec(
+        self, dims: Sequence[str], n_halo: Optional[int] = None, dtype: type = float
+    ) -> QuantityHaloSpec:
+        """Build memory specifications for the halo update.
+
+        Args:
+            dims: dimensionality of the data
+            n_halo: number of halo points to update, defaults to self.n_halo
+            dtype: data type of the data
+            backend: gt4py backend to use
+        """
+
+        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
+        # memory layout. Further work in GT4PY will allow for deferred allocation
+        # which will give access to those information while making sure
+        # we don't allocate
+        # Refactor is filed in ticket DSL-820
+
+        temp_quantity = self.zeros(dims=dims, units="", dtype=dtype)
+
+        if n_halo is None:
+            n_halo = self.sizer.n_halo
+
+        return temp_quantity.halo_spec(n_halo)

@@ -23,14 +23,12 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.dace.orchestration import SDFGConvertible
 from pace.dsl.stencil_config import CompilationConfig, RunMode, StencilConfig
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.decomposition import block_waiting_for_compilation, unblock_waiting_tiles
-from pace.util.halo_data_transformer import QuantityHaloSpec
 from pace.util.mpi import MPI
 
 
@@ -231,7 +229,7 @@ class CompareToNumpyStencil:
         )
 
 
-def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
+def _stencil_object_name(stencil_object) -> str:
     """Returns a unique name for each gt4py stencil object, including the hash."""
     return type(stencil_object).__name__
 
@@ -315,7 +313,7 @@ class FrozenStencil(SDFGConvertible):
         stencil_kwargs = self.stencil_config.stencil_kwargs(
             skip_passes=skip_passes, func=func
         )
-        self.stencil_object: Optional[gt4py.StencilObject] = None
+        self.stencil_object = None
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -483,7 +481,10 @@ class FrozenStencil(SDFGConvertible):
             field_name
             for field_name in field_info
             if field_info[field_name]
-            and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
+            and bool(
+                field_info[field_name].access
+                & gt4py.definitions.AccessKind.WRITE  # type: ignore
+            )
         ]
         return write_fields
 
@@ -845,62 +846,6 @@ class GridIndexing:
         )
         new.origin = self.origin[:2] + (self.origin[2] + k_start,)
         return new
-
-    def get_quantity_halo_spec(
-        self,
-        shape: Tuple[int, ...],
-        origin: Tuple[int, ...],
-        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-        n_halo: Optional[int] = None,
-        *,
-        backend: str,
-    ) -> QuantityHaloSpec:
-        """Build memory specifications for the halo update.
-
-        Args:
-            shape: the shape of the Quantity
-            origin: the origin of the compute domain
-            dims: dimensionality of the data
-            n_halo: number of halo points to update, defaults to self.n_halo
-            backend: gt4py backend to use
-        """
-
-        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
-        # memory layout. Further work in GT4PY will allow for deferred allocation
-        # which will give access to those information while making sure
-        # we don't allocate
-        # Refactor is filed in ticket DSL-820
-
-        temp_storage = gt4py_utils.make_storage_from_shape(
-            shape, origin, backend=backend
-        )
-        origin, extent = self.get_origin_domain(dims)
-        temp_quantity = pace.util.Quantity(
-            temp_storage,
-            dims=dims,
-            units="unknown",
-            origin=origin,
-            extent=extent,
-        )
-        if n_halo is None:
-            n_halo = self.n_halo
-
-        spec = QuantityHaloSpec(
-            n_halo,
-            temp_quantity.data.strides,
-            temp_quantity.data.itemsize,
-            temp_quantity.data.shape,
-            temp_quantity.metadata.origin,
-            temp_quantity.metadata.extent,
-            temp_quantity.metadata.dims,
-            temp_quantity.np,
-            temp_quantity.metadata.dtype,
-        )
-
-        del temp_storage
-        del temp_quantity
-
-        return spec
 
 
 class StencilFactory:

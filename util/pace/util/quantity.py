@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import Dict, Iterable, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Iterable, Sequence, Tuple, Union, cast
 
 import numpy as np
 
@@ -49,6 +49,21 @@ class QuantityMetadata:
             raise TypeError(
                 f"quantity underlying data is of unexpected type {self.data_type}"
             )
+
+
+@dataclasses.dataclass
+class QuantityHaloSpec:
+    """Describe the memory to be exchanged, including size of the halo."""
+
+    n_points: int
+    strides: Tuple[int]
+    itemsize: int
+    shape: Tuple[int]
+    origin: Tuple[int, ...]
+    extent: Tuple[int, ...]
+    dims: Tuple[str, ...]
+    numpy_module: NumpyModule
+    dtype: Any
 
 
 class BoundaryArrayView:
@@ -367,6 +382,19 @@ class Quantity:
             gt4py_backend=gt4py_backend,
         )
 
+    def halo_spec(self, n_halo: int) -> QuantityHaloSpec:
+        return QuantityHaloSpec(
+            n_halo,
+            self.data.strides,
+            self.data.itemsize,
+            self.data.shape,
+            self.metadata.origin,
+            self.metadata.extent,
+            self.metadata.dims,
+            self.np,
+            self.metadata.dtype,
+        )
+
     def __repr__(self):
         return (
             f"Quantity(\n    data=\n{self.data},\n    dims={self.dims},\n"
@@ -507,19 +535,6 @@ class Quantity:
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
 
-        If you know you are working with cell-centered variables, you can do:
-
-        >>> from pace.util import X_DIM, Y_DIM, Z_DIM
-        >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
-
-        To support re-ordering without checking whether quantities are on
-        cell centers or interfaces, the API supports giving a list of dimension names
-        for dimensions. For example, to re-order to X-Y-Z dimensions regardless of the
-        grid the variable is on, one could do:
-
-        >>> from pace.util import X_DIMS, Y_DIMS, Z_DIMS
-        >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
-
         Args:
             target_dims: a list of output dimensions. Instead of a single dimension
                 name, an iterable of dimensions can be used instead for any entries.
@@ -532,6 +547,30 @@ class Quantity:
         Raises:
             ValueError: if any of the target dimensions do not exist on this Quantity,
                 or if this Quantity contains multiple values from an iterable entry
+
+        Examples:
+            Let's say we have a cell-centered variable:
+
+            >>> import pace.util
+            >>> import numpy as np
+            >>> quantity = pace.util.Quantity(
+            ...     data=np.zeros([2, 3, 4]),
+            ...     dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            ...             units="m",
+            ... )
+
+            If you know you are working with cell-centered variables, you can do:
+
+            >>> from pace.util import X_DIM, Y_DIM, Z_DIM
+            >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
+
+            To support re-ordering without checking whether quantities are on
+            cell centers or interfaces, the API supports giving a list of dimension
+            names for dimensions. For example, to re-order to X-Y-Z dimensions
+            regardless of the grid the variable is on, one could do:
+
+            >>> from pace.util import X_DIMS, Y_DIMS, Z_DIMS
+            >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
         """
         target_dims = _collapse_dims(target_dims, self.dims)
         transpose_order = [self.dims.index(dim) for dim in target_dims]

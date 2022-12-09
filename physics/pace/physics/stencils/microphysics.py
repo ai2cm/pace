@@ -2,21 +2,15 @@ import copy
 import typing
 
 import numpy as np
-
-
-try:
-    import cupy as cp
-except ModuleNotFoundError:
-    cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
-import pace.dsl.gt4py_utils as utils
 import pace.physics.functions.microphysics_funcs as functions
 import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.grid import GridData
 
 from .._config import PhysicsConfig
@@ -1897,6 +1891,7 @@ class Microphysics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         namelist: PhysicsConfig,
     ):
@@ -1909,17 +1904,8 @@ class Microphysics:
         self.namelist = namelist
         # In orchestration mode, we pass the device memory
         # TODO: turn arrays in setupm into a dataclass, or inidivudal scalars
-        if (
-            stencil_factory.config.is_gpu_backend
-            and stencil_factory.config.dace_config.is_dace_orchestrated()
-        ):
-            self.gfdl_cloud_microphys_init(namelist.dt_atmos, cp)
-        else:
-            self.gfdl_cloud_microphys_init(namelist.dt_atmos, np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         grid_indexing = stencil_factory.grid_indexing
-        origin = grid_indexing.origin_compute()
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
 
         self._hydrostatic = self.namelist.hydrostatic
         self._kke = grid_indexing.domain[2] - 1
@@ -1939,56 +1925,56 @@ class Microphysics:
         self._use_ccn = False if self.namelist.prog_ccn else True
         self._area = grid_data.area
 
-        def make_storage(**kwargs):
-            return utils.make_storage_from_shape(
-                shape, origin=origin, backend=stencil_factory.backend, **kwargs
-            )
+        def make_quantity(**kwargs):
+            return quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
 
-        self._rain = make_storage()
-        self._graupel = make_storage()
-        self._ice = make_storage()
-        self._snow = make_storage()
+        self._rain = make_quantity()
+        self._graupel = make_quantity()
+        self._ice = make_quantity()
+        self._snow = make_quantity()
 
-        self._h_var = make_storage()
-        self._rh_adj = make_storage()
-        self._rh_rain = make_storage()
+        self._h_var = make_quantity()
+        self._rh_adj = make_quantity()
+        self._rh_rain = make_quantity()
 
-        self._qn = make_storage()
-        self._qaz = make_storage()
-        self._qgz = make_storage()
-        self._qiz = make_storage()
-        self._qlz = make_storage()
-        self._qrz = make_storage()
-        self._qsz = make_storage()
-        self._qvz = make_storage()
-        self._den = make_storage()
-        self._denfac = make_storage()
-        self._tz = make_storage()
-        self._qa0 = make_storage()
-        self._qg0 = make_storage()
-        self._qi0 = make_storage()
-        self._ql0 = make_storage()
-        self._qr0 = make_storage()
-        self._qs0 = make_storage()
-        self._qv0 = make_storage()
-        self._t0 = make_storage()
-        self._dp0 = make_storage()
-        self._den0 = make_storage()
-        self._dz0 = make_storage()
-        self._u0 = make_storage()
-        self._v0 = make_storage()
-        self._dz1 = make_storage()
-        self._dp1 = make_storage()
-        self._p1 = make_storage()
-        self._u1 = make_storage()
-        self._v1 = make_storage()
-        self._m1 = make_storage()
-        self._vtgz = make_storage()
-        self._vtrz = make_storage()
-        self._vtsz = make_storage()
-        self._ccn = make_storage()
-        self._c_praut = make_storage()
-        self._m1_sol = make_storage()
+        self._qn = make_quantity()
+        self._qaz = make_quantity()
+        self._qgz = make_quantity()
+        self._qiz = make_quantity()
+        self._qlz = make_quantity()
+        self._qrz = make_quantity()
+        self._qsz = make_quantity()
+        self._qvz = make_quantity()
+        self._den = make_quantity()
+        self._denfac = make_quantity()
+        self._tz = make_quantity()
+        self._qa0 = make_quantity()
+        self._qg0 = make_quantity()
+        self._qi0 = make_quantity()
+        self._ql0 = make_quantity()
+        self._qr0 = make_quantity()
+        self._qs0 = make_quantity()
+        self._qv0 = make_quantity()
+        self._t0 = make_quantity()
+        self._dp0 = make_quantity()
+        self._den0 = make_quantity()
+        self._dz0 = make_quantity()
+        self._u0 = make_quantity()
+        self._v0 = make_quantity()
+        self._dz1 = make_quantity()
+        self._dp1 = make_quantity()
+        self._p1 = make_quantity()
+        self._u1 = make_quantity()
+        self._v1 = make_quantity()
+        self._m1 = make_quantity()
+        self._vtgz = make_quantity()
+        self._vtrz = make_quantity()
+        self._vtsz = make_quantity()
+        self._ccn = make_quantity()
+        self._c_praut = make_quantity()
+        self._m1_sol = make_quantity()
+
+        self.gfdl_cloud_microphys_init(namelist.dt_atmos)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
@@ -2084,14 +2070,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self, dt_atmos: float, numpy_module):
-        self.setupm(dt_atmos, numpy_module)
+    def gfdl_cloud_microphys_init(self, dt_atmos: float):
+        self.setupm(dt_atmos)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self, dt_atmos: float, numpy_module):
+    def setupm(self, dt_atmos: float):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2105,7 +2091,7 @@ class Microphysics:
         rnzg = 4.0e6
 
         # Density parameters
-        acc = numpy_module.array([5.0, 2.0, 0.5])
+        acc = np.array([5.0, 2.0, 0.5])
 
         pie = 4.0 * np.arctan(1.0)
 
@@ -2141,7 +2127,7 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = numpy_module.empty((3, 4))
+        acco = np.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
@@ -2164,54 +2150,48 @@ class Microphysics:
         cracw = self.namelist.c_cracw * cracw
 
         # Subl and revap: five constants for three separate processes
-        cssub = numpy_module.empty(5)
-        cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
-        cssub[1] = 0.78 / np.sqrt(act[0])
-        cssub[2] = (
+        self._cssub_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
+        self._cssub_1 = 0.78 / np.sqrt(act[0])
+        self._cssub_2 = (
             0.31
             * scm3
             * gam263
             * np.sqrt(self.namelist.clin / visk)
             / act[0] ** 0.65625
         )
-        cssub[3] = tcond * constants.RVGAS
-        cssub[4] = (hlts ** 2) * vdifu
+        self._cssub_3 = tcond * constants.RVGAS
+        self._cssub_4 = (hlts ** 2) * vdifu
 
-        cgsub = numpy_module.empty(5)
-        cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
-        cgsub[1] = 0.78 / np.sqrt(act[5])
-        cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
-        cgsub[3] = cssub[3]
-        cgsub[4] = cssub[4]
+        self._cgsub_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
+        self._cgsub_1 = 0.78 / np.sqrt(act[5])
+        self._cgsub_2 = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
+        self._cgsub_3 = self._cssub_3
+        self._cgsub_4 = self._cssub_4
 
-        crevp = numpy_module.empty(5)
-        crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
-        crevp[1] = 0.78 / np.sqrt(act[1])
-        crevp[2] = (
+        self._crevp_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
+        self._crevp_1 = 0.78 / np.sqrt(act[1])
+        self._crevp_2 = (
             0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
-        crevp[3] = cssub[3]
-        crevp[4] = hltc ** 2 * vdifu
+        self._crevp_3 = self._cssub_3
+        self._crevp_4 = hltc ** 2 * vdifu
 
-        cgfr = numpy_module.empty(2)
-        cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
-        cgfr[1] = 0.66
+        self._cgfr_0 = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
+        self._cgfr_1 = 0.66
 
         # smlt: five constants (lin et al. 1983)
-        csmlt = numpy_module.empty(5)
-        csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
-        csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
-        csmlt[2] = cssub[1]
-        csmlt[3] = cssub[2]
-        csmlt[4] = ch2o / hltf
+        self._csmlt_0 = 2.0 * pie * tcond * rnzs / hltf
+        self._csmlt_1 = 2.0 * pie * vdifu * rnzs * hltc / hltf
+        self._csmlt_2 = self._cssub_1
+        self._csmlt_3 = self._cssub_2
+        self._csmlt_4 = ch2o / hltf
 
         # gmlt: five constants
-        cgmlt = numpy_module.empty(5)
-        cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
-        cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
-        cgmlt[2] = cgsub[1]
-        cgmlt[3] = cgsub[2]
-        cgmlt[4] = ch2o / hltf
+        self._cgmlt_0 = 2.0 * pie * tcond * rnzg / hltf
+        self._cgmlt_1 = 2.0 * pie * vdifu * rnzg * hltc / hltf
+        self._cgmlt_2 = self._cgsub_1
+        self._cgmlt_3 = self._cgsub_2
+        self._cgmlt_4 = ch2o / hltf
 
         es0 = 6.107799961e2  # ~6.1 mb
         self._fac_rc = fac_rc
@@ -2220,17 +2200,23 @@ class Microphysics:
         self._csacr = csacr
         self._cgacr = cgacr
         self._cgacs = cgacs
-        self._acco = acco
+        self._acco00 = acco[0, 0]
+        self._acco01 = acco[0, 1]
+        self._acco02 = acco[0, 2]
+        self._acco03 = acco[0, 3]
+        self._acco10 = acco[1, 0]
+        self._acco11 = acco[1, 1]
+        self._acco12 = acco[1, 2]
+        self._acco13 = acco[1, 3]
+        self._acco20 = acco[2, 0]
+        self._acco21 = acco[2, 1]
+        self._acco22 = acco[2, 2]
+        self._acco23 = acco[2, 3]
         self._csacw = csacw
         self._csaci = csaci
         self._cgacw = cgacw
         self._cgaci = cgaci
         self._cracw = cracw
-        self._cssub = cssub
-        self._crevp = crevp
-        self._cgfr = cgfr
-        self._csmlt = csmlt
-        self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
         self._set_timestep(dt_atmos)
 
@@ -2319,7 +2305,7 @@ class Microphysics:
             self._cpaut,
         )
 
-        for n in range(self._ntimes):
+        for _ in range(self._ntimes):
             self._warm_rain(
                 self._h_var,
                 self._rain,
@@ -2350,11 +2336,11 @@ class Microphysics:
                 self._lv00,
                 self._fac_rc,
                 self._cracw,
-                self._crevp[0],
-                self._crevp[1],
-                self._crevp[2],
-                self._crevp[3],
-                self._crevp[4],
+                self._crevp_0,
+                self._crevp_1,
+                self._crevp_2,
+                self._crevp_3,
+                self._crevp_4,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2417,11 +2403,11 @@ class Microphysics:
                 self._lv00,
                 self._fac_rc,
                 self._cracw,
-                self._crevp[0],
-                self._crevp[1],
-                self._crevp[2],
-                self._crevp[3],
-                self._crevp[4],
+                self._crevp_0,
+                self._crevp_1,
+                self._crevp_2,
+                self._crevp_3,
+                self._crevp_4,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2452,40 +2438,40 @@ class Microphysics:
                 self._csacr,
                 self._cgacr,
                 self._cgacs,
-                self._acco[0, 0],
-                self._acco[0, 1],
-                self._acco[0, 2],
-                self._acco[0, 3],
-                self._acco[1, 0],
-                self._acco[1, 1],
-                self._acco[1, 2],
-                self._acco[1, 3],
-                self._acco[2, 0],
-                self._acco[2, 1],
-                self._acco[2, 2],
-                self._acco[2, 3],
+                self._acco00,
+                self._acco01,
+                self._acco02,
+                self._acco03,
+                self._acco10,
+                self._acco11,
+                self._acco12,
+                self._acco13,
+                self._acco20,
+                self._acco21,
+                self._acco22,
+                self._acco23,
                 self._csacw,
                 self._csaci,
                 self._cgacw,
                 self._cgaci,
                 self._cracw,
-                self._cssub[0],
-                self._cssub[1],
-                self._cssub[2],
-                self._cssub[3],
-                self._cssub[4],
-                self._cgfr[0],
-                self._cgfr[1],
-                self._csmlt[0],
-                self._csmlt[1],
-                self._csmlt[2],
-                self._csmlt[3],
-                self._csmlt[4],
-                self._cgmlt[0],
-                self._cgmlt[1],
-                self._cgmlt[2],
-                self._cgmlt[3],
-                self._cgmlt[4],
+                self._cssub_0,
+                self._cssub_1,
+                self._cssub_2,
+                self._cssub_3,
+                self._cssub_4,
+                self._cgfr_0,
+                self._cgfr_1,
+                self._csmlt_0,
+                self._csmlt_1,
+                self._csmlt_2,
+                self._csmlt_3,
+                self._csmlt_4,
+                self._cgmlt_0,
+                self._cgmlt_1,
+                self._cgmlt_2,
+                self._cgmlt_3,
+                self._cgmlt_4,
                 self._ces0,
                 self._dts,
                 self._rdts,
