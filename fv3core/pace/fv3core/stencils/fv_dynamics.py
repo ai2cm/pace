@@ -146,7 +146,7 @@ class DynamicalCore:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            method_to_orchestrate="_dyn",
+            method_to_orchestrate="acoustic_dynamics",
             dace_compiletime_args=["state", "tracers", "timer"],
         )
 
