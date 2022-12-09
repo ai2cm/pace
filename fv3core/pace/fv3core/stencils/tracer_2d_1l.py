@@ -112,31 +112,30 @@ def cmax_stencil2(
         cmax = max(abs(cx), abs(cy)) + 1.0 - sin_sg5
 
 
-def dp_fluxadjustment(
+def apply_mass_flux(
     dp1: FloatField,
-    mfx: FloatField,
-    mfy: FloatField,
+    x_mass_flux: FloatField,
+    y_mass_flux: FloatField,
     rarea: FloatFieldIJ,
     dp2: FloatField,
 ):
     """
     Args:
-        dp1 (in):
-        mfx (in):
-        mfy (in):
-        rarea (in):
-        dp2 (out):
+        dp1 (in): initial pressure thickness
+        mfx (in): flux of (area * mass * g) in x-direction
+        mfy (in): flux of (area * mass * g) in y-direction
+        rarea (in): 1 / area
+        dp2 (out): final pressure thickness
     """
     with computation(PARALLEL), interval(...):
-        dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
+        dp2 = (
+            dp1
+            + (x_mass_flux - x_mass_flux[1, 0, 0] + y_mass_flux - y_mass_flux[0, 1, 0])
+            * rarea
+        )
 
 
-@gtscript.function
-def adjustment(q, dp1, fx, fy, rarea, dp2):
-    return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
-
-
-def q_adjust(
+def apply_tracer_flux(
     q: FloatField,
     dp1: FloatField,
     fx: FloatField,
@@ -154,7 +153,7 @@ def q_adjust(
         dp2 (in):
     """
     with computation(PARALLEL), interval(...):
-        q = adjustment(q, dp1, fx, fy, rarea, dp2)
+        q = (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
 
 
 # Simple stencil replacing:
@@ -194,24 +193,21 @@ class TracerAdvection:
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
         self.grid_data = grid_data
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
-        origin = grid_indexing.origin_compute()
 
-        self._tmp_xfx = quantity_factory.zeros(
+        self._x_area_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_yfx = quantity_factory.zeros(
+        self._y_area_flux = quantity_factory.zeros(
             [X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_fx = quantity_factory.zeros(
+        self._x_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
-        self._tmp_fy = quantity_factory.zeros(
+        self._y_flux = quantity_factory.zeros(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
         )
         self._tmp_dp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._tmp_dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
-        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
 
         ax_offsets = grid_indexing.axis_offsets(
             grid_indexing.origin_full(), grid_indexing.domain_full()
@@ -240,14 +236,14 @@ class TracerAdvection:
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._dp_fluxadjustment = stencil_factory.from_origin_domain(
-            dp_fluxadjustment,
+        self._apply_mass_flux = stencil_factory.from_origin_domain(
+            apply_mass_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
         )
-        self._q_adjust = stencil_factory.from_origin_domain(
-            q_adjust,
+        self._apply_tracer_flux = stencil_factory.from_origin_domain(
+            apply_tracer_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
@@ -266,19 +262,29 @@ class TracerAdvection:
         )
 
     def __call__(
-        self, tracers: Dict[str, pace.util.Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt
+        self,
+        tracers: Dict[str, pace.util.Quantity],
+        dp1,
+        x_mass_flux,
+        y_mass_flux,
+        x_courant,
+        y_courant,
     ):
         """
+        Apply advection to tracers based on the given courant numbers and mass fluxes.
+
+        Note only output values for tracers are used, all other inouts are only such
+        because they are modified for intermediate computation.
+
         Args:
             tracers (inout): tracers to advect according to fluxes during
                 acoustic substeps
             dp1 (in): pressure thickness of atmospheric layers before acoustic substeps
-            mfxd (inout): total mass flux in x-direction over acoustic substeps
-            mfyd (inout): total mass flux in y-direction over acoustic substeps
-            cxd (inout): accumulated courant number in x-direction
-            cyd (inout): accumulated courant number in y-direction
+            x_mass_flux (inout): total mass flux in x-direction over acoustic substeps
+            y_mass_flux (inout): total mass flux in y-direction over acoustic substeps
+            x_courant (inout): accumulated courant number in x-direction
+            y_courant (inout): accumulated courant number in y-direction
         """
-        # TODO: remove unused mdt argument
         # DaCe parsing issue
         # if len(tracers) != self._tracer_count:
         #     raise ValueError(
@@ -288,8 +294,8 @@ class TracerAdvection:
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
         self._flux_compute(
-            cxd,
-            cyd,
+            x_courant,
+            y_courant,
             self.grid_data.dxa,
             self.grid_data.dya,
             self.grid_data.dx,
@@ -299,8 +305,8 @@ class TracerAdvection:
             self.grid_data.sin_sg3,
             self.grid_data.sin_sg4,
             # TODO: rename xfx/yfx to "area flux"
-            self._tmp_xfx,
-            self._tmp_yfx,
+            self._x_area_flux,
+            self._y_area_flux,
         )
 
         # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -336,12 +342,12 @@ class TracerAdvection:
 
         if n_split > 1.0:
             self._divide_fluxes_by_n_substeps(
-                cxd,
-                self._tmp_xfx,
-                mfxd,
-                cyd,
-                self._tmp_yfx,
-                mfyd,
+                x_courant,
+                self._x_area_flux,
+                x_mass_flux,
+                y_courant,
+                self._y_area_flux,
+                y_mass_flux,
                 n_split,
             )
 
@@ -351,33 +357,31 @@ class TracerAdvection:
 
         for it in range(n_split):
             last_call = it == n_split - 1
-            # TODO: rename to reflect advancing pressure forward over
             # tracer substep
-            self._dp_fluxadjustment(
+            self._apply_mass_flux(
                 dp1,
-                mfxd,
-                mfyd,
+                x_mass_flux,
+                y_mass_flux,
                 self.grid_data.rarea,
                 dp2,
             )
             for q in tracers.values():
                 self.finite_volume_transport(
                     q,
-                    cxd,
-                    cyd,
-                    self._tmp_xfx,
-                    self._tmp_yfx,
-                    self._tmp_fx,
-                    self._tmp_fy,
-                    x_mass_flux=mfxd,
-                    y_mass_flux=mfyd,
+                    x_courant,
+                    y_courant,
+                    self._x_area_flux,
+                    self._y_area_flux,
+                    self._x_flux,
+                    self._y_flux,
+                    x_mass_flux=x_mass_flux,
+                    y_mass_flux=y_mass_flux,
                 )
-                # TODO: rename to something about applying fluxes
-                self._q_adjust(
+                self._apply_tracer_flux(
                     q,
                     dp1,
-                    self._tmp_fx,
-                    self._tmp_fy,
+                    self._x_flux,
+                    self._y_flux,
                     self.grid_data.rarea,
                     dp2,
                 )

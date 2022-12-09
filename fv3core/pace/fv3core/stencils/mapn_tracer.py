@@ -21,10 +21,6 @@ class MapNTracer:
         quantity_factory: pace.util.QuantityFactory,
         kord: int,
         nq: int,
-        i1: int,
-        i2: int,
-        j1: int,
-        j2: int,
         fill: bool,
         tracers: Dict[str, pace.util.Quantity],
     ):
@@ -33,15 +29,7 @@ class MapNTracer:
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["tracers"],
         )
-        grid_indexing = stencil_factory.grid_indexing
-        self._origin = (i1, j1, 0)
-        self._domain = ()
-        self._nk = grid_indexing.domain[2]
         self._nq = int(nq)
-        self._i1 = int(i1)
-        self._i2 = int(i2)
-        self._j1 = int(j1)
-        self._j2 = int(j2)
         self._qs = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
 
         kord_tracer = [kord] * self._nq
@@ -49,7 +37,11 @@ class MapNTracer:
 
         self._list_of_remap_objects = [
             MapSingle(
-                stencil_factory, quantity_factory, kord_tracer[i], 0, i1, i2, j1, j2
+                stencil_factory,
+                quantity_factory,
+                kord_tracer[i],
+                0,
+                dims=[X_DIM, Y_DIM, Z_DIM],
             )
             for i in range(len(kord_tracer))
         ]
@@ -59,9 +51,6 @@ class MapNTracer:
             self._fillz = FillNegativeTracerValues(
                 stencil_factory,
                 quantity_factory,
-                self._list_of_remap_objects[0].i_extent,
-                self._list_of_remap_objects[0].j_extent,
-                self._nk,
                 self._nq,
                 tracers,
             )

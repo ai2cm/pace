@@ -19,8 +19,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "tracers": {},
             "w": {},
             "u": grid.y3d_domain_dict(),
-            "ua": {},
-            "va": {},
             "v": grid.x3d_domain_dict(),
             "delz": {},
             "pt": {},
@@ -60,16 +58,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
                 "jstart": grid.js,
                 "jend": grid.je,
             },
-            "omga": {},
-            "te0_2d": {
-                "serialname": "te_2d",
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.je,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
             # column variables...
             "ak": {},
             "bk": {},
@@ -82,7 +70,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "last_step",
             "consv_te",
             "mdt",
-            "bdt",
             "nq",
         ]
         self.out_vars = {}
@@ -98,14 +85,10 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "delp",
             "delz",
             "q_con",
-            "te0_2d",
             "u",
             "v",
             "w",
             "ps",
-            "omga",
-            "ua",
-            "va",
             "dp1",
         ]:
             self.out_vars[k] = self.in_vars["data_vars"][k]
@@ -125,7 +108,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         inputs["last_step"] = bool(inputs["last_step"])
         pfull = self.grid.quantity_factory.empty([Z_DIM], units="Pa")
-        pfull.data[:] = pfull.np.asarray(inputs["pfull"])
+        pfull.data[:] = pfull.np.asarray(inputs.pop("pfull"))
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
             quantity_factory=self.grid.quantity_factory,

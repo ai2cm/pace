@@ -49,8 +49,9 @@ def divergence_corner(
     """Calculate divg on d-grid.
 
     Computed in order to damp the divergence, the damping is applied
-    at the end of d_sw directly to the winds
-    Described in detail in chapter 8 (?) of the FV3 docs
+    at the end of d_sw directly to the winds.
+
+    Described in detail in Chapter 8.3 of the FV3 documentation.
 
     Args:
         u (in): x-velocity on d-grid
@@ -81,7 +82,6 @@ def divergence_corner(
         )
         """c-grid (?) contravariant component of the wind in the x-direction"""
         # TODO: refactor this into a call to contravariant()
-        # TODO: add reference to FV3 documentation on divergence damping
 
         vf = (
             (v - 0.25 * (ua[-1, 0, 0] + ua) * (cos_sg3[-1, 0] + cos_sg1))

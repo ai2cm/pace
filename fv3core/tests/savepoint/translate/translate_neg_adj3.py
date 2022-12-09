@@ -62,7 +62,5 @@ class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):
             inputs["qcld"],
             inputs["pt"],
             inputs["delp"],
-            inputs["delz"],
-            inputs["peln"],
         )
         return self.slice_output(inputs)

@@ -24,7 +24,15 @@ from pace.fv3core.stencils.map_single import MapSingle
 from pace.fv3core.stencils.mapn_tracer import MapNTracer
 from pace.fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM, Quantity
+from pace.util import (
+    X_DIM,
+    X_INTERFACE_DIM,
+    Y_DIM,
+    Y_INTERFACE_DIM,
+    Z_DIM,
+    Z_INTERFACE_DIM,
+    Quantity,
+)
 
 
 # TODO: Should this be set here or in global_constants?
@@ -81,8 +89,6 @@ def moist_cv_pt_pressure(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,
@@ -108,8 +114,6 @@ def moist_cv_pt_pressure(
         qice (in):
         qgraupel (in):
         q_con (out):
-        gz (out):
-        cvm (out):
         pt (inout):
         cappa (out):
         delp (inout):
@@ -136,8 +140,6 @@ def moist_cv_pt_pressure(
                 qice,
                 qgraupel,
                 q_con,
-                gz,
-                cvm,
                 pt,
                 cappa,
                 delp,
@@ -323,6 +325,7 @@ class LagrangianToEulerian:
 
         self._pe1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
         self._pe2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
+        self._pe3 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
         self._dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._pn2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
         self._pe0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], units="Pa")
@@ -365,10 +368,7 @@ class LagrangianToEulerian:
             quantity_factory,
             self._kord_tm,
             1,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
+            dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._mapn_tracer = MapNTracer(
@@ -376,10 +376,6 @@ class LagrangianToEulerian:
             quantity_factory,
             abs(config.kord_tr),
             nq,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
             fill=config.fill,
             tracers=tracers,
         )
@@ -389,10 +385,7 @@ class LagrangianToEulerian:
             quantity_factory,
             self._kord_wz,
             -2,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
+            dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._map_single_delz = MapSingle(
@@ -400,10 +393,7 @@ class LagrangianToEulerian:
             quantity_factory,
             self._kord_wz,
             1,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec,
+            dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._undo_delz_adjust_and_copy_peln = stencil_factory.from_origin_domain(
@@ -433,10 +423,7 @@ class LagrangianToEulerian:
             quantity_factory,
             self._kord_mt,
             -1,
-            grid_indexing.isc,
-            grid_indexing.iec,
-            grid_indexing.jsc,
-            grid_indexing.jec + 1,
+            dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
         )
 
         self._pressures_mapv = stencil_factory.from_origin_domain(
@@ -454,10 +441,7 @@ class LagrangianToEulerian:
             quantity_factory,
             self._kord_mt,
             -1,
-            grid_indexing.isc,
-            grid_indexing.iec + 1,
-            grid_indexing.jsc,
-            grid_indexing.jec,
+            dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
         )
 
         ax_offsets_jextra = grid_indexing.axis_offsets(
@@ -507,8 +491,6 @@ class LagrangianToEulerian:
         u: FloatField,
         v: FloatField,
         w: FloatField,
-        ua: FloatField,  # TODO: remove this arg and use an internal temporary instead
-        va: FloatField,  # TODO: remove unused arg
         cappa: FloatField,
         q_con: FloatField,
         q_cld: FloatField,
@@ -516,13 +498,10 @@ class LagrangianToEulerian:
         pk: FloatField,
         pe: FloatField,
         hs: FloatFieldIJ,
-        te0_2d: FloatFieldIJ,  # TODO: remove unused arg
         ps: FloatFieldIJ,
         wsd: FloatFieldIJ,
-        omga: FloatField,  # TODO: remove unused arg
         ak: FloatFieldK,
         bk: FloatFieldK,
-        pfull: FloatFieldK,  # TODO: remove unused arg
         dp1: FloatField,
         ptop: float,
         akap: float,
@@ -530,7 +509,6 @@ class LagrangianToEulerian:
         last_step: bool,
         consv_te: float,
         mdt: float,
-        bdt: float,  # TODO: remove unused arg
     ):
         """
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
@@ -587,8 +565,6 @@ class LagrangianToEulerian:
             tracers["qice"],
             tracers["qgraupel"],
             q_con,
-            self._gz,
-            self._cvm,
             pt,
             cappa,
             delp,
@@ -652,9 +628,9 @@ class LagrangianToEulerian:
         self._pressures_mapv(pe, ak, bk, self._pe0, self._pe3)
         self._map_single_v(v, self._pe0, self._pe3)
 
-        self._update_ua(self._pe2, ua)
+        self._update_ua(self._pe2, self._pe3)
 
-        self._copy_from_below_stencil(ua, pe)
+        self._copy_from_below_stencil(self._pe3, pe)
         dtmp = 0.0
         if last_step:
             if consv_te > CONSV_MIN:

@@ -5,19 +5,19 @@ from pace.dsl.typing import FloatField
 from pace.fv3core.stencils.basic_operations import sign
 
 
-def compute_pkz_tempadjust(
+def apply_diffusive_heating(
     delp: FloatField,
     delz: FloatField,
     cappa: FloatField,
     heat_source: FloatField,
     pt: FloatField,
-    pkz: FloatField,
     delt_time_factor: float,
 ):
     """
     Adjust air temperature from heating due to vorticity damping.
-        Heating is limited by deltmax times the length of a timestep, with the
-        highest levels limited further.
+    Heating is limited by deltmax times the length of a timestep, with the
+    highest levels limited further.
+
     Args:
         delp (in): Pressure thickness of atmosphere layers
         delz (in): Vertical thickness of atmosphere layers
@@ -25,7 +25,6 @@ def compute_pkz_tempadjust(
         heat_source (in): heat source from vorticity damping implied by
             energy conservation
         pt (inout): Air potential temperature
-        pkz (out): Layer mean pressure raised to the power of Kappa
         delta_time_factor (in): scaled time step
     """
     with computation(PARALLEL), interval(...):

@@ -116,7 +116,7 @@ def finalize(
             gz = gz[0, 0, 1] - dz * constants.GRAV
 
 
-class RiemannSolverC:
+class NonhydrostaticVerticalSolverCGrid:
     """
     Fortran subroutine Riem_Solver_C
 
@@ -137,7 +137,6 @@ class RiemannSolverC:
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute(add=(-1, -1, 0))
         domain = grid_indexing.domain_compute(add=(2, 2, 1))
-        shape = grid_indexing.max_shape
 
         self._dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="kg")
         self._w = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m/s")
@@ -155,11 +154,7 @@ class RiemannSolverC:
         self._sim1_solve = Sim1Solver(
             stencil_factory,
             p_fac,
-            grid_indexing.isc - 1,
-            grid_indexing.iec + 1,
-            grid_indexing.jsc - 1,
-            grid_indexing.jec + 1,
-            grid_indexing.domain[2] + 1,
+            n_halo=1,
         )
         self._finalize_stencil = stencil_factory.from_origin_domain(
             finalize,
