@@ -146,27 +146,6 @@ class DynamicalCore:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            method_to_orchestrate="acoustic_dynamics",
-            dace_compiletime_args=["state", "tracers", "timer"],
-        )
-
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            method_to_orchestrate="post_remap",
-            dace_compiletime_args=["state", "is_root_rank"],
-        )
-
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            method_to_orchestrate="wrapup",
-            dace_compiletime_args=["state", "is_root_rank"],
-        )
-
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_fvdynamics",
             dace_compiletime_args=["state", "tag"],
         )
