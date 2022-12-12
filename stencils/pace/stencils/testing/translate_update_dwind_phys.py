@@ -23,11 +23,10 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(self.namelist.layout)
-        )
+        partitioner = pace.util.TilePartitioner(self.namelist.layout)
         self.compute_func = AGrid2DGridPhysics(
             self.stencil_factory,
+            self.grid.quantity_factory,
             partitioner,
             self.grid.rank,
             self.namelist,

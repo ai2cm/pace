@@ -14,8 +14,6 @@ def moist_pt(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,
@@ -31,8 +29,6 @@ def moist_pt(
             qice,
             qgraupel,
             q_con,
-            gz,
-            cvm,
             pt,
             cappa,
             delp,
@@ -66,8 +62,6 @@ class MoistPT:
         qice: FloatField,
         qgraupel: FloatField,
         q_con: FloatField,
-        gz: FloatField,
-        cvm: FloatField,
         pt: FloatField,
         cappa: FloatField,
         delp: FloatField,
@@ -82,8 +76,6 @@ class MoistPT:
             qice,
             qgraupel,
             q_con,
-            gz,
-            cvm,
             pt,
             cappa,
             delp,
@@ -96,7 +88,7 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = MoistPT(stencil_factory, self.grid)
+        self.compute_func = MoistPT(stencil_factory, self.grid)  # type: ignore
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},
             "qliquid": {"serialname": "qliquid_js"},
@@ -104,8 +96,6 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
             "qrain": {"serialname": "qrain_js"},
             "qsnow": {"serialname": "qsnow_js"},
             "qgraupel": {"serialname": "qgraupel_js"},
-            "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
-            "cvm": {"kstart": grid.is_, "axis": 0},
             "delp": {},
             "delz": {},
             "q_con": {},
@@ -119,23 +109,6 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
 
         self.in_vars["parameters"] = ["r_vir"]
         self.out_vars = {
-            "gz": {
-                "serialname": "gz1d",
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.js,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
-            "cvm": {
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.js,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
             "pt": {},
             "cappa": {},
             "q_con": {},

@@ -1,7 +1,6 @@
 import shutil
 import subprocess
 
-import gt4py
 import numpy as np
 import xarray as xr
 import yaml
@@ -9,6 +8,7 @@ import zarr
 from mpi4py import MPI
 
 import pace.dsl
+import pace.util
 from pace.driver import DriverConfig
 from pace.driver.state import DriverState
 
@@ -48,18 +48,29 @@ def test_restart():
                 restart[var].isel(time=0).values, regular[var].isel(time=-1).values
             )
 
-        # now use the same restart to test DriverState load function
         with open("RESTART/restart.yaml", "r") as f:
-            config = yaml.safe_load(f)
-            config["comm_config"]["type"] = "null_comm"
-            config["comm_config"]["config"]["rank"] = 0
-            config["comm_config"]["config"]["total_ranks"] = 6
-            driver_config = DriverConfig.from_dict(config)
-        driver_state = DriverState.load_state_from_restart("RESTART", driver_config)
+            restart_config = DriverConfig.from_dict(yaml.safe_load(f))
+
+        mpi_comm = pace.util.NullComm(rank=0, total_ranks=6, fill_value=0.0)
+        partitioner = pace.util.CubedSpherePartitioner(
+            pace.util.TilePartitioner((1, 1))
+        )
+        communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
+        (damping_coefficients, driver_grid_data, grid_data,) = restart_config.get_grid(
+            communicator=communicator,
+        )
+
+        driver_state = restart_config.get_driver_state(
+            communicator=communicator,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
+            grid_data=grid_data,
+        )
+
         assert isinstance(driver_state, DriverState)
 
         restart_dycore = xr.open_dataset(
-            f"RESTART/restart_dycore_state_{driver_config.comm_config.config.rank}.nc"
+            f"RESTART/restart_dycore_state_{communicator.rank}.nc"
         )
         for var in driver_state.dycore_state.__dict__.keys():
             if isinstance(driver_state.dycore_state.__dict__[var], pace.util.Quantity):
@@ -68,17 +79,5 @@ def test_restart():
                     restart_dycore[var].values,
                 )
 
-        restart_physics = xr.open_dataset(
-            f"RESTART/restart_physics_state_{driver_config.comm_config.config.rank}.nc"
-        )
-        for var in driver_state.physics_state.__dict__.keys():
-            if isinstance(
-                driver_state.physics_state.__dict__[var],
-                gt4py.storage.storage.CPUStorage,
-            ):
-                np.testing.assert_allclose(
-                    driver_state.physics_state.__dict__[var].data,
-                    restart_physics[var].values,
-                )
     finally:
         shutil.rmtree("RESTART")

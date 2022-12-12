@@ -1,12 +1,9 @@
 import abc
 import dataclasses
 import logging
-import os
-import pathlib
 from typing import ClassVar, Optional, Tuple
 
 import f90nml
-import xarray as xr
 
 import pace.driver
 import pace.dsl
@@ -21,6 +18,12 @@ from pace.util.grid import (
     GridData,
     MetricTerms,
     direct_transform,
+)
+from pace.util.grid.helper import (
+    AngleGridData,
+    ContravariantGridData,
+    HorizontalGridData,
+    VerticalGridData,
 )
 from pace.util.namelist import Namelist
 
@@ -76,25 +79,21 @@ class GridInitializerSelector(GridInitializer):
 
 @GridInitializerSelector.register("generated")
 @dataclasses.dataclass
-class GeneratedConfig(GridInitializer):
+class GeneratedGridConfig(GridInitializer):
     """
-    Configuration for baroclinic initialization.
+    Configuration for a cubed-sphere grid computed from configuration.
 
     Attributes:
         stretch_factor: refinement amount
         lon_target: desired center longitude for refined tile (deg)
         lat_target: desired center latitude for refined tile (deg)
-        tc_ks: The number of pure-pressure layers at the top of the model
-            Also the level where model transitions from pure pressure to
-            hybrid pressure levels.
-        vertical_grid_from_restart: whether to read ak, bk from restart files
+        restart_path: if given, load vertical grid from restart file
     """
 
     stretch_factor: Optional[float] = 1.0
     lon_target: Optional[float] = 350.0
     lat_target: Optional[float] = -90.0
-    ks: int = 0
-    vertical_grid_from_restart: Optional[bool] = False
+    restart_path: Optional[str] = None
 
     def get_grid(
         self,
@@ -110,10 +109,21 @@ class GeneratedConfig(GridInitializer):
                 metric_terms, self.stretch_factor, self.lon_target, self.lat_target
             )
 
-        grid_data = GridData.new_from_metric_terms(metric_terms)
-
-        if self.vertical_grid_from_restart:  # read in vertical grid
-            grid_data = _replace_vertical_grid(self.ks, metric_terms)
+        horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
+        if self.restart_path is not None:
+            vertical_data = VerticalGridData.from_restart(
+                self.restart_path, quantity_factory=quantity_factory
+            )
+        else:
+            vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
+        contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        angle_data = AngleGridData.new_from_metric_terms(metric_terms)
+        grid_data = GridData(
+            horizontal_data=horizontal_data,
+            vertical_data=vertical_data,
+            contravariant_data=contravariant_data,
+            angle_data=angle_data,
+        )
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
         driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
@@ -123,9 +133,9 @@ class GeneratedConfig(GridInitializer):
 
 @GridInitializerSelector.register("serialbox")
 @dataclasses.dataclass
-class SerialboxConfig(GridInitializer):
+class SerialboxGridConfig(GridInitializer):
     """
-    Configuration for Serialbox initialization.
+    Configuration for grid initialized from Serialbox data.
     """
 
     path: str
@@ -152,7 +162,7 @@ class SerialboxConfig(GridInitializer):
         self,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
-    ) -> pace.stencils.testing.grid.Grid:
+    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
         ser = self._serializer(communicator)
         grid = TranslateGrid.new_from_serialized_data(
             ser, communicator.rank, self._namelist.layout, backend
@@ -169,27 +179,11 @@ class SerialboxConfig(GridInitializer):
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
 
-        # if self.serialized_grid:
         logger.info("Using serialized grid data")
         grid = self._get_serialized_grid(communicator, backend)
         grid_data = grid.grid_data
         driver_grid_data = grid.driver_grid_data
         damping_coefficients = grid.damping_coefficients
-        # else:
-        #     logger.info("Using a grid generated from metric terms")
-        #     grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
-        #         self._namelist, communicator, backend
-        #     )
-        #     metric_terms = pace.util.grid.MetricTerms(
-        #         quantity_factory=quantity_factory, communicator=communicator
-        #     )
-        #     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        #     damping_coefficients = DampingCoefficients.new_from_metric_terms(
-        #         metric_terms
-        #     )
-        #     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-        #         metric_terms
-        #     )
 
         return damping_coefficients, driver_grid_data, grid_data
 
@@ -226,55 +220,3 @@ def _transform_horizontal_grid(
 
     metric_terms._grid.data[:] = grid.data[:]
     metric_terms._init_agrid()
-
-
-def _replace_vertical_grid(
-    ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp"
-) -> GridData:
-    """
-    Replaces the vertical grid generators from metric terms (ak and bk) with
-    their fortran restart values (in fv_core.res.nc).
-    Then re-generates grid data with the new vertical inputs.
-
-    Args:
-        metric_terms
-        restart_tmp: the directory where the restart data is stored
-
-    Returns:
-        updated metric terms
-    """
-    restart_files = os.listdir(restart_path)
-    data_file = restart_files[
-        [fname.endswith("fv_core.res.nc") for fname in restart_files].index(True)
-    ]
-
-    ak_bk_data_file = pathlib.Path(restart_path) / data_file
-    if not os.path.isfile(ak_bk_data_file):
-        raise ValueError(
-            """vertical_grid_from_restart is true,
-            but no fv_core.res.nc in restart data file."""
-        )
-
-    ds = xr.open_dataset(ak_bk_data_file).isel(Time=0).drop_vars("Time")
-    metric_terms._ak.data[:] = ds["ak"].values
-    metric_terms._bk.data[:] = ds["bk"].values
-    ds.close()
-
-    vertical_data = pace.util.grid.VerticalGridData(
-        ks=ks, ak=metric_terms.ak.data, bk=metric_terms.bk.data
-    )
-    horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(
-        metric_terms
-    )
-    contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(
-        metric_terms
-    )
-    angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
-
-    grid_data = pace.util.grid.GridData(
-        horizontal_data=horizontal_data,
-        vertical_data=vertical_data,
-        contravariant_data=contravariant_data,
-        angle_data=angle_data,
-    )
-    return grid_data

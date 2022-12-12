@@ -209,12 +209,11 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         },
         "bdt": {"dims": []},
         "ptop": {"dims": []},
-        "ks": {"dims": []},
     }
 
     outputs = inputs.copy()
 
-    for name in ("bdt", "ak", "bk", "ks", "ptop"):
+    for name in ("bdt", "ak", "bk", "ptop", "ua"):
         outputs.pop(name)
 
     def __init__(
@@ -279,6 +278,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self._base.out_vars.update(fv_dynamics_vars)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
+        self._base.out_vars.pop("ua")
 
         self.max_error = 1e-5
 
@@ -288,7 +288,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
         self.stencil_factory = stencil_factory
-        self.namelist: DynamicalCoreConfig = namelist
+        self.namelist: DynamicalCoreConfig = DynamicalCoreConfig.from_namelist(namelist)
 
     def state_from_inputs(self, inputs):
         input_storages = super().state_from_inputs(inputs)
@@ -318,7 +318,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
-            grid_data.ks = inputs["ks"]
 
         state = self.state_from_inputs(inputs)
         return state, grid_data
@@ -329,6 +328,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             comm=communicator,
             grid_data=grid_data,
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             damping_coefficients=self.grid.damping_coefficients,
             config=DynamicalCoreConfig.from_namelist(self.namelist),
             phis=state.phis,

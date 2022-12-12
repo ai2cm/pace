@@ -1,12 +1,13 @@
-from typing import Tuple
+from typing import Sequence
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 @gtscript.function
@@ -563,23 +564,20 @@ class RemapProfile:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         kord: int,
         iv: int,
-        i1: int,
-        i2: int,
-        j1: int,
-        j2: int,
+        dims: Sequence[str],
     ):
         """
         The constraints on the spline are set by kord and iv.
-        Arguments:
-            stencil_factory
+
+        Args:
+            stencil_factory: creates stencils
+            quantity_factory: creates quantities
             kord: ???
             iv: ???
-            i1: The first i-element to compute on
-            i2: The last i-element to compute on
-            j1: The first j-element to compute on
-            j2: The last j-element to compute on
+            dims: dimensions on which to operate on inputs
         """
         orchestrate(
             obj=self,
@@ -587,50 +585,31 @@ class RemapProfile:
         )
 
         assert kord <= 10, f"kord {kord} not implemented."
-        grid_indexing = stencil_factory.grid_indexing
-        km: int = grid_indexing.domain[2]
         self._kord = kord
 
-        def make_storage(**kwargs):
-            return utils.make_storage_from_shape(
-                shape=grid_indexing.domain_full(add=(0, 0, 1)),
-                origin=grid_indexing.origin_full(),
-                backend=stencil_factory.backend,
-                **kwargs,
-            )
+        self._gam = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._q = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._q_bot = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
+        self._extm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
+        self._ext5 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
+        self._ext6 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="", dtype=bool)
 
-        self._gam: FloatField = make_storage()
-        self._q: FloatField = make_storage()
-        self._q_bot: FloatField = make_storage()
-        self._extm: BoolField = make_storage(dtype=bool)
-        self._ext5: BoolField = make_storage()
-        self._ext6: BoolField = make_storage()
-
-        i_extent: int = int(i2 - i1 + 1)
-        j_extent: int = int(j2 - j1 + 1)
-        origin: Tuple[int, int, int] = (i1, j1, 0)
-        domain: Tuple[int, int, int] = (i_extent, j_extent, km)
-        domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)
-
-        self._set_initial_values = stencil_factory.from_origin_domain(
+        self._set_initial_values = stencil_factory.from_dims_halo(
             func=set_initial_vals,
+            compute_dims=list(dims[:2]) + [Z_INTERFACE_DIM],
             externals={"iv": iv, "kord": abs(kord)},
-            origin=origin,
-            domain=domain_extend,
         )
 
-        self._apply_constraints = stencil_factory.from_origin_domain(
+        self._apply_constraints = stencil_factory.from_dims_halo(
             func=apply_constraints,
+            compute_dims=dims,
             externals={"iv": iv, "kord": abs(kord)},
-            origin=origin,
-            domain=domain,
         )
 
-        self._set_interpolation_coefficients = stencil_factory.from_origin_domain(
+        self._set_interpolation_coefficients = stencil_factory.from_dims_halo(
             func=set_interpolation_coefficients,
+            compute_dims=dims,
             externals={"iv": iv, "kord": abs(kord)},
-            origin=origin,
-            domain=domain,
         )
 
     def __call__(
@@ -646,8 +625,8 @@ class RemapProfile:
         """
         Calculates the interpolation coefficients for a cubic-spline which models the
         distribution of the remapped field within each deformed grid cell.
-        The constraints on the spline are set by kord and iv.
-        Arguments:
+
+        Args:
             qs (in): Bottom boundary condition
             a4_1 (out): The first interpolation coefficient
             a4_2 (out): The second interpolation coefficient

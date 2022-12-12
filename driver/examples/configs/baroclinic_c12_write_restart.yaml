@@ -8,7 +8,7 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: true
+  collect_performance: false
   experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79
@@ -18,7 +18,8 @@ seconds: 225
 layout:
   - 1
   - 1
-save_restart: true
+restart_config:
+  save_restart: true
 diagnostics_config:
   path: "output.zarr"
   names:

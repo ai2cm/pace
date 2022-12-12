@@ -1,5 +1,5 @@
 import copy
-from typing import Tuple, Union
+from typing import Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -11,15 +11,18 @@ except ImportError:
 from pace.util import Quantity
 
 
+T = TypeVar("T", bound=Union[Quantity, np.ndarray])
+
+
 def direct_transform(
     *,
-    lon: Union[Quantity, np.ndarray],
-    lat: Union[Quantity, np.ndarray],
+    lon: T,
+    lat: T,
     stretch_factor: float,
     lon_target: float,
     lat_target: float,
     np,
-) -> Tuple[Union[np.ndarray, Quantity], Union[np.ndarray, Quantity]]:
+) -> Tuple[T, T]:
     """
     The direct_transform subroutine from fv_grid_utils.F90.
     Takes in latitude and longitude in radians.
@@ -58,8 +61,8 @@ def direct_transform(
 
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
     sin_p, cos_p = np.sin(lat_p), np.cos(lat_p)
-    c2p1 = 1.0 + stretch_factor ** 2
-    c2m1 = 1.0 - stretch_factor ** 2
+    c2p1 = 1.0 + stretch_factor**2
+    c2m1 = 1.0 - stretch_factor**2
 
     # first limit longitude so it's between 0 and 2pi
     lon_data[lon_data < 0] += 2 * np.pi
@@ -78,31 +81,30 @@ def direct_transform(
     sin_o = -(sin_p * sin_lat + cos_p * cos_lat * np.cos(lon_data))
     tmp = 1 - np.abs(sin_o)
 
-    lon_trans = np.zeros(lon_data.shape) * np.nan
-    lat_trans = np.zeros(lat_data.shape) * np.nan
+    lon_transformed = np.zeros(lon_data.shape) * np.nan
+    lat_transformed = np.zeros(lat_data.shape) * np.nan
 
-    lon_trans[tmp < 1e-7] = 0.0
-    lat_trans[tmp < 1e-7] = np.abs(np.pi / 2) * np.sign(sin_o[tmp < 1e-7])
+    lon_transformed[tmp < 1e-7] = 0.0
+    lat_transformed[tmp < 1e-7] = np.abs(np.pi / 2) * np.sign(sin_o[tmp < 1e-7])
 
-    lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(
+    lon_transformed[tmp >= 1e-7] = lon_p + np.arctan2(
         -np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon_data[tmp >= 1e-7]),
         -np.sin(lat_t[tmp >= 1e-7]) * np.cos(lat_p)
         + np.cos(lat_t[tmp >= 1e-7]) * np.sin(lat_p) * np.cos(lon_data[tmp >= 1e-7]),
     )
-    lat_trans[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
+    lat_transformed[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
 
-    lon_trans[lon_trans < 0] += 2 * np.pi
-    lon_trans[lon_trans >= 2 * np.pi] -= 2 * np.pi
+    lon_transformed[lon_transformed < 0] += 2 * np.pi
+    lon_transformed[lon_transformed >= 2 * np.pi] -= 2 * np.pi
 
     if isinstance(lon, Quantity):
-        lon_transform = copy.deepcopy(lon)
-        lat_transform = copy.deepcopy(lat)
+        lon_out = copy.deepcopy(lon)
+        lat_out = copy.deepcopy(lat)
 
-        lon_transform.data[:] = lon_trans
-        lat_transform.data[:] = lat_trans
+        lon_out.data[:] = lon_transformed
+        lat_out.data[:] = lat_transformed
+    else:
+        lon_out = lon_transformed
+        lat_out = lat_transformed
 
-    elif isinstance(lon, np.ndarray):
-        lon_transform = lon_trans
-        lat_transform = lat_trans
-
-    return lon_transform, lat_transform
+    return lon_out, lat_out  # type: ignore

@@ -8,15 +8,42 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import array_buffer, recv_buffer, send_buffer
-from .halo_data_transformer import QuantityHaloSpec
 from .halo_updater import HaloUpdater, HaloUpdateRequest, VectorInterfaceHaloUpdater
 from .partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
-from .quantity import Quantity, QuantityMetadata
+from .quantity import Quantity, QuantityHaloSpec, QuantityMetadata
 from .types import NumpyModule
 from .utils import device_synchronize
 
 
 logger = logging.getLogger("pace.util")
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
+
+def to_numpy(array, dtype=None) -> np.ndarray:
+    """
+    Input array can be a numpy array or a cupy array. Returns numpy array.
+    """
+    try:
+        output = np.asarray(array)
+    except ValueError as err:
+        if err.args[0] == "object __array__ method not producing an array":
+            output = cupy.asnumpy(array)
+        else:
+            raise err
+    except TypeError as err:
+        if err.args[0].startswith(
+            "Implicit conversion to a NumPy array is not allowed."
+        ):
+            output = cupy.asnumpy(array)
+        else:
+            raise err
+    if dtype:
+        output = output.astype(dtype=dtype)
+    return output
 
 
 def bcast_metadata_list(comm, quantity_list):
@@ -218,7 +245,7 @@ class Communicator(abc.ABC):
             result = None
         return result
 
-    def gather_state(self, send_state=None, recv_state=None):
+    def gather_state(self, send_state=None, recv_state=None, transfer_type=None):
         """Transfer a state dictionary from subtile ranks to the tile root rank.
 
         'time' is assumed to be the same on all ranks, and its value will be set
@@ -238,14 +265,19 @@ class Communicator(abc.ABC):
                 if self.rank == constants.ROOT_RANK:
                     recv_state["time"] = send_state["time"]
             else:
+                gather_value = to_numpy(quantity.view[:], dtype=transfer_type)
+                gather_quantity = Quantity(
+                    data=gather_value, dims=quantity.dims, units=quantity.units
+                )
                 if recv_state is not None and name in recv_state:
                     tile_quantity = self.gather(
-                        quantity, recv_quantity=recv_state[name]
+                        gather_quantity, recv_quantity=recv_state[name]
                     )
                 else:
-                    tile_quantity = self.gather(quantity)
+                    tile_quantity = self.gather(gather_quantity)
                 if self.rank == constants.ROOT_RANK:
                     recv_state[name] = tile_quantity
+                del gather_quantity
         return recv_state
 
     def scatter_state(self, send_state=None, recv_state=None):

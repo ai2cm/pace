@@ -33,7 +33,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             "cxd": grid.x3d_compute_domain_y_dict(),
             "cyd": grid.y3d_compute_domain_x_dict(),
         }
-        self._base.in_vars["parameters"] = ["nq", "mdt"]
+        self._base.in_vars["parameters"] = ["nq"]
         self._base.out_vars = self._base.in_vars["data_vars"]
         self.stencil_factory = stencil_factory
         self.namelist = namelist
@@ -56,6 +56,7 @@ class TranslateTracer2D1L(ParallelTranslate):
         )
         transport = pace.fv3core.stencils.fvtp2d.FiniteVolumeTransport(
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
@@ -64,12 +65,21 @@ class TranslateTracer2D1L(ParallelTranslate):
 
         self.tracer_advection = pace.fv3core.stencils.tracer_2d_1l.TracerAdvection(
             self.stencil_factory,
+            self.grid.quantity_factory,
             transport,
             self.grid.grid_data,
             communicator,
             inputs["tracers"],
         )
+        inputs["x_mass_flux"] = inputs.pop("mfxd")
+        inputs["y_mass_flux"] = inputs.pop("mfyd")
+        inputs["x_courant"] = inputs.pop("cxd")
+        inputs["y_courant"] = inputs.pop("cyd")
         self.tracer_advection(**inputs)
+        inputs["mfxd"] = inputs.pop("x_mass_flux")
+        inputs["mfyd"] = inputs.pop("y_mass_flux")
+        inputs["cxd"] = inputs.pop("x_courant")
+        inputs["cyd"] = inputs.pop("y_courant")
         inputs[
             "tracers"
         ] = all_tracers  # some aren't advected, still need to be validated

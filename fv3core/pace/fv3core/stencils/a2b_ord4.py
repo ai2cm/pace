@@ -11,7 +11,7 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
@@ -333,18 +333,10 @@ def qx_edge_west(qin: FloatField, dxa: FloatFieldIJ):
         ((2.0 + g_in) * qin - qin[1, 0, 0]) / (1.0 + g_in)
         + ((2.0 + g_ou) * qin[-1, 0, 0] - qin[-2, 0, 0]) / (1.0 + g_ou)
     )
-    # This does not work, due to access of qx that is changing above
-
-    # qx[1, 0, 0] = (3.0 * (g_in * qin + qin[1, 0, 0])
-    #     - (g_in * qx + qx[2, 0, 0])) / (2.0 + 2.0 * g_in)
 
 
 @gtscript.function
 def qx_edge_west2(qin: FloatField, dxa: FloatFieldIJ):
-    # TODO: should be able to use 2d variable with offset:
-    # qxleft = qx_edge_west(qin[-1, 0, 0], dxa[-1, 0])
-    # TODO this seemed to work for a bit, and then stopped
-    # qxright = ppm_volume_mean_x_main(qin[1, 0, 0])
     g_in = dxa / dxa[-1, 0]
     g_ou = dxa[-3, 0] / dxa[-2, 0]
     qxleft = 0.5 * (
@@ -369,9 +361,6 @@ def qx_edge_east(qin: FloatField, dxa: FloatFieldIJ):
 
 @gtscript.function
 def qx_edge_east2(qin: FloatField, dxa: FloatFieldIJ):
-    # TODO(rheag) use a function with an offset when that works consistently
-    # qxright = qx_edge_east(qin[1, 0, 0], dxa[1, 0])
-    # qxleft = ppm_volume_mean_x_main(qin[-1, 0, 0])
     g_in = dxa[-1, 0] / dxa
     g_ou = dxa[2, 0] / dxa[1, 0]
     qxright = 0.5 * (
@@ -396,9 +385,6 @@ def qy_edge_south(qin: FloatField, dya: FloatFieldIJ):
 
 @gtscript.function
 def qy_edge_south2(qin: FloatField, dya: FloatFieldIJ):
-    # TODO(rheag) use a function with an offset when that works consistently
-    # qy_lower = qy_edge_south(qin[0, -1, 0], dya[0, -1])
-    # qy_upper = ppm_volume_mean_y_main(qin[0, 1, 0])
     g_in = dya / dya[0, -1]
     g_ou = dya[0, -3] / dya[0, -2]
     qy_lower = 0.5 * (
@@ -423,9 +409,6 @@ def qy_edge_north(qin: FloatField, dya: FloatFieldIJ):
 
 @gtscript.function
 def qy_edge_north2(qin: FloatField, dya: FloatFieldIJ):
-    # TODO(rheag) use a function with an offset when that works consistently
-    # qy_lower = ppm_volume_mean_y_main(qin[0, -1, 0])
-    # qy_upper = qy_edge_north(qin[0, 1, 0], dya[0, 1])
     g_in = dya[0, -1] / dya
     g_ou = dya[0, 2] / dya[0, 1]
     qy_lower = b2 * (qin[0, -3, 0] + qin[0, 0, 0]) + b1 * (
@@ -508,7 +491,6 @@ def a2b_interpolation(
     with computation(PARALLEL), interval(...):
         qxx = a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
         qyy = a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
-        # TODO(rheag) use a function with an offset when that works consistently
         with horizontal(region[:, j_start + 1]):
             qxx_upper = a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
             qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (tmp_qout_edges[0, -1, 0] + qxx_upper)
@@ -532,6 +514,7 @@ class AGrid2BGridFourthOrder:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         grid_data: GridData,
         grid_type,
         z_dim=Z_DIM,
@@ -564,15 +547,18 @@ class AGrid2BGridFourthOrder:
 
         self.replace = replace
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                self._idx.max_shape,
-                backend=self._stencil_config.compilation_config.backend,
-            )
+        self._tmp_qx = quantity_factory.zeros(
+            dims=[X_INTERFACE_DIM, Y_DIM, z_dim], units="unknown"
+        )
+        self._tmp_qy = quantity_factory.zeros(
+            dims=[X_DIM, Y_INTERFACE_DIM, z_dim], units="unknown"
+        )
+        # TODO: the dimensions of tmp_qout_edges may not be correct, verify
+        # with Lucas and either update the code or remove this comment
+        self._tmp_qout_edges = quantity_factory.zeros(
+            dims=[X_DIM, Y_DIM, z_dim], units="unknown"
+        )
 
-        self._tmp_qx = make_storage()
-        self._tmp_qy = make_storage()
-        self._tmp_qout_edges = make_storage()
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 

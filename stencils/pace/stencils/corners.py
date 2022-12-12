@@ -3,7 +3,6 @@ from typing import Optional, Sequence, Tuple
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField
 from pace.util.constants import (
@@ -553,7 +552,6 @@ class FillCornersBGrid:
         self,
         direction: str,
         stencil_factory: StencilFactory,
-        temporary_field=None,
         origin=None,
         domain=None,
     ) -> None:
@@ -573,15 +571,6 @@ class FillCornersBGrid:
         if domain is None:
             domain = default_domain
         """The full domain required to do corner computation everywhere"""
-
-        if temporary_field is not None:
-            self._corner_tmp = temporary_field
-        else:
-            self._corner_tmp = utils.make_storage_from_shape(
-                stencil_factory.grid_indexing.max_shape,
-                origin=origin,
-                backend=stencil_factory.backend,
-            )
 
         if direction == "x":
             defn = fill_corners_bgrid_x_defn

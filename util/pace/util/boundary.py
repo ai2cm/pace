@@ -1,10 +1,8 @@
 import dataclasses
 from typing import Tuple
 
-from pace.util.halo_data_transformer import QuantityHaloSpec
-
 from ._boundary_utils import get_boundary_slice
-from .quantity import Quantity
+from .quantity import Quantity, QuantityHaloSpec
 
 
 @dataclasses.dataclass

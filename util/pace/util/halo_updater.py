@@ -7,12 +7,8 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import Buffer
-from .halo_data_transformer import (
-    HaloDataTransformer,
-    HaloExchangeSpec,
-    QuantityHaloSpec,
-)
-from .quantity import Quantity
+from .halo_data_transformer import HaloDataTransformer, HaloExchangeSpec
+from .quantity import Quantity, QuantityHaloSpec
 from .rotate import rotate_scalar_data
 from .types import AsyncRequest, NumpyModule
 from .utils import device_synchronize
@@ -25,6 +21,9 @@ _HaloSendTuple = Tuple[AsyncRequest, Buffer]
 _HaloRecvTuple = Tuple[AsyncRequest, Buffer, np.ndarray]
 _HaloRequestSendList = List[_HaloSendTuple]
 _HaloRequestRecvList = List[_HaloRecvTuple]
+
+
+TIMER_HALO_EX_KEY = "halo_exchange_global"
 
 
 class HaloUpdater:
@@ -232,6 +231,8 @@ class HaloUpdater:
                 "E.g. previous start() call didn't have a wait() call."
             )
 
+        self._timer.start(TIMER_HALO_EX_KEY)
+
         # Post recv MPI order
         with self._timer.clock("Irecv"):
             self._recv_requests = []
@@ -266,10 +267,15 @@ class HaloUpdater:
                     )
                 )
 
+        self._timer.stop(TIMER_HALO_EX_KEY)
+
     def wait(self):
         """Finalize data exchange."""
         if __debug__ and self._inflight_x_quantities is None:
             raise RuntimeError('Halo update "wait" call before "start"')
+
+        self._timer.start(TIMER_HALO_EX_KEY)
+
         # Wait message to be exchange
         with self._timer.clock("wait"):
             for send_req in self._send_requests:
@@ -293,6 +299,8 @@ class HaloUpdater:
 
         self._inflight_x_quantities = None
         self._inflight_y_quantities = None
+
+        self._timer.stop(TIMER_HALO_EX_KEY)
 
 
 class HaloUpdateRequest:

@@ -15,7 +15,7 @@ Rest assured that this duplicates the behavior of the original Fortran code.
 We have also included a utility to convert the zarr output of the run to netcdf, for convenience. To convert `output.zarr` to `output.nc`, you would run:
 
 ```bash
-$ python3 zarr_to_nc.py output.zarr output.nz
+$ python3 zarr_to_nc.py output.zarr output.nc
 ```
 
 Another example is `baroclinic_init.py`, which initializes a barcolinic wave and writes out the grid and the initial state. To run this script with the c12 6ranks example:

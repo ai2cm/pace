@@ -6,7 +6,6 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from pace.stencils.testing.parallel_translate import ParallelTranslateGrid
 from pace.util.grid import MetricTerms, set_hybrid_pressure_coefficients
 from pace.util.grid.global_setup import global_mirror_grid, gnomonic_grid
@@ -525,11 +524,6 @@ class TranslateSetEta(ParallelTranslateGrid):
             "dims": [],
             "units": "",
         },
-        "ks": {
-            "name": "ks",
-            "dims": [],
-            "units": "",
-        },
         "ptop": {
             "name": "ptop",
             "dims": [],
@@ -547,11 +541,6 @@ class TranslateSetEta(ParallelTranslateGrid):
         },
     }
     outputs: Dict[str, Any] = {
-        "ks": {
-            "name": "ks",
-            "dims": [],
-            "units": "",
-        },
         "ptop": {
             "name": "ptop",
             "dims": [],
@@ -581,7 +570,6 @@ class TranslateSetEta(ParallelTranslateGrid):
     def _compute_local(self, inputs):
         state = self.state_from_inputs(inputs)
         pressure_coefficients = set_hybrid_pressure_coefficients(state["npz"])
-        state["ks"] = pressure_coefficients.ks
         state["ptop"] = pressure_coefficients.ptop
         array_type = type(state["ak"].data[:])
         state["ak"].data[:] = utils.asarray(
@@ -1820,9 +1808,6 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
         in_state = self.state_from_inputs(inputs)
         grid_generator._grid.data[:] = in_state["grid"].data[:]
         grid_generator._agrid.data[:] = in_state["agrid"].data[:]
-        a2b = AGrid2BGridFourthOrder(
-            self.stencil_factory, self.grid.grid_data, namelist.grid_type
-        )
         state = {}
         for metric_term, metadata in self.outputs.items():
             state[metadata["name"]] = getattr(grid_generator, metric_term)

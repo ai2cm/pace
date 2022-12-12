@@ -46,7 +46,7 @@ def initialize_kappa_pressures(pe, peln, ptop):
     """
     pk = np.zeros(pe.shape)
     pkz = np.zeros(pe.shape)
-    pk[:, :, 0] = ptop ** constants.KAPPA
+    pk[:, :, 0] = ptop**constants.KAPPA
     pk[:, :, 1:] = np.exp(constants.KAPPA * np.log(pe[:, :, 1:]))
     pkz[:, :, :-1] = (pk[:, :, 1:] - pk[:, :, :-1]) / (
         constants.KAPPA * (peln[:, :, 1:] - peln[:, :, :-1])
@@ -434,8 +434,8 @@ def empty_numpy_dycore_state(shape):
 
 
 def init_baroclinic_state(
-    # metric_terms: MetricTerms,
     grid_data: GridData,
+    quantity_factory: fv3util.QuantityFactory,
     adiabatic: bool,
     hydrostatic: bool,
     moist_phys: bool,
@@ -445,9 +445,7 @@ def init_baroclinic_state(
     Create a DycoreState object with quantities initialized to the Jablonowski &
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.
     """
-    # sample_quantity = metric_terms.lat
     sample_quantity = grid_data.lat
-    # shape = (*sample_quantity.data.shape[0:2], metric_terms.ak.data.shape[0])
     shape = (*sample_quantity.data.shape[0:2], grid_data.ak.data.shape[0])
     nx, ny, nz = local_compute_size(shape)
     numpy_state = empty_numpy_dycore_state(shape)
@@ -486,9 +484,6 @@ def init_baroclinic_state(
         ak=utils.asarray(grid_data.ak.data),
         bk=utils.asarray(grid_data.bk.data),
         ptop=grid_data.ptop,
-        # ak=utils.asarray(metric_terms.ak.data),
-        # bk=utils.asarray(metric_terms.bk.data),
-        # ptop=metric_terms.ptop,
     )
 
     baroclinic_initialization(
@@ -512,15 +507,6 @@ def init_baroclinic_state(
         es1=utils.asarray(grid_data.es1.data[slice_3d_buffer]),
         ew2=utils.asarray(grid_data.ew2.data[slice_3d_buffer]),
         ptop=grid_data.ptop,
-        # lon=utils.asarray(metric_terms.lon.data[slice_2d_buffer]),
-        # lat=utils.asarray(metric_terms.lat.data[slice_2d_buffer]),
-        # lon_agrid=utils.asarray(metric_terms.lon_agrid.data[slice_2d_buffer]),
-        # lat_agrid=utils.asarray(metric_terms.lat_agrid.data[slice_2d_buffer]),
-        # ee1=utils.asarray(metric_terms.ee1.data[slice_3d_buffer]),
-        # ee2=utils.asarray(metric_terms.ee2.data[slice_3d_buffer]),
-        # es1=utils.asarray(metric_terms.es1.data[slice_3d_buffer]),
-        # ew2=utils.asarray(metric_terms.ew2.data[slice_3d_buffer]),
-        # ptop=metric_terms.ptop,
         adiabatic=adiabatic,
         hydrostatic=hydrostatic,
         nx=nx,
@@ -537,14 +523,12 @@ def init_baroclinic_state(
         peln=numpy_state.peln[slice_3d],
         pkz=numpy_state.pkz[slice_3d],
         ptop=grid_data.ptop,
-        # ptop=metric_terms.ptop,
         moist_phys=moist_phys,
         make_nh=(not hydrostatic),
     )
     state = DycoreState.init_from_numpy_arrays(
         numpy_state.__dict__,
-        sizer=grid_data.quantity_factory.sizer,
-        # sizer=metric_terms.quantity_factory.sizer,
+        sizer=quantity_factory.sizer,
         backend=sample_quantity.metadata.gt4py_backend,
     )
 

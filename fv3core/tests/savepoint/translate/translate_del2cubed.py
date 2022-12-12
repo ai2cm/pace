@@ -22,9 +22,10 @@ class TranslateDel2Cubed(TranslateDycoreFortranData2Py):
     def compute_from_storage(self, inputs):
         hyperdiffusion = HyperdiffusionDamping(
             self.stencil_factory,
-            self.grid.damping_coefficients,
-            self.grid.rarea,
-            inputs.pop("nmax"),
+            quantity_factory=self.grid.quantity_factory,
+            damping_coefficients=self.grid.damping_coefficients,
+            rarea=self.grid.rarea,
+            nmax=inputs.pop("nmax"),
         )
         hyperdiffusion(**inputs)
         return inputs

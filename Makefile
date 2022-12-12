@@ -103,7 +103,7 @@ test_util:
 		$(MAKE) -C util test; \
 	fi
 
-savepoint_tests: build
+savepoint_tests: build  ## dycore-only savepoint tests
 	TARGET=dycore $(MAKE) get_test_data
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(FV3CORE_THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
 
@@ -130,6 +130,13 @@ physics_savepoint_tests_mpi: build
 test_main: build
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
 
+test_savepoint:  ## top level savepoint tests
+	TARGET=dycore $(MAKE) get_test_data
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/savepoint"
+
+test_notebooks:  ## tests for jupyter notebooks, must be run in correct Python environment
+	pytest --nbmake "examples/notebooks"
+
 test_mpi_54rank:
 	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank
 
@@ -141,10 +148,13 @@ docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
 
+doctest: ## run Sphinx doctest
+	$(MAKE) -C docs doctest
+
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
 lint:
 	pre-commit run --all-files
 
-.PHONY: docs servedocs build
+.PHONY: docs doctest servedocs build

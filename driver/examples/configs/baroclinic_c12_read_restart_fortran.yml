@@ -10,7 +10,7 @@ initialization:
     path: /home/ajdas/pace/restart_data/1.0
   type: fortran_restart
 performance_config:
-  performance_mode: true
+  collect_performance: false
   experiment_name: c12_baroclinic_restart
 grid_config:
   type: generated

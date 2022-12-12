@@ -1,7 +1,6 @@
 import dataclasses
 import os
 from dataclasses import fields
-from typing import Union
 
 import numpy as np
 import xarray as xr
@@ -11,16 +10,6 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
-from pace.driver.grid import GeneratedConfig
-from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util._properties import RestartProperties
-from pace.util.constants import X_DIM, Y_DIM, Z_DIM
-
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
 
 
 @dataclasses.dataclass()
@@ -76,9 +65,17 @@ class DriverState:
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
 
+    # TODO: the driver_config argument here isn't type hinted from
+    # import due to a circular dependency. This can be fixed by refactoring
+    # for example by moving this method into some restart.py module
     @classmethod
     def load_state_from_restart(
-        cls, restart_path: str, driver_config, fortran_data: bool = False
+        cls,
+        restart_path: str,
+        driver_config,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> "DriverState":
         comm = driver_config.comm_config.get_comm()
         communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -98,10 +95,6 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
 
-        damping_coefficients, driver_grid_data, grid_data = GeneratedConfig.get_grid(
-            quantity_factory=quantity_factory,
-            communicator=communicator,
-        )
         state = _restart_driver_state(
             restart_path,
             communicator.rank,
@@ -212,9 +205,8 @@ def _restart_driver_state(
 def _overwrite_state_from_restart(
     path: str,
     rank: int,
-    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
+    state: fv3core.DycoreState,
     restart_file_prefix: str,
-    is_gpu_backend: bool,
 ):
     """
     Args:
@@ -222,43 +214,51 @@ def _overwrite_state_from_restart(
         rank: current rank number
         state: an empty state
         restart_file_prefix: file prefix name to read
-        is_gpu_backend:
     """
-    df = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+    ds = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+
     for _field in fields(type(state)):
         if "units" in _field.metadata.keys():
-            if is_gpu_backend:
-                if "physics" in restart_file_prefix:
-                    state.__dict__[_field.name][:] = gt_utils.asarray(
-                        df[_field.name].data[:], to_type=cp.ndarray
-                    )
-                else:
-                    state.__dict__[_field.name].data[:] = gt_utils.asarray(
-                        df[_field.name].data[:], to_type=cp.ndarray
-                    )
-            else:
-                state.__dict__[_field.name].data[:] = df[_field.name].data[:]
+            state.__dict__[_field.name].data[:] = gt_utils.asarray(
+                ds[_field.name].data[:], to_type=state.__dict__[_field.name].np.ndarray
+            )
 
 
 def _overwrite_state_from_fortran_restart(
     path: str,
     communicator: pace.util.CubedSphereCommunicator,
-    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
-    is_gpu_backend: bool,
+    damping_coefficients: pace.util.grid.DampingCoefficients,
+    driver_grid_data: pace.util.grid.DriverGridData,
+    grid_data: pace.util.grid.GridData,
 ):
-    """
-    Args:
-        path: path to restart files
-        communicator:
-        state: an empty state
-        is_gpu_backend:
-    """
+    fs = pace.util.get_fs(path)
 
-    state_dict = pace.util.open_restart(
-        path,
-        communicator,
-        tracer_properties=extra_restart_properties,
-        fortran_dict=fortran_restart_to_pace_dict,
+    restart_files = fs.ls(path)
+    is_fortran_restart = any(
+        fname.endswith("fv_core.res.nc") for fname in restart_files
+    )
+
+    if is_fortran_restart:
+        dycore_state = fv3core.DycoreState.from_fortran_restart(
+            quantity_factory=quantity_factory, communicator=communicator, path=path
+        )
+    else:
+        dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
+        _overwrite_state_from_restart(
+            path,
+            rank,
+            dycore_state,
+            "restart_dycore_state",
+        )
+
+    active_packages = ["microphysics"]
+    physics_state = pace.physics.PhysicsState.init_zeros(
+        quantity_factory=quantity_factory, active_packages=active_packages
+    )
+
+    physics_state.__post_init__(quantity_factory, active_packages)
+    tendency_state = TendencyState.init_zeros(
+        quantity_factory=quantity_factory,
     )
 
     _dict_state_to_driver_state(state_dict, state, is_gpu_backend)

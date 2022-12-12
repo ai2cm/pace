@@ -4,6 +4,7 @@ import pace.util
 from pace.fv3core import DynamicalCoreConfig
 from pace.fv3core.stencils.remapping import LagrangianToEulerian
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
+from pace.util import Z_DIM
 
 
 class TranslateRemapping(TranslateDycoreFortranData2Py):
@@ -18,8 +19,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "tracers": {},
             "w": {},
             "u": grid.y3d_domain_dict(),
-            "ua": {},
-            "va": {},
             "v": grid.x3d_domain_dict(),
             "delz": {},
             "pt": {},
@@ -59,16 +58,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
                 "jstart": grid.js,
                 "jend": grid.je,
             },
-            "omga": {},
-            "te0_2d": {
-                "serialname": "te_2d",
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.je,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
             # column variables...
             "ak": {},
             "bk": {},
@@ -81,7 +70,6 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "last_step",
             "consv_te",
             "mdt",
-            "bdt",
             "nq",
         ]
         self.out_vars = {}
@@ -97,14 +85,10 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             "delp",
             "delz",
             "q_con",
-            "te0_2d",
             "u",
             "v",
             "w",
             "ps",
-            "omga",
-            "ua",
-            "va",
             "dp1",
         ]:
             self.out_vars[k] = self.in_vars["data_vars"][k]
@@ -113,7 +97,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         self.near_zero = 3e-18
         self.ignore_near_zero_errors = {"q_con": True, "tracers": True}
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist = DynamicalCoreConfig.from_namelist(namelist)
 
     def compute_from_storage(self, inputs):
         wsd_2d = utils.make_storage_from_shape(
@@ -123,15 +107,17 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         inputs["last_step"] = bool(inputs["last_step"])
+        pfull = self.grid.quantity_factory.empty([Z_DIM], units="Pa")
+        pfull.data[:] = pfull.np.asarray(inputs.pop("pfull"))
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
-            DynamicalCoreConfig.from_namelist(self.namelist).remapping,
-            self.grid.area_64,
-            inputs["nq"],
-            inputs["pfull"],
-            inputs["tracers"],
+            quantity_factory=self.grid.quantity_factory,
+            config=DynamicalCoreConfig.from_namelist(self.namelist).remapping,
+            area_64=self.grid.area_64,
+            nq=inputs.pop("nq"),
+            pfull=pfull,
+            tracers=inputs["tracers"],
         )
-        inputs.pop("nq")
         l_to_e_obj(**inputs)
         inputs.pop("q_cld")
         return inputs

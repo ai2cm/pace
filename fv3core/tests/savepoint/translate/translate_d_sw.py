@@ -18,16 +18,17 @@ class TranslateD_SW(TranslateDycoreFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 3.2e-10
         self.stencil_factory = stencil_factory
-        column_namelist = d_sw.get_column_namelist(
-            namelist, grid.npz, backend=self.stencil_factory.backend
-        )
-        self.stencil_factory = stencil_factory
         dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
-        self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
-            self.stencil_factory,
-            self.grid.grid_data,
-            self.grid.damping_coefficients,
-            column_namelist,
+        column_namelist = d_sw.get_column_namelist(
+            config=dycore_config.acoustic_dynamics.d_grid_shallow_water,
+            quantity_factory=self.grid.quantity_factory,
+        )
+        self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(  # type: ignore
+            stencil_factory=self.stencil_factory,
+            quantity_factory=self.grid.quantity_factory,
+            grid_data=self.grid.grid_data,
+            damping_coefficients=self.grid.damping_coefficients,
+            column_namelist=column_namelist,
             nested=self.grid.nested,
             stretched_grid=self.grid.stretched_grid,
             config=dycore_config.d_grid_shallow_water,
@@ -100,7 +101,7 @@ class TranslateUbKE(TranslateDycoreFortranData2Py):
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         self.stencil_factory = stencil_factory
         ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             ubke, externals=ax_offsets, origin=origin, domain=domain
         )
 
@@ -147,7 +148,7 @@ class TranslateVbKE(TranslateDycoreFortranData2Py):
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         self.stencil_factory = stencil_factory
         ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             vbke, externals=ax_offsets, origin=origin, domain=domain
         )
 
@@ -180,7 +181,7 @@ class TranslateFluxCapacitor(TranslateDycoreFortranData2Py):
         for outvar in ["cx", "cy", "xflux", "yflux"]:
             self.out_vars[outvar] = self.in_vars["data_vars"][outvar]
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
             d_sw.flux_capacitor,
             origin=grid.full_origin(),
             domain=grid.domain_shape_full(),
@@ -208,12 +209,12 @@ class TranslateHeatDiss(TranslateDycoreFortranData2Py):
             "diss_est": grid.compute_dict(),
             "dw": grid.compute_dict(),
         }
-        self.namelist = namelist
+        self.namelist = namelist  # type: ignore
         self.stencil_factory = stencil_factory
 
     def compute_from_storage(self, inputs):
         column_namelist = d_sw.get_column_namelist(
-            self.namelist, self.grid.npz, backend=self.stencil_factory.backend
+            config=self.namelist, quantity_factory=self.grid.quantity_factory
         )
         # TODO add these to the serialized data or remove the test
         inputs["damp_w"] = column_namelist["damp_w"]
@@ -247,8 +248,8 @@ class TranslateWdivergence(TranslateDycoreFortranData2Py):
         }
         self.out_vars = {"q": {"serialname": "w"}}
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
-            d_sw.flux_adjust,
+        self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
+            d_sw.apply_fluxes,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )

@@ -11,7 +11,7 @@ from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from pace.util import Quantity
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 @gtscript.function
@@ -62,15 +62,15 @@ def flux_compute(
         sin_sg2 (in):
         sin_sg3 (in):
         sin_sg4 (in):
-        xfx (out):
-        yfx (out):
+        xfx (out): x-direction area flux
+        yfx (out): y-direction area flux
     """
     with computation(PARALLEL), interval(...):
         xfx = flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx)
         yfx = flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx)
 
 
-def cmax_multiply_by_frac(
+def divide_fluxes_by_n_substeps(
     cxd: FloatField,
     xfx: FloatField,
     mfxd: FloatField,
@@ -80,7 +80,7 @@ def cmax_multiply_by_frac(
     n_split: int,
 ):
     """
-    Multiply all inputs in-place by 1.0 / n_split.
+    Divide all inputs in-place by the number of substeps n_split.
 
     Args:
         cxd (inout):
@@ -112,31 +112,30 @@ def cmax_stencil2(
         cmax = max(abs(cx), abs(cy)) + 1.0 - sin_sg5
 
 
-def dp_fluxadjustment(
+def apply_mass_flux(
     dp1: FloatField,
-    mfx: FloatField,
-    mfy: FloatField,
+    x_mass_flux: FloatField,
+    y_mass_flux: FloatField,
     rarea: FloatFieldIJ,
     dp2: FloatField,
 ):
     """
     Args:
-        dp1 (in):
-        mfx (in):
-        mfy (in):
-        rarea (in):
-        dp2 (out):
+        dp1 (in): initial pressure thickness
+        mfx (in): flux of (area * mass * g) in x-direction
+        mfy (in): flux of (area * mass * g) in y-direction
+        rarea (in): 1 / area
+        dp2 (out): final pressure thickness
     """
     with computation(PARALLEL), interval(...):
-        dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
+        dp2 = (
+            dp1
+            + (x_mass_flux - x_mass_flux[1, 0, 0] + y_mass_flux - y_mass_flux[0, 1, 0])
+            * rarea
+        )
 
 
-@gtscript.function
-def adjustment(q, dp1, fx, fy, rarea, dp2):
-    return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
-
-
-def q_adjust(
+def apply_tracer_flux(
     q: FloatField,
     dp1: FloatField,
     fx: FloatField,
@@ -154,7 +153,7 @@ def q_adjust(
         dp2 (in):
     """
     with computation(PARALLEL), interval(...):
-        q = adjustment(q, dp1, fx, fy, rarea, dp2)
+        q = (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
 
 
 # Simple stencil replacing:
@@ -179,10 +178,11 @@ class TracerAdvection:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         transport: FiniteVolumeTransport,
         grid_data,
         comm: pace.util.CubedSphereCommunicator,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, pace.util.Quantity],
     ):
         orchestrate(
             obj=self,
@@ -193,29 +193,21 @@ class TracerAdvection:
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
         self.grid_data = grid_data
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
-        origin = grid_indexing.origin_compute()
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape=shape, origin=origin, backend=stencil_factory.backend
-            )
-
-        self._tmp_xfx = make_storage()
-        self._tmp_yfx = make_storage()
-        self._tmp_fx = make_storage()
-        self._tmp_fy = make_storage()
-        self._tmp_dp = make_storage()
-        self._tmp_dp2 = make_storage()
-        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
-        origin, extent = grid_indexing.get_origin_domain(dims)
-        self._tmp_qn2 = pace.util.Quantity(
-            make_storage(),
-            dims=dims,
-            units="kg/m^2",
-            origin=origin,
-            extent=extent,
+        self._x_area_flux = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_DIM, Z_DIM], units="unknown"
         )
+        self._y_area_flux = quantity_factory.zeros(
+            [X_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._x_flux = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._y_flux = quantity_factory.zeros(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM], units="unknown"
+        )
+        self._tmp_dp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
+        self._tmp_dp2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="Pa")
 
         ax_offsets = grid_indexing.axis_offsets(
             grid_indexing.origin_full(), grid_indexing.domain_full()
@@ -238,37 +230,30 @@ class TracerAdvection:
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._cmax_multiply_by_frac = stencil_factory.from_origin_domain(
-            cmax_multiply_by_frac,
+        self._divide_fluxes_by_n_substeps = stencil_factory.from_origin_domain(
+            divide_fluxes_by_n_substeps,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._dp_fluxadjustment = stencil_factory.from_origin_domain(
-            dp_fluxadjustment,
+        self._apply_mass_flux = stencil_factory.from_origin_domain(
+            apply_mass_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
         )
-        self._q_adjust = stencil_factory.from_origin_domain(
-            q_adjust,
+        self._apply_tracer_flux = stencil_factory.from_origin_domain(
+            apply_tracer_flux,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
         )
         self.finite_volume_transport: FiniteVolumeTransport = transport
-        # If use AllReduce, will need something like this:
-        # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
-        # self._cmax_1 = stencil_factory.from_origin_domain(cmax_stencil1)
-        # self._cmax_2 = stencil_factory.from_origin_domain(cmax_stencil2)
 
         # Setup halo updater for tracers
-        tracer_halo_spec = grid_indexing.get_quantity_halo_spec(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            grid_indexing.origin_compute(),
+        tracer_halo_spec = quantity_factory.get_quantity_halo_spec(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=utils.halo,
-            backend=stencil_factory.backend,
         )
         self._tracers_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([tracer_halo_spec] * self._tracer_count),
@@ -276,17 +261,30 @@ class TracerAdvection:
             [t for t in tracers.keys()],
         )
 
-    def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
+    def __call__(
+        self,
+        tracers: Dict[str, pace.util.Quantity],
+        dp1,
+        x_mass_flux,
+        y_mass_flux,
+        x_courant,
+        y_courant,
+    ):
         """
+        Apply advection to tracers based on the given courant numbers and mass fluxes.
+
+        Note only output values for tracers are used, all other inouts are only such
+        because they are modified for intermediate computation.
+
         Args:
-            tracers (inout):
-            dp1 (in):
-            mfxd (inout):
-            mfyd (inout):
-            cxd (inout):
-            cyd (inout):
+            tracers (inout): tracers to advect according to fluxes during
+                acoustic substeps
+            dp1 (in): pressure thickness of atmospheric layers before acoustic substeps
+            x_mass_flux (inout): total mass flux in x-direction over acoustic substeps
+            y_mass_flux (inout): total mass flux in y-direction over acoustic substeps
+            x_courant (inout): accumulated courant number in x-direction
+            y_courant (inout): accumulated courant number in y-direction
         """
-        # TODO: remove unused mdt argument
         # DaCe parsing issue
         # if len(tracers) != self._tracer_count:
         #     raise ValueError(
@@ -296,8 +294,8 @@ class TracerAdvection:
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
         self._flux_compute(
-            cxd,
-            cyd,
+            x_courant,
+            y_courant,
             self.grid_data.dxa,
             self.grid_data.dya,
             self.grid_data.dx,
@@ -306,8 +304,9 @@ class TracerAdvection:
             self.grid_data.sin_sg2,
             self.grid_data.sin_sg3,
             self.grid_data.sin_sg4,
-            self._tmp_xfx,
-            self._tmp_yfx,
+            # TODO: rename xfx/yfx to "area flux"
+            self._x_area_flux,
+            self._y_area_flux,
         )
 
         # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -342,13 +341,13 @@ class TracerAdvection:
         # that, make n_split a column as well
 
         if n_split > 1.0:
-            self._cmax_multiply_by_frac(
-                cxd,
-                self._tmp_xfx,
-                mfxd,
-                cyd,
-                self._tmp_yfx,
-                mfyd,
+            self._divide_fluxes_by_n_substeps(
+                x_courant,
+                self._x_area_flux,
+                x_mass_flux,
+                y_courant,
+                self._y_area_flux,
+                y_mass_flux,
                 n_split,
             )
 
@@ -358,34 +357,36 @@ class TracerAdvection:
 
         for it in range(n_split):
             last_call = it == n_split - 1
-            self._dp_fluxadjustment(
+            # tracer substep
+            self._apply_mass_flux(
                 dp1,
-                mfxd,
-                mfyd,
+                x_mass_flux,
+                y_mass_flux,
                 self.grid_data.rarea,
                 dp2,
             )
             for q in tracers.values():
                 self.finite_volume_transport(
                     q,
-                    cxd,
-                    cyd,
-                    self._tmp_xfx,
-                    self._tmp_yfx,
-                    self._tmp_fx,
-                    self._tmp_fy,
-                    x_mass_flux=mfxd,
-                    y_mass_flux=mfyd,
+                    x_courant,
+                    y_courant,
+                    self._x_area_flux,
+                    self._y_area_flux,
+                    self._x_flux,
+                    self._y_flux,
+                    x_mass_flux=x_mass_flux,
+                    y_mass_flux=y_mass_flux,
                 )
-                self._q_adjust(
+                self._apply_tracer_flux(
                     q,
                     dp1,
-                    self._tmp_fx,
-                    self._tmp_fy,
+                    self._x_flux,
+                    self._y_flux,
                     self.grid_data.rarea,
                     dp2,
                 )
             if not last_call:
                 self._tracers_halo_updater.update()
-                # use variable assignment to avoid a data copy
+                # we can't use variable assignment to avoid a data copy
+                # because of current dace limitations
                 self._swap_dp(dp1, dp2)

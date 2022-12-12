@@ -4,7 +4,7 @@ import logging
 import os
 import pathlib
 from datetime import datetime
-from typing import ClassVar
+from typing import Callable, ClassVar, Type, TypeVar
 
 import f90nml
 
@@ -55,6 +55,9 @@ class Initializer(abc.ABC):
         ...
 
 
+IT = TypeVar("IT", bound=Type[Initializer])
+
+
 @dataclasses.dataclass
 class InitializerSelector(Initializer):
     """
@@ -71,7 +74,7 @@ class InitializerSelector(Initializer):
     registry: ClassVar[Registry] = Registry()
 
     @classmethod
-    def register(cls, type_name):
+    def register(cls, type_name) -> Callable[[IT], IT]:
         return cls.registry.register(type_name)
 
     @property
@@ -102,7 +105,7 @@ class InitializerSelector(Initializer):
 
 @InitializerSelector.register("baroclinic")
 @dataclasses.dataclass
-class BaroclinicConfig(Initializer):
+class BaroclinicInit(Initializer):
     """
     Configuration for baroclinic initialization.
     """
@@ -117,14 +120,9 @@ class BaroclinicConfig(Initializer):
         driver_grid_data: pace.util.grid.DriverGridData,
         grid_data: pace.util.grid.GridData,
     ) -> DriverState:
-        # Ajda
-        # do I need to keep metric terms here?
-        # metric_terms = pace.util.grid.MetricTerms(
-        #     quantity_factory=quantity_factory, communicator=communicator
-        # )
         dycore_state = baroclinic_init.init_baroclinic_state(
-            # metric_terms,
             grid_data=grid_data,
+            quantity_factory=quantity_factory,
             adiabatic=False,
             hydrostatic=False,
             moist_phys=True,
@@ -199,9 +197,9 @@ class TropicalCycloneConfig(Initializer):
 
 @InitializerSelector.register("restart")
 @dataclasses.dataclass
-class RestartConfig(Initializer):
+class RestartInit(Initializer):
     """
-    Configuration for restart initialization.
+    Configuration for pace restart initialization.
     """
 
     path: str = "."
@@ -230,7 +228,7 @@ class RestartConfig(Initializer):
 
 @InitializerSelector.register("fortran_restart")
 @dataclasses.dataclass
-class FortranRestartConfig(Initializer):
+class FortranRestartInit(Initializer):
     """
     Configuration for fortran restart initialization.
     """
@@ -304,7 +302,7 @@ class FortranRestartConfig(Initializer):
 
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass
-class SerialboxConfig(Initializer):
+class SerialboxInit(Initializer):
     """
     Configuration for Serialbox initialization.
     """
@@ -328,7 +326,7 @@ class SerialboxConfig(Initializer):
         self,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
-    ) -> pace.stencils.testing.grid.Grid:
+    ) -> pace.stencils.testing.grid.Grid:  # type: ignore
         ser = self._serializer(communicator)
         grid = TranslateGrid.new_from_serialized_data(
             ser, communicator.rank, self._namelist.layout, backend
@@ -406,7 +404,7 @@ class SerialboxConfig(Initializer):
 
 @InitializerSelector.register("predefined")
 @dataclasses.dataclass
-class PredefinedStateConfig(Initializer):
+class PredefinedStateInit(Initializer):
     """
     Configuration if the states are already defined.
 
@@ -444,7 +442,10 @@ class PredefinedStateConfig(Initializer):
         )
 
 
-def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
+# TODO: refactor fv3core so that pe and peln are internal temporaries
+# of the dynamical core, computed automatically, so that this helper
+# can be eliminated from initialization
+def _update_fortran_restart_pe_peln(state: DriverState) -> None:
     """
     Fortran restart data don't have information on pressure interface values
     and their logs.
@@ -453,7 +454,7 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     and updates the driver state with values.
     """
 
-    ptop = state.grid_data._vertical_data.ak[0]
+    ptop = state.grid_data.ak.view[0]
     pe = state.dycore_state.pe
     peln = state.dycore_state.peln
     delp = state.dycore_state.delp
@@ -465,5 +466,3 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
 
     state.dycore_state.pe = pe
     state.dycore_state.peln = peln
-
-    return None

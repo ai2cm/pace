@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
+# type: ignore
 
 import copy
 import json
+import os
 from argparse import ArgumentParser, Namespace
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import f90nml
 import numpy as np
-import serialbox
+import xarray as xr
 import yaml
 from mpi4py import MPI
 
@@ -23,6 +25,7 @@ from pace.fv3core import DynamicalCore, DynamicalCoreConfig
 from pace.fv3core.initialization.baroclinic import init_baroclinic_state
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.testing import TranslateFVDynamics
+from pace.stencils.testing import dataset_to_dict
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -173,16 +176,11 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
 
 
 def read_serialized_initial_state(rank, grid, namelist, stencil_factory, data_dir):
-    # set up of helper structures
-    serializer = serialbox.Serializer(
-        serialbox.OpenModeKind.Read,
-        data_dir,
-        "Generator_rank" + str(rank),
+    ds = xr.open_dataset(os.path.join(data_dir, "Driver-In.nc")).sel(
+        savepoint=0, rank=rank
     )
-    # create a state from serialized data
-    savepoint_in = serializer.get_savepoint("Driver-In")[0]
+    input_data = dataset_to_dict(ds)
     driver_object = TranslateFVDynamics(grid, namelist, stencil_factory)
-    input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state
 

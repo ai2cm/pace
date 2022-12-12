@@ -149,6 +149,7 @@ class DycoreToPhysics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: pace.util.QuantityFactory,
         dycore_config: fv3core.DynamicalCoreConfig,
         do_dry_convective_adjust: bool,
         dycore_only: bool,
@@ -173,6 +174,7 @@ class DycoreToPhysics:
         if self._do_dry_convective_adjustment:
             self._fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
                 stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
                 nwat=dycore_config.nwat,
                 fv_sg_adj=dycore_config.fv_sg_adj,
                 n_sponge=dycore_config.n_sponge,
@@ -259,8 +261,6 @@ class UpdateAtmosphereState:
 
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
-        origin = grid_indexing.origin_compute()
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
 
         self._prepare_tendencies_and_update_tracers = (
@@ -271,7 +271,6 @@ class UpdateAtmosphereState:
             )
         )
 
-        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
         self._fill_GFS_delp = stencil_factory.from_origin_domain(
             fill_gfs_delp,
             origin=grid_indexing.origin_full(),
@@ -280,6 +279,7 @@ class UpdateAtmosphereState:
 
         self._apply_physics_to_dycore = ApplyPhysicsToDycore(
             stencil_factory,
+            quantity_factory,
             grid_data,
             self.namelist,
             comm,

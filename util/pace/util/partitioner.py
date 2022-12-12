@@ -17,7 +17,7 @@ from .constants import (
     SOUTHWEST,
     WEST,
 )
-from .quantity import QuantityMetadata
+from .quantity import Quantity, QuantityMetadata
 
 
 # we're caching slice objects which are pretty small, and the number we
@@ -157,7 +157,9 @@ class TilePartitioner(Partitioner):
     def total_ranks(self) -> int:
         return self.layout[0] * self.layout[1]
 
-    def global_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
+    def global_extent(
+        self, rank_metadata: Union[Quantity, QuantityMetadata]
+    ) -> Tuple[int, ...]:
         """Return the shape of a full tile representation for the given dimensions.
 
         Args:
