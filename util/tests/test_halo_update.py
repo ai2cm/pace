@@ -378,7 +378,14 @@ def test_halo_update_timer(
         halo_updater_list.append(halo_updater)
     for halo_updater in halo_updater_list:
         halo_updater.wait()
-    required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
+    required_times_keys = (
+        "pack",
+        "unpack",
+        "Isend",
+        "Irecv",
+        "wait",
+        "halo_exchange_global",
+    )
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
             assert isinstance(communicator.timer, pace.util.Timer)
@@ -787,7 +794,14 @@ def test_vector_halo_update_timer(
         )
     for halo_updater in halo_updater_list:
         halo_updater.wait()
-    required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
+    required_times_keys = (
+        "pack",
+        "unpack",
+        "Isend",
+        "Irecv",
+        "wait",
+        "halo_exchange_global",
+    )
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
             assert isinstance(communicator.timer, pace.util.Timer)

@@ -12,7 +12,6 @@ from gt4py.gtscript import (
 
 import pace.fv3core.stencils.delnflux as delnflux
 import pace.util
-import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -120,12 +119,13 @@ def flux_increment(gx, gy, rarea):
     return (gx - gx[1, 0, 0] + gy - gy[0, 1, 0]) * rarea
 
 
-# TODO: update the name of this to say we're applying the fluxes / stepping the state
-def flux_adjust(
+def apply_fluxes(
     q: FloatField, delp: FloatField, gx: FloatField, gy: FloatField, rarea: FloatFieldIJ
 ):
     """
     Update q according to fluxes gx and gy.
+
+    Changes the units of q to be pressure-weighted.
 
     Args:
         q (inout): any scalar, the fluxes gx and gy are applied and the output is
@@ -318,11 +318,6 @@ def compute_vorticity(
         vorticity (out):
     """
     with computation(PARALLEL), interval(...):
-        # TODO: ask Lucas why vorticity is computed with this particular treatment
-        # of dx, dy, and rarea. The original code read like:
-        #     u_dx = u * dx
-        #     v_dy = v * dy
-        #     vorticity = rarea * (u_dx - u_dx[0, 1, 0] - v_dy + v_dy[1, 0, 0])
         # cell-mean vorticity is equal to the circulation around the gridcell
         # divided by the area of the gridcell. It isn't exactly true that
         # area = dx * dy, so the form below is necessary to get an exact result.
@@ -394,27 +389,17 @@ def coriolis_force_correction(zh, radius):
 def rel_vorticity_to_abs(
     relative_vorticity: FloatField,
     f0: FloatFieldIJ,
-    zh: FloatField,
     absolute_vorticity: FloatField,
 ):
     """
     Args:
-        wk (in): a-grid relative vorticity computed before divergence damping
+        relative_vorticity (in): a-grid relative vorticity computed before
+            divergence damping
         f0 (in): planetary vorticity
-        zh (in): (only used if do_f3d=True in externals)
-        vort (out): absolute vorticity on cell center (a-grid)
+        absolute_vorticity (out): absolute vorticity on cell center (a-grid)
     """
-    from __externals__ import do_f3d, hydrostatic, radius
-
-    # do_f3d: if True, turn on experimental vertical Coriolis term which adjusts
-    # for the fact that the Coriolis force weakens higher up in the atmosphere
-
     with computation(PARALLEL), interval(...):
-        if __INLINED(do_f3d and not hydrostatic):
-            z_rat = coriolis_force_correction(zh, radius)
-            absolute_vorticity = relative_vorticity + f0 * z_rat
-        else:
-            absolute_vorticity = relative_vorticity[0, 0, 0] + f0[0, 0]
+        absolute_vorticity = relative_vorticity + f0
 
 
 @gtscript.function
@@ -494,10 +479,14 @@ def u_and_v_from_ke(
 
 @gtscript.function
 def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
-    return rsin2 * (
-        (ub * ub + ub[0, 1, 0] * ub[0, 1, 0] + vb * vb + vb[1, 0, 0] * vb[1, 0, 0])
-        + 2.0 * (gy + gy[0, 1, 0] + gx + gx[1, 0, 0])
-        - cosa_s * (u2 * dv2 + v2 * du2 + du2 * dv2)
+    return (
+        rsin2
+        * 0.25
+        * (
+            (ub * ub + ub[0, 1, 0] * ub[0, 1, 0] + vb * vb + vb[1, 0, 0] * vb[1, 0, 0])
+            + 2.0 * (gy + gy[0, 1, 0] + gx + gx[1, 0, 0])
+            - cosa_s * (u2 * dv2 + v2 * du2 + du2 * dv2)
+        )
     )
 
 
@@ -541,18 +530,23 @@ def heat_source_from_vorticity_damping(
         dissipation_estimate (out): dissipation estimate, only calculated if
             calculate_dissipation_estimate is 1. Used for stochastic kinetic
             energy backscatter (skeb) routine.
-        kinetic_energy_fraction_to_damp (in): according to its comment in fv_arrays,
-            the fraction of kinetic energy to explicitly damp and convert into heat.
-            TODO: confirm this description is accurate, why is it multiplied
-            by 0.25 below?
+        kinetic_energy_fraction_to_damp (in): the fraction of kinetic energy
+            to explicitly damp and convert into heat.
     """
-    from __externals__ import d_con, do_skeb, local_ie, local_is, local_je, local_js
+    from __externals__ import (
+        d_con,
+        do_stochastic_ke_backscatter,
+        local_ie,
+        local_is,
+        local_je,
+        local_js,
+    )
 
-    # TODO: propagate these descriptions to where these are defined
+    # TODO: rename d_con in the namelist itself
     # d_con is portion of dissipative kinetic energy restored as heat, turns off
     # if it's below some threshold
-    # do_skeb means do stochastic kinetic energy backscattering
-    # for data assimilation and ensemble modeling
+    # TODO: d_con is passed both as an external ad as an argument
+    # (as kinetic_energy_fraction_to_damp), clean this up
 
     with computation(PARALLEL), interval(...):
         ubt = (vort_x_delta + vt) * rdx
@@ -562,7 +556,9 @@ def heat_source_from_vorticity_damping(
         fx = v * rdy
         gx = fx * vbt
 
-        if (kinetic_energy_fraction_to_damp > dcon_threshold) or do_skeb:
+        if (
+            kinetic_energy_fraction_to_damp > dcon_threshold
+        ) or do_stochastic_ke_backscatter:
             u2 = fy + fy[0, 1, 0]
             du2 = ubt + ubt[0, 1, 0]
             v2 = fx + fx[1, 0, 0]
@@ -571,14 +567,13 @@ def heat_source_from_vorticity_damping(
                 ubt, vbt, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2
             )
             heat_source = delp * (
-                heat_source - 0.25 * kinetic_energy_fraction_to_damp * dampterm
+                heat_source - kinetic_energy_fraction_to_damp * dampterm
             )
 
-        if __INLINED((d_con > dcon_threshold) or do_skeb):
+        if __INLINED((d_con > dcon_threshold) or do_stochastic_ke_backscatter):
             with horizontal(region[local_is : local_ie + 1, local_js : local_je + 1]):
                 heat_source_total = heat_source_total + heat_source
-                # TODO: do_skeb could be renamed to calculate_dissipation_estimate
-                if __INLINED(do_skeb):
+                if __INLINED(do_stochastic_ke_backscatter):
                     dissipation_estimate -= dampterm
 
 
@@ -875,8 +870,8 @@ class DGridShallowWaterLagrangianDynamics:
                 "yt_minmax": False,
             },
         )
-        self._flux_adjust_stencil = stencil_factory.from_dims_halo(
-            func=flux_adjust, compute_dims=[X_DIM, Y_DIM, Z_DIM]
+        self._apply_fluxes = stencil_factory.from_dims_halo(
+            func=apply_fluxes, compute_dims=[X_DIM, Y_DIM, Z_DIM]
         )
         self._flux_capacitor_stencil = stencil_factory.from_dims_halo(
             func=flux_capacitor,
@@ -890,13 +885,12 @@ class DGridShallowWaterLagrangianDynamics:
         self._u_and_v_from_ke_stencil = stencil_factory.from_dims_halo(
             func=u_and_v_from_ke, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
+
+        if config.do_f3d:
+            raise NotImplementedError("do_f3d is not implemented")
+
         self._rel_vorticity_to_abs = stencil_factory.from_dims_halo(
             func=rel_vorticity_to_abs,
-            externals={
-                "radius": constants.RADIUS,
-                "do_f3d": config.do_f3d,
-                "hydrostatic": self.hydrostatic,
-            },
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             compute_halos=(3, 3),
         )
@@ -913,7 +907,7 @@ class DGridShallowWaterLagrangianDynamics:
                 func=heat_source_from_vorticity_damping,
                 compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
                 externals={
-                    "do_skeb": config.do_skeb,
+                    "do_stochastic_ke_backscatter": config.do_skeb,
                     "d_con": config.d_con,
                 },
             )
@@ -1008,8 +1002,6 @@ class DGridShallowWaterLagrangianDynamics:
         #   uc_contra, vc_contra = f(uc, vc, ...)
         #   xfx, yfx = g(uc_contra, vc_contra, ...)
 
-        # TODO: ptc may only be used as a temporary under this scope, investigate
-        # and decouple it from higher level if possible (i.e. if not a real output)
         self.fv_prep(uc, vc, crx, cry, xfx, yfx, self._uc_contra, self._vc_contra, dt)
 
         # TODO: the structure of much of this is to get fluxes from fvtp2d and then
@@ -1075,7 +1067,7 @@ class DGridShallowWaterLagrangianDynamics:
             y_mass_flux=self._tmp_fy,
         )
 
-        self._flux_adjust_stencil(
+        self._apply_fluxes(
             w,
             delp,
             self._tmp_gx,
@@ -1097,7 +1089,7 @@ class DGridShallowWaterLagrangianDynamics:
             y_mass_flux=self._tmp_fy,
         )
 
-        self._flux_adjust_stencil(
+        self._apply_fluxes(
             q_con, delp, self._tmp_gx, self._tmp_gy, self.grid_data.rarea
         )
 
@@ -1178,7 +1170,7 @@ class DGridShallowWaterLagrangianDynamics:
 
         # Vorticity transport
         self._rel_vorticity_to_abs(
-            self._vorticity_agrid, self._f0, zh, self._abs_vorticity_agrid
+            self._vorticity_agrid, self._f0, self._abs_vorticity_agrid
         )
 
         # [DaCe] Unroll CopiedCorners see __init__
@@ -1212,7 +1204,8 @@ class DGridShallowWaterLagrangianDynamics:
             self._delnflux_damp_vt,
             damped_rel_vorticity_agrid,
         )
-        # TODO(eddied): These stencils were split to ensure GTC verification
+        # TODO(eddied): These stencils were split to ensure GTC verification,
+        # merge them if you can
         self._vort_differencing_stencil(
             self._vorticity_bgrid_damped,
             self._vort_x_delta,

@@ -213,7 +213,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
     outputs = inputs.copy()
 
-    for name in ("bdt", "ak", "bk", "ptop"):
+    for name in ("bdt", "ak", "bk", "ptop", "ua"):
         outputs.pop(name)
 
     def __init__(
@@ -278,6 +278,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self._base.out_vars.update(fv_dynamics_vars)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
+        self._base.out_vars.pop("ua")
 
         self.max_error = 1e-5
 

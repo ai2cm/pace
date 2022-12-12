@@ -27,8 +27,7 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
     return damp
 
 
-# TODO: rename this stencil
-def ptc_computation(
+def compute_u_contra_dyc(
     u: FloatField,
     va: FloatField,
     vc: FloatField,
@@ -37,7 +36,7 @@ def ptc_computation(
     dyc: FloatFieldIJ,
     sin_sg2: FloatFieldIJ,
     sin_sg4: FloatFieldIJ,
-    ptc: FloatField,  # TODO: rename to u_contra_dyc
+    u_contra_dyc: FloatField,
 ):
     """
 
@@ -50,24 +49,27 @@ def ptc_computation(
         dyc (in):
         sin_sg2 (in):
         sin_sg4 (in):
-        ptc (out): contravariant u-wind on d-grid
+        u_contra_dyc (out): contravariant u-wind on d-grid
     """
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
-        ptc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
+        # TODO: why does vc_from_va sometimes have different sign than vc?
+        vc_from_va = 0.5 * (va[0, -1, 0] + va)
+        # TODO: why do we use vc_from_va and not just vc?
+        u_contra = contravariant(u, vc_from_va, cosa_v, sina_v)
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            ptc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
+            u_contra = u * sin_sg4[0, -1] if vc > 0 else u * sin_sg2
+        u_contra_dyc = u_contra * dyc
 
 
-# TODO: rename this stencil
-def vorticity_computation(
+def compute_v_contra_dxc(
     v: FloatField,
     ua: FloatField,
     cosa_u: FloatFieldIJ,
     sina_u: FloatFieldIJ,
     dxc: FloatFieldIJ,
-    vort: FloatField,  # TODO: rename to v_contra
+    v_contra_dxc: FloatField,
     uc: FloatField,
     sin_sg3: FloatFieldIJ,
     sin_sg1: FloatFieldIJ,
@@ -87,9 +89,13 @@ def vorticity_computation(
     from __externals__ import i_end, i_start
 
     with computation(PARALLEL), interval(...):
-        vort = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
+        # TODO: why does uc_from_ua sometimes have different sign than uc?
+        uc_from_ua = 0.5 * (ua[-1, 0, 0] + ua)
+        # TODO: why do we use uc_from_ua and not just uc?
+        v_contra = contravariant(v, uc_from_ua, cosa_u, sina_u)
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            vort = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
+            v_contra = v * sin_sg3[-1, 0] if uc > 0 else v * sin_sg1
+        v_contra_dxc = v_contra * dxc
 
 
 def delpc_computation(
@@ -100,10 +106,10 @@ def delpc_computation(
 ):
     """
     Args:
-        ptc (in): contravariant u-wind on d-grid * dxc
+        u_contra_dyc (in): contravariant u-wind on d-grid * dxc
         rarea_c (in):
         delpc (out): convergence of wind on cell centers
-        vort (in): contravariant v-wind on d-grid * dyc
+        v_contra_dxc (in): contravariant v-wind on d-grid * dyc
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -115,7 +121,10 @@ def delpc_computation(
             - u_contra_dxc
         )
 
-    # TODO: why is this not "symmetric", i.e. why is there no corresponding x operation?
+    # dual quadrilateral becomes dual triangle, at the corners, so there is
+    # an extraneous term in the divergence calculation. This is always
+    # done using the y-component, though it could be done with either
+    # the y- or x-component (they should be identical).
     with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
             delpc = delpc - v_contra_dyc[0, -1, 0]
@@ -124,95 +133,6 @@ def delpc_computation(
 
     with computation(PARALLEL), interval(...):
         delpc = rarea_c * delpc
-
-
-def get_delpc(
-    u: FloatField,
-    v: FloatField,
-    ua: FloatField,
-    va: FloatField,
-    cosa_u: FloatFieldIJ,
-    sina_u: FloatFieldIJ,
-    dxc: FloatFieldIJ,
-    dyc: FloatFieldIJ,
-    uc: FloatField,
-    vc: FloatField,
-    sin_sg1: FloatFieldIJ,
-    sin_sg2: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    cosa_v: FloatFieldIJ,
-    sina_v: FloatFieldIJ,
-    rarea_c: FloatFieldIJ,
-    delpc: FloatField,
-):
-    """
-    Args:
-        u (in):
-        v (in):
-        ua (in):
-        va (in):
-        cosa_u (in):
-        sina_u (in):
-        dxc (in):
-        dyc (in):
-        uc (in):
-        vc (in):
-        sin_sg1 (in):
-        sin_sg2 (in):
-        sin_sg3 (in):
-        sin_sg4 (in):
-        cosa_v (in):
-        sina_v (in):
-        rarea_c (in):
-        delpc (out):
-    """
-    from __externals__ import i_end, i_start, j_end, j_start
-
-    # in the Fortran, u_contra_dyc is called ke and v_contra_dxc is called vort
-    # dual quadrilateral becomes dual triangle, at the corners, so there is
-    # an extraneous term in the divergence calculation. This is always
-    # done using the y-component, though it could be done with either
-    # the y- or x-component (they should be identical).
-    # TODO: draw out a diagram for this and add some docs
-
-    with computation(PARALLEL), interval(...):
-        # TODO: why does vc_from_va sometimes have different sign than vc?
-        vc_from_va = 0.5 * (va[0, -1, 0] + va)
-        # TODO: why do we use vc_from_va and not just vc?
-        u_contra = contravariant(u, vc_from_va, cosa_v, sina_v)
-        with horizontal(region[:, j_start], region[:, j_end + 1]):
-            u_contra = u * sin_sg4[0, -1] if vc > 0 else u * sin_sg2
-        u_contra_dyc = u_contra * dyc
-
-        # TODO: why does uc_from_ua sometimes have different sign than uc?
-        uc_from_ua = 0.5 * (ua[-1, 0, 0] + ua)
-        # TODO: why do we use uc_from_ua and not just uc?
-        v_contra = contravariant(v, uc_from_ua, cosa_u, sina_u)
-        with horizontal(region[i_start, :], region[i_end + 1, :]):
-            v_contra = v * sin_sg3[-1, 0] if uc > 0 else v * sin_sg1
-        v_contra_dxc = v_contra * dxc
-        with horizontal(
-            region[i_start, j_end + 1],
-            region[i_end + 1, j_end + 1],
-            region[i_start, j_start - 1],
-            region[i_end + 1, j_start - 1],
-        ):
-            # TODO: seems odd that this adjustment is only needed for `v_contra_dxc`
-            # but is not needed for `u_contra_dyc`. Is this a bug? Add a comment
-            # describing what this adjustment is doing and why.
-            v_contra_dxc = 0.0
-
-    with computation(PARALLEL), interval(...):
-        delpc = (
-            v_contra_dxc[0, -1, 0]
-            - v_contra_dxc
-            + u_contra_dyc[-1, 0, 0]
-            - u_contra_dyc
-        )
-        delpc = (
-            rarea_c * delpc
-        )  # TODO: can we multiply by rarea_c on the previous line?
 
 
 def damping(
@@ -227,7 +147,7 @@ def damping(
     """
     Args:
         delpc (in): divergence at cell corner
-        vort (out): contravariant v-wind on d-grid
+        vort (out):
         ke (inout):
         d2_bg (in):
     """
@@ -324,7 +244,7 @@ def redo_divg_d(
             divg_d = divg_d * adjustment_factor
 
 
-def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
+def smagorinsky_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
     """
     Args:
         delpc (in): divergence on cell corners
@@ -414,14 +334,14 @@ class DivergenceDamping:
             k_start=nonzero_nord_k
         )
 
-        self._ptc_computation = low_k_stencil_factory.from_dims_halo(
-            ptc_computation,
+        self._compute_u_contra_dyc = low_k_stencil_factory.from_dims_halo(
+            compute_u_contra_dyc,
             compute_dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(1, 0),
         )
 
-        self._vorticity_computation = low_k_stencil_factory.from_dims_halo(
-            vorticity_computation,
+        self._compute_v_contra_dxc = low_k_stencil_factory.from_dims_halo(
+            compute_v_contra_dxc,
             compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
             compute_halos=(0, 1),
         )
@@ -432,13 +352,8 @@ class DivergenceDamping:
             compute_halos=(0, 0),
         )
 
-        self.ptc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
-
-        self._get_delpc = low_k_stencil_factory.from_dims_halo(
-            func=get_delpc,
-            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            compute_halos=(0, 0),
-        )
+        self.u_contra_dyc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
+        self.v_contra_dxc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="m^2/s")
 
         self._damping = low_k_stencil_factory.from_dims_halo(
             damping,
@@ -524,7 +439,7 @@ class DivergenceDamping:
 
         self._smagorinksy_diffusion_approx_stencil = (
             high_k_stencil_factory.from_dims_halo(
-                func=smagorinksy_diffusion_approx,
+                func=smagorinsky_diffusion_approx,
                 compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
                 compute_halos=(0, 0),
             )
@@ -573,14 +488,14 @@ class DivergenceDamping:
         u: FloatField,
         v: FloatField,
         va: FloatField,
-        v_contra_dxc: FloatField,
+        damped_rel_vort_bgrid: FloatField,
         ua: FloatField,
         divg_d: FloatField,
         vc: FloatField,
         uc: FloatField,
         delpc: FloatField,
         ke: FloatField,
-        wk: FloatField,
+        rel_vort_agrid: FloatField,
         dt: float,
     ):
         """
@@ -599,7 +514,7 @@ class DivergenceDamping:
             u (in): x-velocity on d-grid
             v (in): y-velocity on d-grid
             va (in):
-            v_contra_dxc (out): wk converted from a grid to b grid and damped
+            damped_rel_vort_bgrid (out): damped relative vorticity on b-grid
             ua (in):
             divg_d (inout): finite volume divergence defined on cell corners,
                 output value is not used later in D_SW
@@ -610,7 +525,8 @@ class DivergenceDamping:
                 at input time must be accurate for the input winds.
                 Gets updated to remain accurate for the output winds,
                 as described in section 8.3 of the FV3 documentation.
-            wk (in): a-grid relative vorticity computed before divergence damping
+            rel_vort_agrid (in): a-grid relative vorticity computed before
+                divergence damping
                 gets converted by a2b_ord4 and put into v_contra_dxc
             dt (in): timestep
         """
@@ -622,7 +538,7 @@ class DivergenceDamping:
             # This is used in the sponge layer, 2nd order damping
             # TODO: delpc is an output of this but is never used. Inside the helper
             # function, use a stencil temporary or temporary storage instead
-            self._ptc_computation(
+            self._compute_u_contra_dyc(
                 u,
                 va,
                 vc,
@@ -631,55 +547,32 @@ class DivergenceDamping:
                 self._dyc,
                 self._sin_sg2,
                 self._sin_sg4,
-                self.ptc,  # u_contra_dxc
+                self.u_contra_dyc,
             )
 
-            self._vorticity_computation(
+            self._compute_v_contra_dxc(
                 v,
                 ua,
                 self._cosa_u,
                 self._sina_u,
                 self._dxc,
-                v_contra_dxc,  # vort
+                self.v_contra_dxc,
                 uc,
                 self._sin_sg3,
                 self._sin_sg1,
             )
 
             self._delpc_computation(
-                self.ptc,  # u_contra_dxc
+                self.u_contra_dyc,
                 self._rarea_c,
                 delpc,
-                v_contra_dxc,  # vort
+                self.v_contra_dxc,
             )
-
-            """
-            self._get_delpc(
-                u,
-                v,
-                ua,
-                va,
-                self._cosa_u,
-                self._sina_u,
-                self._dxc,
-                self._dyc,
-                uc,
-                vc,
-                self._sin_sg1,
-                self._sin_sg2,
-                self._sin_sg3,
-                self._sin_sg4,
-                self._cosa_v,
-                self._sina_v,
-                self._rarea_c,
-                delpc,
-            )
-            """
 
             da_min_c: float = self._get_da_min_c()
             self._damping(
                 delpc,
-                v_contra_dxc,
+                damped_rel_vort_bgrid,
                 ke,
                 self._d2_bg_column,
                 da_min_c,
@@ -711,16 +604,16 @@ class DivergenceDamping:
             self._redo_divg_d_stencils[n](uc, vc, divg_d, self._rarea_c)
 
         if self._dddmp < 1e-5:
-            self._set_value(v_contra_dxc, 0.0)
+            self._set_value(damped_rel_vort_bgrid, 0.0)
         else:
             # TODO: what is wk/v_contra_dxc here?
             # take the cell centered relative vorticity and regrid it to cell corners
             # for smagorinsky diffusion
             #
-            self.a2b_ord4(wk, v_contra_dxc)
+            self.a2b_ord4(rel_vort_agrid, damped_rel_vort_bgrid)
             self._smagorinksy_diffusion_approx_stencil(
                 delpc,
-                v_contra_dxc,
+                damped_rel_vort_bgrid,
                 abs(dt),
             )
 
@@ -731,7 +624,7 @@ class DivergenceDamping:
             dd8 = (da_min_c * self._d4_bg) ** (self._nonzero_nord + 1)
 
         self._damping_nord_highorder_stencil(
-            v_contra_dxc,
+            damped_rel_vort_bgrid,
             ke,
             delpc,
             divg_d,

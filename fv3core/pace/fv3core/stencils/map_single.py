@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
@@ -92,10 +92,7 @@ class MapSingle:
         quantity_factory: pace.util.QuantityFactory,
         kord: int,
         mode: int,
-        i1: int,
-        i2: int,
-        j1: int,
-        j2: int,
+        dims: Sequence[str],
     ):
         orchestrate(
             obj=self,
@@ -104,8 +101,6 @@ class MapSingle:
 
         # TODO: consider refactoring to take in origin and domain
         grid_indexing = stencil_factory.grid_indexing
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
-        origin = grid_indexing.origin_compute()
 
         def make_quantity():
             return quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], units="unknown")
@@ -118,28 +113,27 @@ class MapSingle:
         self._tmp_qs = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
         self._lev = quantity_factory.zeros([X_DIM, Y_DIM], units="", dtype=int)
 
-        self._extents = (i2 - i1 + 1, j2 - j1 + 1)
-        origin = (i1, j1, 0)
-        domain = (*self._extents, grid_indexing.domain[2])
-
-        self._copy_stencil = stencil_factory.from_origin_domain(
+        self._copy_stencil = stencil_factory.from_dims_halo(
             copy_defn,
-            origin=(0, 0, 0),
-            domain=grid_indexing.domain_full(),
+            compute_dims=dims,
         )
 
-        self._set_dp = stencil_factory.from_origin_domain(
-            set_dp, origin=origin, domain=domain
+        self._set_dp = stencil_factory.from_dims_halo(
+            set_dp,
+            compute_dims=dims,
         )
 
         self._remap_profile = RemapProfile(
-            stencil_factory, quantity_factory, kord, mode, i1, i2, j1, j2
+            stencil_factory,
+            quantity_factory,
+            kord,
+            mode,
+            dims=dims,
         )
 
-        self._lagrangian_contributions = stencil_factory.from_origin_domain(
+        self._lagrangian_contributions = stencil_factory.from_dims_halo(
             lagrangian_contributions,
-            origin=origin,
-            domain=domain,
+            compute_dims=dims,
         )
 
     @property

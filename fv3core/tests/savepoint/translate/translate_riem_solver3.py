@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
 from pace.fv3core import _config as spec
-from pace.fv3core.stencils.riem_solver3 import RiemannSolver3
+from pace.fv3core.stencils.riem_solver3 import NonhydrostaticVerticalSolver
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
@@ -13,7 +13,7 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.riemann_solver_3 = RiemannSolver3(
+        self.vertical_solver = NonhydrostaticVerticalSolver(
             stencil_factory,
             quantity_factory=self.grid.quantity_factory,
             config=spec.RiemannConfig(
@@ -33,32 +33,44 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
             "delp": {},
             "pt": {},
             "zh": {},
-            "pe": {"istart": grid.is_ - 1, "jstart": grid.js - 1, "kaxis": 1},
+            "p": {
+                "istart": grid.is_ - 1,
+                "jstart": grid.js - 1,
+                "kaxis": 1,
+                "serialname": "pe",
+            },
             "ppe": {},
             "pk3": {},
             "pk": {},
-            "peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
-            "wsd": {"istart": grid.is_, "jstart": grid.js},
+            "log_p_interface": {
+                "istart": grid.is_,
+                "jstart": grid.js,
+                "kaxis": 1,
+                "serialname": "peln",
+            },
+            "ws": {"istart": grid.is_, "jstart": grid.js, "serialname": "wsd"},
         }
         self.in_vars["parameters"] = ["dt", "ptop", "last_call"]
         self.out_vars = {
             "zh": {"kend": grid.npz},
             "w": {},
-            "pe": {
+            "p": {
                 "istart": grid.is_ - 1,
                 "iend": grid.ie + 1,
                 "jstart": grid.js - 1,
                 "jend": grid.je + 1,
                 "kend": grid.npz,
                 "kaxis": 1,
+                "serialname": "pe",
             },
-            "peln": {
+            "log_p_interface": {
                 "istart": grid.is_,
                 "iend": grid.ie,
                 "jstart": grid.js,
                 "jend": grid.je,
                 "kend": grid.npz,
                 "kaxis": 1,
+                "serialname": "peln",
             },
             "ppe": {"kend": grid.npz},
             "delz": {},
@@ -69,4 +81,4 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
 
     def compute_func(self, **kwargs):
         kwargs["last_call"] = bool(kwargs["last_call"])
-        return self.riemann_solver_3(**kwargs)
+        return self.vertical_solver(**kwargs)

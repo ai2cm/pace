@@ -116,7 +116,7 @@ def test_monitor_store_multi_rank_state(
     assert ds["time"].values[0] == time
     np.testing.assert_array_equal(ds["var1"].values, 1.0)
 
-    ds_const = xr.open_dataset(str(tmpdir / "constants.nc"))
+    ds_const = xr.open_dataset(str(tmpdir / "constants_var_const1.nc"))
     assert "var_const1" in ds_const
     np.testing.assert_array_equal(
         ds_const["var_const1"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
@@ -124,10 +124,11 @@ def test_monitor_store_multi_rank_state(
     assert ds_const["var_const1"].dims == ("tile",) + dims
     assert ds_const["var_const1"].attrs["units"] == units
     np.testing.assert_array_equal(ds_const["var_const1"].values, 1.0)
-    assert "var_const2" in ds_const
+    ds_const2 = xr.open_dataset(str(tmpdir / "constants_var_const2.nc"))
+    assert "var_const2" in ds_const2
     np.testing.assert_array_equal(
-        ds_const["var_const2"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
+        ds_const2["var_const2"].shape, (6, nz, ny + ny_rank_add, nx + nx_rank_add)
     )
-    assert ds_const["var_const2"].dims == ("tile",) + dims
-    assert ds_const["var_const2"].attrs["units"] == units
-    np.testing.assert_array_equal(ds_const["var_const2"].values, 1.0)
+    assert ds_const2["var_const2"].dims == ("tile",) + dims
+    assert ds_const2["var_const2"].attrs["units"] == units
+    np.testing.assert_array_equal(ds_const2["var_const2"].values, 1.0)
