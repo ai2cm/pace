@@ -10,6 +10,7 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
+from typing import Union
 
 
 @dataclasses.dataclass()
@@ -227,41 +228,23 @@ def _overwrite_state_from_restart(
 def _overwrite_state_from_fortran_restart(
     path: str,
     communicator: pace.util.CubedSphereCommunicator,
-    damping_coefficients: pace.util.grid.DampingCoefficients,
-    driver_grid_data: pace.util.grid.DriverGridData,
-    grid_data: pace.util.grid.GridData,
+    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
+    is_gpu_backend: bool,
 ):
-    fs = pace.util.get_fs(path)
+    """
+    Args:
+        path: path to restart files
+        communicator:
+        state: an empty state
+        is_gpu_backend:
+    """
 
-    restart_files = fs.ls(path)
-    is_fortran_restart = any(
-        fname.endswith("fv_core.res.nc") for fname in restart_files
+    state_dict = pace.util.open_restart(
+        path,
+        communicator,
+        tracer_properties=extra_restart_properties,
+        fortran_dict=fortran_restart_to_pace_dict,
     )
-
-    if is_fortran_restart:
-        dycore_state = fv3core.DycoreState.from_fortran_restart(
-            quantity_factory=quantity_factory, communicator=communicator, path=path
-        )
-    else:
-        dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-        _overwrite_state_from_restart(
-            path,
-            rank,
-            dycore_state,
-            "restart_dycore_state",
-        )
-
-    active_packages = ["microphysics"]
-    physics_state = pace.physics.PhysicsState.init_zeros(
-        quantity_factory=quantity_factory, active_packages=active_packages
-    )
-
-    physics_state.__post_init__(quantity_factory, active_packages)
-    tendency_state = TendencyState.init_zeros(
-        quantity_factory=quantity_factory,
-    )
-
-    _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
 
 
 def _dict_state_to_driver_state(
