@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pace.dsl
 import pace.util
 from pace.driver.run import Driver, DriverConfig

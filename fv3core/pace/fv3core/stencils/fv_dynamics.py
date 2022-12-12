@@ -475,7 +475,6 @@ class DynamicalCore:
         else:
             if __debug__:
                 log_on_rank_0("Adjust pt")
-
             self._pt_adjust_stencil(
                 state.pkz,
                 self._dp_initial,
