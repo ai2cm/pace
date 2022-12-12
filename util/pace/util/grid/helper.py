@@ -504,6 +504,14 @@ class GridData:
         return self._horizontal_data.edge_n
 
     @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa) used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.p_ref
+
+    @property
     def p(self) -> pace.util.Quantity:
         """
         Reference pressure profile for Eulerian grid, defined at cell centers.
@@ -545,7 +553,7 @@ class GridData:
     @property
     def ptop(self):
         """pressure at top of atmosphere (Pa)"""
-        return self._vertical_data.ak[0]
+        return self._vertical_data.ptop
 
     @ptop.setter
     def ptop(self, value):

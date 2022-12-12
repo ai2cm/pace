@@ -28,12 +28,6 @@ from .registry import Registry
 from .state import DriverState, TendencyState, _restart_driver_state
 
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
-
-
 logger = logging.getLogger(__name__)
 
 

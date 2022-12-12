@@ -46,7 +46,7 @@ def initialize_kappa_pressures(pe, peln, ptop):
     """
     pk = np.zeros(pe.shape)
     pkz = np.zeros(pe.shape)
-    pk[:, :, 0] = ptop**constants.KAPPA
+    pk[:, :, 0] = ptop ** constants.KAPPA
     pk[:, :, 1:] = np.exp(constants.KAPPA * np.log(pe[:, :, 1:]))
     pkz[:, :, :-1] = (pk[:, :, 1:] - pk[:, :, :-1]) / (
         constants.KAPPA * (peln[:, :, 1:] - peln[:, :, :-1])

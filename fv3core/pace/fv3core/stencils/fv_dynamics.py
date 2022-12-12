@@ -435,7 +435,6 @@ class DynamicalCore:
         """
         self._checkpoint_fvdynamics(state=state, tag="In")
         self._compute(state, timer)
-        # breakpoint() Ajda - this step makes nans
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
     def compute_preamble(self, state: DycoreState, is_root_rank: bool):

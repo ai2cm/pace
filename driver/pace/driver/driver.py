@@ -87,7 +87,6 @@ class DriverConfig:
 
     stencil_config: pace.dsl.StencilConfig
     initialization: InitializerSelector
-    grid_config: GridInitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
@@ -622,7 +621,6 @@ class Driver:
                     state=self.state.dycore_state,
                     timer=timer,
                 )
-                # breakpoint() = this is where it becomes nan, I think
                 if not self.config.disable_step_physics:
                     self.dycore_to_physics(
                         dycore_state=self.state.dycore_state,
