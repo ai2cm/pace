@@ -22,7 +22,7 @@ set -x +e
 experiment="$1"
 minutes=30
 
-ARTIFACT_ROOT="/project/go31/baroclinic_initialization/"
+ARTIFACT_ROOT="/project/s1053/baroclinic_initialization/"
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
