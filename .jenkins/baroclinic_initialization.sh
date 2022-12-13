@@ -22,7 +22,7 @@ set -x +e
 experiment="$1"
 minutes=30
 
-ARTIFACT_ROOT="/project/s1053/baroclinic_initialization/"
+ARTIFACT_ROOT="/project/go31/baroclinic_initialization/"
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -71,7 +71,7 @@ fi
 module load sarus
 sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
-srun -C gpu --partition=debug --account=s1053 --time=00:05:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_baroclinic_init.py /work/output.zarr ${experiment} pt -1
+srun -C gpu --partition=debug --account=go31 --time=00:05:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_baroclinic_init.py /work/output.zarr ${experiment} pt -1
 mkdir -p ${ARTIFACT_ROOT}/${experiment}
 echo "####### moving figures..."
 cp *.png ${ARTIFACT_ROOT}/${experiment}/.

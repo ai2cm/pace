@@ -27,7 +27,7 @@ cat << EOF > run.daint.slurm
 #SBATCH --output=driver.out
 #SBATCH --time=00:45:00
 #SBATCH --gres=gpu:1
-#SBATCH --account=s1053
+#SBATCH --account=go31
 #SBATCH --partition=normal
 ########################################################
 set -x
@@ -38,4 +38,4 @@ EOF
 launch_job run.daint.slurm 3600
 
 python ${JENKINS_DIR}/print_performance_number.py
-cp *.json driver.out /project/s1053/performance/fv3core_performance/dace_gpu
+cp *.json driver.out /project/go31/performance/fv3core_performance/dace_gpu

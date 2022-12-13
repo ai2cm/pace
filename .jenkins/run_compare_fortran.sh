@@ -50,7 +50,7 @@ cat << EOF > run.daint.slurm
 #SBATCH --output=c48_driver.out
 #SBATCH --time=00:30:00
 #SBATCH --gres=gpu:1
-#SBATCH --account=s1053
+#SBATCH --account=go31
 #SBATCH --partition=normal
 ########################################################
 set -x
@@ -63,8 +63,8 @@ tar -czvf ${PACE_DIR}/archive.tar.gz ${PACE_DIR}/output.zarr
 
 
 mkdir reference_data
-cp -r /project/s1053/fortran_output/wrapper_output/c48_6ranks_baroclinic reference_data/c48_6ranks_baroclinic
+cp -r /project/go31/fortran_output/wrapper_output/c48_6ranks_baroclinic reference_data/c48_6ranks_baroclinic
 
 module load sarus
 sarus pull elynnwu/pace:latest
-srun -C gpu --partition=normal --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py dry_baro_c48_FtnRef_G_${GRID:0:1}_I_${INIT:0:1} ua 40 --start=0 --stop=20 --zarr_output=/work/output.zarr --fortran_data_path=/work/reference_data/c48_6ranks_baroclinic --fortran_var=eastward_wind --fortran_from_wrapper --size=48 --force_symmetric_colorbar
+srun -C gpu --partition=normal --account=go31 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py dry_baro_c48_FtnRef_G_${GRID:0:1}_I_${INIT:0:1} ua 40 --start=0 --stop=20 --zarr_output=/work/output.zarr --fortran_data_path=/work/reference_data/c48_6ranks_baroclinic --fortran_var=eastward_wind --fortran_from_wrapper --size=48 --force_symmetric_colorbar
