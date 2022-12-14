@@ -65,6 +65,7 @@ def test_open_c12_restart(layout):
     nx = 12 / layout[1]
     for state in c12_restart_state_list:
         assert "time" in state.keys()
+        assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
