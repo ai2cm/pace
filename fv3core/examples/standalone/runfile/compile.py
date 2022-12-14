@@ -64,7 +64,8 @@ if __name__ == "__main__":
     sub_tiles = dycore_config.layout[0] * dycore_config.layout[1]
     iterations = math.ceil(sub_tiles / size)
     gt4py.cartesian.config.cache_settings["root_path"] = os.environ.get(
-        "GT_CACHE_DIR_NAME", ".")
+        "GT_CACHE_DIR_NAME", "."
+    )
     for iteration in range(iterations):
         top_tile_rank = global_rank + size * iteration
         if top_tile_rank < sub_tiles:

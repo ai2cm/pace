@@ -1,12 +1,11 @@
 import unittest.mock
 
-from gt4py.cartesian.gtscript import PARALLEL, computation, interval
-
 # will need to update this import when gt4py is updated
 from gt4py.cartesian.gtc.passes.oir_optimizations.horizontal_execution_merging import (
     HorizontalExecutionMerging,
 )
 from gt4py.cartesian.gtc.passes.oir_pipeline import DefaultPipeline
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import (
