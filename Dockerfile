@@ -19,5 +19,8 @@ RUN pip3 install -r /pace/constraints.txt
 
 COPY . /pace
 
+RUN cd /pace && \
+    pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+
 ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
