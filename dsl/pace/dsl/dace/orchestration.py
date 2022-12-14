@@ -64,12 +64,6 @@ def _download_results_from_dace(
     """Move all data from DaCe memory space to GT4Py"""
     gt4py_results = None
     if dace_result is not None:
-        for arg in args:
-            try:
-                if isinstance(arg, cp.ndarray):
-                    arg._set_device_modified()
-            except AttributeError:
-                pass
         if config.is_gpu_backend():
             gt4py_results = [
                 gt4py.storage.from_array(
