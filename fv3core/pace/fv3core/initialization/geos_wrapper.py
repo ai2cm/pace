@@ -6,8 +6,8 @@ import numpy as np
 
 import pace.util
 from pace import fv3core
-from pace.dsl.dace.dace_config import DaceConfig
 from pace.driver.performance.collector import PerformanceCollector
+from pace.dsl.dace.dace_config import DaceConfig
 
 
 class GeosDycoreWrapper:
