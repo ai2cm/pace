@@ -39,7 +39,9 @@ def test_skip_passes_becomes_oir_pipeline():
         east_edge=False,
     )
     factory = StencilFactory(config=config, grid_indexing=grid_indexing)
-    with unittest.mock.patch("gt4py.cartesian.gtscript.stencil") as mock_stencil_builder:
+    with unittest.mock.patch(
+        "gt4py.cartesian.gtscript.stencil"
+    ) as mock_stencil_builder:
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -49,7 +51,9 @@ def test_skip_passes_becomes_oir_pipeline():
     )
     assert HorizontalExecutionMerging not in pipeline.skip
     assert HorizontalExecutionMerging in pipeline.steps
-    with unittest.mock.patch("gt4py.cartesian.gtscript.stencil") as mock_stencil_builder:
+    with unittest.mock.patch(
+        "gt4py.cartesian.gtscript.stencil"
+    ) as mock_stencil_builder:
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

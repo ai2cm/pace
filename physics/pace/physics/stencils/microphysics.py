@@ -2,7 +2,14 @@ import copy
 import typing
 
 import numpy as np
-from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
+from gt4py.cartesian.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    interval,
+    sqrt,
+)
 
 import pace.physics.functions.microphysics_funcs as functions
 import pace.util
@@ -253,8 +260,7 @@ def fields_init(
 
         # Fix water vapor; borrow from below
         if fix_negative and (qvz[0, 0, -1] < 0.0):
-            qvz[0, 0, 0] = qvz[0, 0, 0] + qvz[0, 0, -1] * \
-                dp1[0, 0, -1] / dp1[0, 0, 0]
+            qvz[0, 0, 0] = qvz[0, 0, 0] + qvz[0, 0, -1] * dp1[0, 0, -1] / dp1[0, 0, 0]
 
     with computation(PARALLEL), interval(0, -1):
 
@@ -270,8 +276,7 @@ def fields_init(
 
             if fix_negative and (qvz[0, 0, +1] < 0.0) and (qvz > 0.0):
 
-                dq = min(-qvz[0, 0, +1] * dp1[0, 0, +1],
-                         qvz[0, 0, 0] * dp1[0, 0, 0])
+                dq = min(-qvz[0, 0, +1] * dp1[0, 0, +1], qvz[0, 0, 0] * dp1[0, 0, 0])
                 flag = 1
 
         with interval(-1, None):
@@ -280,8 +285,7 @@ def fields_init(
 
             if fix_negative and (qvz < 0.0) and (qvz[0, 0, -1] > 0.0):
 
-                dq = min(-qvz[0, 0, 0] * dp1[0, 0, 0],
-                         qvz[0, 0, -1] * dp1[0, 0, -1])
+                dq = min(-qvz[0, 0, 0] * dp1[0, 0, 0], qvz[0, 0, -1] * dp1[0, 0, -1])
                 flag = 1
 
     with computation(PARALLEL):
@@ -631,8 +635,7 @@ def warm_rain(
         if do_sedi_heat and (no_fall == 0):
 
             tz[0, 0, 0] = (
-                (cvn + constants.C_LIQ *
-                 (m1_rain - m1_rain[0, 0, -1])) * tz[0, 0, 0]
+                (cvn + constants.C_LIQ * (m1_rain - m1_rain[0, 0, -1])) * tz[0, 0, 0]
                 + m1_rain[0, 0, -1] * constants.C_LIQ * tz[0, 0, -1]
                 + dgz * (m1_rain[0, 0, -1] + m1_rain)
             ) / (cvn + constants.C_LIQ * m1_rain)
@@ -787,8 +790,7 @@ def sedimentation(
     with computation(PARALLEL), interval(...):
 
         # Sedimentation of cloud ice, snow, and graupel
-        vtgz, vtiz, vtsz = functions.fall_speed(
-            log_10, qgz, qiz, qlz, qsz, tz, den)
+        vtgz, vtiz, vtsz = functions.fall_speed(log_10, qgz, qiz, qlz, qsz, tz, den)
 
         dt5 = 0.5 * dts
 
@@ -1460,8 +1462,7 @@ def sedimentation(
         if do_sedi_heat:
 
             tz[0, 0, 0] = (
-                (cvn + constants.C_ICE *
-                 (m1_sol - m1_sol[0, 0, -1])) * tz[0, 0, 0]
+                (cvn + constants.C_ICE * (m1_sol - m1_sol[0, 0, -1])) * tz[0, 0, 0]
                 + m1_sol[0, 0, -1] * constants.C_ICE * tz[0, 0, -1]
                 + dgz * (m1_sol[0, 0, -1] + m1_sol)
             ) / (cvn + constants.C_ICE * m1_sol)
@@ -2102,8 +2103,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * \
-            self.namelist.rthresh ** 3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2138,18 +2138,15 @@ class Microphysics:
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
-                    act[2 * k] ** ((6 - i) * 0.25) *
-                    act[2 * k + 1] ** ((i + 1) * 0.25)
+                    act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
                 )
 
         gcon = 40.74 * np.sqrt(functions.SFCRHO)
 
         # Decreasing csacw to reduce cloud water --- > snow
-        csacw = pie * rnzs * self.namelist.clin * \
-            gam325 / (4.0 * act[0] ** 0.8125)
+        csacw = pie * rnzs * self.namelist.clin * gam325 / (4.0 * act[0] ** 0.8125)
 
-        craci = pie * rnzr * self.namelist.alin * \
-            gam380 / (4.0 * act[1] ** 0.95)
+        craci = pie * rnzr * self.namelist.alin * gam380 / (4.0 * act[1] ** 0.95)
         csaci = csacw * self.namelist.c_psaci
 
         cgacw = pie * rnzg * gam350 * gcon / (4.0 * act[5] ** 0.875)
@@ -2174,16 +2171,14 @@ class Microphysics:
 
         self._cgsub_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
         self._cgsub_1 = 0.78 / np.sqrt(act[5])
-        self._cgsub_2 = 0.31 * scm3 * gam275 * \
-            np.sqrt(gcon / visk) / act[5] ** 0.6875
+        self._cgsub_2 = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
         self._cgsub_3 = self._cssub_3
         self._cgsub_4 = self._cssub_4
 
         self._crevp_0 = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
         self._crevp_1 = 0.78 / np.sqrt(act[1])
         self._crevp_2 = (
-            0.31 * scm3 * gam290 *
-            np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
+            0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         self._crevp_3 = self._cssub_3
         self._crevp_4 = hltc ** 2 * vdifu
@@ -2249,8 +2244,7 @@ class Microphysics:
         self._fac_i2s = 1.0 - np.exp(-self._dts / self.namelist.tau_i2s)
         self._fac_g2v = 1.0 - np.exp(-self._dts / self.namelist.tau_g2v)
         self._fac_v2g = 1.0 - np.exp(-self._dts / self.namelist.tau_v2g)
-        self._fac_imlt = 1.0 - \
-            np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
+        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
         self._fac_l2v = 1.0 - np.exp(-self._dt_evap / self.namelist.tau_l2v)
         self._timestep = timestep
 
