@@ -137,7 +137,7 @@ def _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties):
         muv["midpoint"][:, :, 0] - calc["p0"][0]
     )
     d2 = np.cos(calc["p0"][1]) * np.sin(muv["midpoint"][:, :, 0] - calc["p0"][0])
-    d = np.sqrt(d1**2 + d2**2)
+    d = np.sqrt(d1 ** 2 + d2 ** 2)
     d[d < 1e-15] = 1e-15
 
     r = great_circle_distance_lon_lat(

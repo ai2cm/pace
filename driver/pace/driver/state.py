@@ -1,8 +1,6 @@
 import dataclasses
-import os
 from dataclasses import fields
 
-import numpy as np
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -10,7 +8,6 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
-from typing import Union
 
 
 @dataclasses.dataclass()

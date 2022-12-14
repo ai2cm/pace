@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import BinaryIO, Generator, Iterable
 
@@ -37,12 +38,10 @@ def open_restart(
     Returns:
         state: model state dictionary
     """
-
     if tracer_properties is None:
         restart_properties = RESTART_PROPERTIES
     else:
         restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
-
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
     state = {}
@@ -149,11 +148,9 @@ def prepend_label(filename, label=None):
 def load_partial_state_from_restart_file(
     file, restart_properties: RestartProperties, only_names=None
 ):
-
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
     state = map_keys(ds.data_vars, _get_restart_standard_names(restart_properties))
     state = _apply_restart_metadata(state, restart_properties)
-
     if only_names is None:
         only_names = state.keys()
     state = {  # remove any variables that don't have restart metadata
@@ -174,8 +171,7 @@ def _get_restart_standard_names(restart_properties: RestartProperties = None):
     if restart_properties is None:
         restart_properties = RESTART_PROPERTIES
     return_dict = {}
-    for _, properties in restart_properties.items():
-        return_dict[properties["restart_name"]] = properties["driver_name"]
-    print(return_dict)
+    for std_name, properties in restart_properties.items():
+        return_dict[properties["restart_name"]] = std_name
 
     return return_dict
