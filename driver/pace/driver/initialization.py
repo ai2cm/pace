@@ -254,7 +254,6 @@ class FortranRestartInit(Initializer):
         coupler_file = restart_files[
             [fname.endswith("coupler.res") for fname in restart_files].index(True)
         ]
-        # coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0]
         restart_doc = pathlib.Path(self.path) / coupler_file
         fl = open(restart_doc, "r")
         contents = fl.readlines()
@@ -414,8 +413,6 @@ class PredefinedStateInit(Initializer):
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
     start_time: datetime = datetime(2016, 8, 1)
-    # Ajda
-    # not sure what to do here ... Keep arguments?
 
     def get_driver_state(
         self,
