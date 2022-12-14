@@ -304,7 +304,7 @@ class Quantity:
             )
 
         if gt4py_backend is not None:
-            gt4py_backend_cls = gt4py.backend.from_name(gt4py_backend)
+            gt4py_backend_cls = gt4py.cartesian.backend.from_name(gt4py_backend)
             assert gt4py_backend_cls is not None
             is_optimal_layout = gt4py_backend_cls.storage_info["is_optimal_layout"]
 

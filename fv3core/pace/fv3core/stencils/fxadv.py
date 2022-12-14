@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+from gt4py.cartesian.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory

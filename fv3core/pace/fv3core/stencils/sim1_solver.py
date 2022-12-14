@@ -1,6 +1,6 @@
 import typing
 
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory

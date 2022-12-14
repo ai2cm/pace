@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval
 
 import pace.util
 from pace.dsl.dace import orchestrate

@@ -19,8 +19,8 @@ from typing import (
 import dace
 import gt4py
 import numpy as np
-from gt4py import gtscript
-from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
+from gt4py.cartesian import gtscript
+from gt4py.cartesian.gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.util
 from pace.dsl.dace.orchestration import SDFGConvertible
@@ -488,7 +488,7 @@ class FrozenStencil(SDFGConvertible):
             if field_info[field_name]
             and bool(
                 field_info[field_name].access
-                & gt4py.definitions.AccessKind.WRITE  # type: ignore
+                & gt4py.cartesian.definitions.AccessKind.WRITE  # type: ignore
             )
         ]
         return write_fields

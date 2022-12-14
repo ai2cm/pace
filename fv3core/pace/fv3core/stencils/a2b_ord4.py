@@ -1,5 +1,5 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import (
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
     PARALLEL,
     asin,
     computation,

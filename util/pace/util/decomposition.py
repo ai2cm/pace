@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Tuple
 
-from gt4py import config as gt_config
+from gt4py.cartesian import config as gt_config
 
 
 if TYPE_CHECKING:

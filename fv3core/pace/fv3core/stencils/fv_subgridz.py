@@ -1,8 +1,8 @@
 # mypy: ignore-errors
 import collections
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 import pace.util

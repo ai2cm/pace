@@ -1,5 +1,5 @@
-from gt4py import gtscript
-from gt4py.gtscript import (
+from gt4py.cartesian import gtscript
+from gt4py.cartesian.gtscript import (
     __INLINED,
     PARALLEL,
     compile_assert,

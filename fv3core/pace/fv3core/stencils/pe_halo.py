@@ -1,4 +1,4 @@
-from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
+from gt4py.cartesian.gtscript import FORWARD, computation, horizontal, interval, region
 
 from pace.dsl.typing import FloatField
 

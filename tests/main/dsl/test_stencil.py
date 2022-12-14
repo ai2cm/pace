@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, Field, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, Field, computation, interval
 from gt4py.storage import empty, ones
 
 import pace.dsl

@@ -1,7 +1,7 @@
 from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_nounroll
-from gt4py.gtscript import (
+from gt4py.cartesian.gtscript import (
     __INLINED,
     BACKWARD,
     FORWARD,

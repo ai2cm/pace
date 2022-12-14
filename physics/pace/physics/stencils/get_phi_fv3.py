@@ -1,4 +1,4 @@
-from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import BACKWARD, PARALLEL, computation, interval
 
 from pace.dsl.typing import FloatField
 from pace.util.constants import ZVIR
@@ -12,7 +12,8 @@ def get_phi_fv3(
     phil: FloatField,
 ):
     with computation(PARALLEL), interval(0, -1):
-        del_gz = del_gz[0, 0, 0] * gt0[0, 0, 0] * (1.0 + ZVIR * max(0.0, gq0[0, 0, 0]))
+        del_gz = del_gz[0, 0, 0] * gt0[0, 0, 0] * \
+            (1.0 + ZVIR * max(0.0, gq0[0, 0, 0]))
 
     with computation(BACKWARD):
         with interval(-1, None):
