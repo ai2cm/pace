@@ -62,12 +62,10 @@ def open_restart(
             if only_names is None or "time" in only_names:
                 with filesystem.open(coupler_res_filename, "r") as f:
                     state["time"] = io.get_current_date_from_coupler_res(f)
-
     if to_state is None:
         state = communicator.tile.scatter_state(state)
     else:
         state = communicator.tile.scatter_state(state, recv_state=to_state)
-
     return state
 
 
@@ -173,5 +171,4 @@ def _get_restart_standard_names(restart_properties: RestartProperties = None):
     return_dict = {}
     for std_name, properties in restart_properties.items():
         return_dict[properties["restart_name"]] = std_name
-
     return return_dict
