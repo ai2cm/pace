@@ -24,7 +24,7 @@ PULL ?=True
 DEV ?=y
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 CONTAINER_CMD?=docker
-SAVEPOINT_SETUP=pip3 list && python3 -m gt4py.gt_src_manager install
+SAVEPOINT_SETUP=pip3 list
 
 VOLUMES ?=
 BUILD_FLAGS ?=
