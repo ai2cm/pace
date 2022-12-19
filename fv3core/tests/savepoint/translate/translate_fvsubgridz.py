@@ -180,6 +180,8 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
         self.namelist = namelist
 
     def compute_parallel(self, inputs, communicator):
+        if communicator.rank != 0:
+            communicator.comm.Barrier()
         state = self.state_from_inputs(inputs)
         fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
             self.stencil_factory,
