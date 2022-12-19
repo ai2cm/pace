@@ -159,6 +159,8 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                     raise TypeError(
                         "ignore_near_zero_errors is either a list or a dict"
                     )
+            if "skip_test" in match:
+                testobj.skip_test = bool(match["skip_test"])
         elif len(matches) > 1:
             raise Exception(
                 "misconfigured threshold overrides file, more than 1 specification for "
@@ -245,6 +247,8 @@ def test_sequential_savepoint(
         process_override(
             threshold_overrides, case.testobj, case.savepoint_name, backend
         )
+    if case.testobj.skip_test:
+        return
     input_data = dataset_to_dict(case.ds_in)
     input_names = (
         case.testobj.serialnames(case.testobj.in_vars["data_vars"])
@@ -364,6 +368,8 @@ def test_parallel_savepoint(
         process_override(
             threshold_overrides, case.testobj, case.savepoint_name, backend
         )
+    if case.testobj.skip_test:
+        return
     if compute_grid and not case.testobj.compute_grid_option:
         pytest.xfail(f"compute_grid option not used for test {case.savepoint_name}")
     input_data = dataset_to_dict(case.ds_in)
