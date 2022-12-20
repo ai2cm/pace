@@ -43,6 +43,6 @@ setup(
     packages=find_namespace_packages(include=["pace.*"]),
     include_package_data=True,
     url="https://github.com/ai2cm/pace",
-    version="0.1.0",
+    version="0.2.0",
     zip_safe=False,
 )
