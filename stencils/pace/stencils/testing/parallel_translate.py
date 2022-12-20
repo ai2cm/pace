@@ -52,6 +52,7 @@ class ParallelTranslate:
         self._rank_grids = rank_grids
         self.ignore_near_zero_errors = {}
         self.namelist = namelist
+        self.skip_test = False
 
     def state_list_from_inputs_list(self, inputs_list: List[dict]) -> list:
         state_list = []
