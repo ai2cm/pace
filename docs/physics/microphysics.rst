@@ -1,11 +1,11 @@
 .. _microphysics:
 
-=====
+============
 Microphysics
-=====
+============
 
 Description
-------------
+-----------
 GFDL cloud microphysics scheme has been integrated and tested in Pace.
 See documentation in `CCPP`_ for more details on the microphysics scheme.
 

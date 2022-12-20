@@ -1,16 +1,16 @@
-.. _state:
+.. _physicsstate:
 
 =====
 State
 =====
 
 Containers
-------------
+----------
 Variables used in physics are packedged using a container type called :py:class:`pace.physics.PhysicsState`.
 This contains variables copied from the dynamical core for calculating physics tendencies.
 It also contains sub-container for the individual physics schemes. Currently, it only contains :py:class:`pace.physics.MicrophysicsState`.
 
-An example to initialize a PhysicsState and MicrophysicsState is shown below:
+You can initialize a zero-filled PhysicsState and MicrophysicsState from other Pace objects as follows:
 
 .. doctest::
 
