@@ -3,6 +3,7 @@ import numpy as np
 import pace.util
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.util.utils import safe_assign_array
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
@@ -34,6 +35,10 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         )
         self.compute_func(**inputs)
         out = {}
-        out["u"] = np.asarray(inputs["u"])[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(inputs["v"])[self.grid.x3d_domain_interface()]
+        # This alloc then copy pattern is requried to deal transparently with
+        # arrays on different device
+        out["u"] = np.empty_like(inputs["u"][self.grid.y3d_domain_interface()])
+        out["v"] = np.empty_like(inputs["v"][self.grid.x3d_domain_interface()])
+        safe_assign_array(out["u"], inputs["u"][self.grid.y3d_domain_interface()])
+        safe_assign_array(out["v"], inputs["v"][self.grid.x3d_domain_interface()])
         return out
