@@ -39,6 +39,7 @@ class TranslateFortranData2Py:
         self.maxshape: Tuple[int, ...] = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
         self.ignore_near_zero_errors: Dict[str, Any] = {}
+        self.skip_test: bool = False
 
     def setup(self, inputs):
         self.make_storage_data_input_vars(inputs)

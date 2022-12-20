@@ -433,6 +433,7 @@ For Translate objects
     - `self.max_error` overrides the parent classes relative error threshold. This should only be changed when the reasons for non-bit reproducibility are understood.
     - `self.max_shape` sets the size of the gt4py storage created for testing
     - `self.ignore_near_zero_errors[<varname>] = True`: This is an option to let some fields pass with higher relative error if the absolute error is very small
+    - `self.skip_test`: This is an option to jump over the test case, to be used in the override file for temporary deactivation of tests.
 
 For `ParallelTranslate` objects:
   - Inputs and outputs are defined at the class level, and these include metadata such as the "name" (e.g. understandable name for the symbol), dimensions, units and n_halo(numb er of halo lines)
