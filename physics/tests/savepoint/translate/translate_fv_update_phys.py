@@ -217,9 +217,9 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         out["qsnow"] = state.qsnow[self.grid.slice_dict(ds)]
         out["qgraupel"] = state.qgraupel[self.grid.slice_dict(ds)]
         out["pt"] = state.pt[self.grid.slice_dict(ds)]
-        utils.device_sync(state.u.gt4py_backend)
-        out["u"] = np.asarray(state.u.data)[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(state.v.data)[self.grid.x3d_domain_interface()]
+        utils.device_sync(backend=self.stencil_factory.backend)
+        out["u"] = state.u[self.grid.y3d_domain_interface()]
+        out["v"] = state.v[self.grid.x3d_domain_interface()]
         out["ua"] = state.ua[self.grid.slice_dict(ds)]
         out["va"] = state.va[self.grid.slice_dict(ds)]
         return out
