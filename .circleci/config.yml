@@ -488,6 +488,10 @@ jobs:
           command: |
             . venv/bin/activate
             make docs
+      - add_ssh_keys:
+          fingerprints:
+            - "ed:d1:6a:54:37:66:26:d0:f7:fc:69:a7:c6:89:53:78"
+
       - run:
           name: Move into place
           command: |
