@@ -139,8 +139,7 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             serialname = info["serialname"] if "serialname" in info else d
             self._base.update_info(info, inputs)
             if "kaxis" in info:
-                inputs[serialname] = np.moveaxis(
-                    inputs[serialname], info["kaxis"], 2)
+                inputs[serialname] = np.moveaxis(inputs[serialname], info["kaxis"], 2)
             istart, jstart, kstart = self._base.collect_start_indices(
                 inputs[serialname].shape, info
             )
@@ -164,8 +163,7 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             )
             if d != serialname:
                 del inputs[serialname]
-        remove_names = set(inputs.keys()).difference(
-            self._base.in_vars["data_vars"])
+        remove_names = set(inputs.keys()).difference(self._base.in_vars["data_vars"])
         for name in remove_names:
             inputs.pop(name)
 
@@ -231,10 +229,8 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         # arrays on different device
         out["u"] = np.empty_like(inputs["u"][self.grid.y3d_domain_interface()])
         out["v"] = np.empty_like(inputs["v"][self.grid.x3d_domain_interface()])
-        safe_assign_array(out["u"], inputs["u"]
-                          [self.grid.y3d_domain_interface()])
-        safe_assign_array(out["v"], inputs["v"]
-                          [self.grid.x3d_domain_interface()])
+        safe_assign_array(out["u"], inputs["u"][self.grid.y3d_domain_interface()])
+        safe_assign_array(out["v"], inputs["v"][self.grid.x3d_domain_interface()])
         out["ua"] = state.ua[self.grid.slice_dict(ds)]
         out["va"] = state.va[self.grid.slice_dict(ds)]
         return out
