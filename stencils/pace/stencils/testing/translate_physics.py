@@ -4,7 +4,7 @@ import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import GridIndexing
 from pace.physics import PhysicsConfig
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
-from pace.stencils.testing.translate import TranslateFortranData2Py
+from pace.stencils.testing.translate import TranslateFortranData2Py, as_numpy
 
 
 def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: str):
@@ -137,14 +137,12 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             serialname = info["serialname"] if "serialname" in info else var
             compute_domain = info["compute"] if "compute" in info else True
             if not manual:
-                data_result = out_data[var]
+                data_result = as_numpy(out_data[var])
                 n_dim = len(data_result.shape)
                 cn2 = int(data_result.shape[0] - self.grid.halo * 2 - 1) ** 2
                 roll_zero = info["out_roll_zero"] if "out_roll_zero" in info else False
                 index_order = info["order"] if "order" in info else "C"
                 dycore = info["dycore"] if "dycore" in info else False
-                if hasattr(data_result, "synchronize"):
-                    data_result.synchronize()
                 if n_dim == 3:
                     npz = data_result.shape[2]
                     k_length = info["kend"] if "kend" in info else npz
@@ -154,11 +152,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                         ds = self.grid.default_domain_dict()
                     ds.update(info)
                     ij_slice = self.grid.slice_dict(ds)
-                    data_compute = np.asarray(data_result)[
-                        ij_slice[0],
-                        ij_slice[1],
-                        :,
-                    ]
+                    data_compute = data_result[ij_slice[0], ij_slice[1], :]
                     if dycore:
                         if k_length < npz:
                             data_compute = data_compute[:, :, 0:-1]
@@ -181,7 +175,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                         ds = self.grid.default_domain_dict()
                     ds.update(info)
                     ij_slice = self.grid.slice_dict(ds)
-                    data_compute = np.asarray(data_result)[ij_slice[0], ij_slice[1]]
+                    data_compute = data_result[ij_slice[0], ij_slice[1]]
                     out[serialname] = data_compute
                 else:
                     raise NotImplementedError("Output data dimension not supported")

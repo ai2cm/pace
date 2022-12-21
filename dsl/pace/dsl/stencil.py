@@ -20,7 +20,6 @@ import dace
 import gt4py
 import numpy as np
 from gt4py import gtscript
-from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.util
@@ -32,13 +31,19 @@ from pace.util.decomposition import block_waiting_for_compilation, unblock_waiti
 from pace.util.mpi import MPI
 
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
+
 def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
     report_head = f"comparing against numpy for func {function_name}, gt_id {gt_id}:"
     report_segments = []
     for i, (arg, numpy_arg) in enumerate(zip(args, args_copy)):
         if isinstance(arg, pace.util.Quantity):
-            arg = arg.storage
-            numpy_arg = numpy_arg.storage
+            arg = arg.data
+            numpy_arg = numpy_arg.data
         if isinstance(arg, np.ndarray):
             report_segments.append(report_diff(arg, numpy_arg, label=f"arg {i}"))
     for name in kwargs:
@@ -420,7 +425,6 @@ class FrozenStencil(SDFGConvertible):
                 **self._stencil_run_kwargs,
                 exec_info=self._timing_collector.exec_info,
             )
-            self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
         if self.comm is not None:
             differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
             if len(differences) > 0:
@@ -428,11 +432,6 @@ class FrozenStencil(SDFGConvertible):
                     f"rank {self.comm.Get_rank()} has differences {differences} "
                     f"after calling {self._func_name}"
                 )
-
-    def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
-        if self.stencil_config.is_gpu_backend:
-            for write_field in self._written_fields:
-                fields[write_field]._set_device_modified()
 
     @classmethod
     def _compute_field_origins(
@@ -522,12 +521,20 @@ class FrozenStencil(SDFGConvertible):
 def _convert_quantities_to_storage(args, kwargs):
     for i, arg in enumerate(args):
         try:
-            args[i] = arg.storage
+            # Check that 'dims' is an attribute of arg. If so,
+            # this means it's a pace.util.Quantity, so we need
+            # to pull off the ndarray.
+            arg.dims
+            args[i] = arg.data
         except AttributeError:
             pass
     for name, arg in kwargs.items():
         try:
-            kwargs[name] = arg.storage
+            # Check that 'dims' is an attribute of arg. If so,
+            # this means it's a pace.util.Quantity, so we need
+            # to pull off the ndarray.
+            arg.dims
+            kwargs[name] = arg.data
         except AttributeError:
             pass
 

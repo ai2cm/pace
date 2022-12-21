@@ -406,6 +406,7 @@ jobs:
           command: git submodule update --init
       - setup_environment_mpi
       - run:
+          no_output_timeout: 20m #update to gt4py v1 mysteriously lead to long print time. Can't be reproduced outside of circleci
           name: run tests
           command: |
             . venv/bin/activate
