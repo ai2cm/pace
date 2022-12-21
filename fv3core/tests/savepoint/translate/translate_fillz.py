@@ -6,6 +6,7 @@ import pace.fv3core.stencils.fillz as fillz
 import pace.util
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
 from pace.stencils.testing import pad_field_in_j
+from pace.util.utils import safe_assign_array
 
 
 class TranslateFillz(TranslateDycoreFortranData2Py):
@@ -79,6 +80,11 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
         tracers = np.zeros((self.grid.nic, self.grid.npz, len(inputs["tracers"])))
         for varname, data in inputs["tracers"].items():
             index = utils.tracer_variables.index(varname)
-            tracers[:, :, index] = np.squeeze(data[self.grid.slice_dict(ds)])
+            data[self.grid.slice_dict(ds)]
+            # This alloc then copy pattern is requried to deal transparently with
+            # arrays on different device
+            t = np.empty_like(self.grid.slice_dict(ds))
+            t = safe_assign_array(self.grid.slice_dict(ds))
+            tracers[:, :, index] = np.squeeze(t)
         out = {"q2tracers": tracers}
         return out
