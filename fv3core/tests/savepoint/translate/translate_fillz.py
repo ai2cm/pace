@@ -81,10 +81,8 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
         for varname, data in inputs["tracers"].items():
             index = utils.tracer_variables.index(varname)
             data[self.grid.slice_dict(ds)]
-            # This alloc then copy pattern is requried to deal transparently with
-            # arrays on different device
-            t = np.empty_like(self.grid.slice_dict(ds))
-            t = safe_assign_array(t, self.grid.slice_dict(ds))
-            tracers[:, :, index] = np.squeeze(t)
+            safe_assign_array(
+                tracers[:, :, index], np.squeeze(data[self.grid.slice_dict(ds)])
+            )
         out = {"q2tracers": tracers}
         return out
