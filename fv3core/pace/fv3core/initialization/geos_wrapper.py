@@ -6,6 +6,8 @@ import numpy as np
 
 import pace.util
 from pace import fv3core
+from pace.driver.performance.collector import PerformanceCollector
+from pace.dsl.dace.dace_config import DaceConfig
 
 
 class GeosDycoreWrapper:
@@ -15,9 +17,11 @@ class GeosDycoreWrapper:
     """
 
     def __init__(self, namelist: f90nml.Namelist, comm: pace.util.Comm, backend: str):
-        self.timer = pace.util.Timer()
-        self.namelist = namelist
+        # Make a custom performance collector for the GEOS wrapper
+        self.perf_collector = PerformanceCollector("GEOS wrapper", comm)
 
+        self.backend = backend
+        self.namelist = namelist
         self.dycore_config = fv3core.DynamicalCoreConfig.from_f90nml(self.namelist)
 
         self.layout = self.dycore_config.layout
@@ -25,7 +29,7 @@ class GeosDycoreWrapper:
             pace.util.TilePartitioner(self.layout)
         )
         self.communicator = pace.util.CubedSphereCommunicator(
-            comm, partitioner, timer=self.timer
+            comm, partitioner, timer=self.perf_collector.timestep_timer
         )
 
         sizer = pace.util.SubtileGridSizer.from_namelist(
@@ -45,6 +49,13 @@ class GeosDycoreWrapper:
             compilation_config=pace.dsl.stencil.CompilationConfig(
                 backend=backend, rebuild=False, validate_args=False
             ),
+        )
+
+        stencil_config.dace_config = DaceConfig(
+            communicator=self.communicator,
+            backend=stencil_config.backend,
+            tile_nx=self.dycore_config.npx,
+            tile_nz=self.dycore_config.npz,
         )
 
         self._grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
@@ -117,7 +128,7 @@ class GeosDycoreWrapper:
         diss_estd: np.ndarray,
     ) -> Dict[str, np.ndarray]:
 
-        with self.timer.clock("move_to_pace"):
+        with self.perf_collector.timestep_timer.clock("move_to_pace"):
             self.dycore_state = self._put_fortran_data_in_dycore(
                 u,
                 v,
@@ -145,11 +156,23 @@ class GeosDycoreWrapper:
                 diss_estd,
             )
 
-        with self.timer.clock("dycore"):
-            self.dynamical_core.step_dynamics(state=self.dycore_state, timer=self.timer)
+        with self.perf_collector.timestep_timer.clock("dycore"):
+            self.dynamical_core.step_dynamics(
+                state=self.dycore_state, timer=self.perf_collector.timestep_timer
+            )
 
-        with self.timer.clock("move_to_fortran"):
+        with self.perf_collector.timestep_timer.clock("move_to_fortran"):
             self.output_dict = self._prep_outputs_for_geos()
+
+        # Collect performance of the timestep and write
+        # a json file for rank 0
+        self.perf_collector.collect_performance()
+        self.perf_collector.write_out_rank_0(
+            backend=self.backend,
+            is_orchestrated=False,  # could be infered from config
+            dt_atmos=self.dycore_config.dt_atmos,
+            sim_status="Ongoing",
+        )
 
         return self.output_dict
 

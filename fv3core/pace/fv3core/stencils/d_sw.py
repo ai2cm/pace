@@ -767,6 +767,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._vort_y_delta = make_quantity()
         self._dt_kinetic_energy_on_cell_corners = make_quantity()
         self._abs_vorticity_agrid = make_quantity()
+        self._damped_rel_vorticity_agrid = make_quantity()
         self._uc_contra = make_quantity()
         self._vc_contra = make_quantity()
         self._tmp_ut = make_quantity()
@@ -1194,15 +1195,12 @@ class DGridShallowWaterLagrangianDynamics:
             self.grid_data.dy,
         )
 
-        # TODO: use a separate temporary/storage for this variable name
-        damped_rel_vorticity_agrid = self._abs_vorticity_agrid
-
         self.delnflux_nosg_v(
             self._vorticity_agrid,
             self._tmp_ut,
             self._tmp_vt,
             self._delnflux_damp_vt,
-            damped_rel_vorticity_agrid,
+            self._damped_rel_vorticity_agrid,
         )
         # TODO(eddied): These stencils were split to ensure GTC verification,
         # merge them if you can

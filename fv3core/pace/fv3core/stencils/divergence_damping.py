@@ -236,11 +236,7 @@ def redo_divg_d(
             divg_d = divg_d + uc
 
     with computation(PARALLEL), interval(...):
-        # TODO: this does the wrong thing when stretched_grid is True,
-        # i.e. when do_adjustment = not stretched_grid is False
-        # compare to the Fortran and fix
         if __INLINED(do_adjustment):
-            # reference https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/sw_core.F90#L1422  # noqa: E501
             divg_d = divg_d * adjustment_factor
 
 
@@ -619,6 +615,7 @@ class DivergenceDamping:
 
         da_min: float = self._get_da_min()
         if self._stretched_grid:
+            # reference https://github.com/NOAA-GFDL/GFDL_atmos_cubed_sphere/blob/main/model/sw_core.F90#L1422 # noqa: E501
             dd8 = da_min * self._d4_bg ** (self._nonzero_nord + 1)
         else:
             dd8 = (da_min_c * self._d4_bg) ** (self._nonzero_nord + 1)

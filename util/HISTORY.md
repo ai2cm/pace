@@ -4,7 +4,8 @@ History
 latest
 ------
 
-
+v0.10.0
+-------
 
 Major changes:
 - Added the following attributes/methods to Communicator: `tile`, `halo_update`, `boundaries`, `start_halo_update`, `vector_halo_update`, `start_vector_halo_update`, `synchronize_vector_interfaces`, `start_synchronize_vector_interfaces`, `get_scalar_halo_updater`, and `get_vector_halo_updater`

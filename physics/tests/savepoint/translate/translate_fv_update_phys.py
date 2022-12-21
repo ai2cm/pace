@@ -11,6 +11,13 @@ from pace.stencils.testing.translate_physics import (
     ParallelPhysicsTranslate2Py,
     transform_dwind_serialized_data,
 )
+from pace.util.utils import safe_assign_array
+
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 
 try:
@@ -132,7 +139,8 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             serialname = info["serialname"] if "serialname" in info else d
             self._base.update_info(info, inputs)
             if "kaxis" in info:
-                inputs[serialname] = np.moveaxis(inputs[serialname], info["kaxis"], 2)
+                inputs[serialname] = np.moveaxis(
+                    inputs[serialname], info["kaxis"], 2)
             istart, jstart, kstart = self._base.collect_start_indices(
                 inputs[serialname].shape, info
             )
@@ -156,7 +164,8 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             )
             if d != serialname:
                 del inputs[serialname]
-        remove_names = set(inputs.keys()).difference(self._base.in_vars["data_vars"])
+        remove_names = set(inputs.keys()).difference(
+            self._base.in_vars["data_vars"])
         for name in remove_names:
             inputs.pop(name)
 
@@ -217,9 +226,15 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         out["qsnow"] = state.qsnow[self.grid.slice_dict(ds)]
         out["qgraupel"] = state.qgraupel[self.grid.slice_dict(ds)]
         out["pt"] = state.pt[self.grid.slice_dict(ds)]
-        utils.device_sync(state.u.gt4py_backend)
-        out["u"] = np.asarray(state.u.data)[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(state.v.data)[self.grid.x3d_domain_interface()]
+        utils.device_sync(backend=self.stencil_factory.backend)
+        # This alloc then copy pattern is requried to deal transparently with
+        # arrays on different device
+        out["u"] = np.empty_like(inputs["u"][self.grid.y3d_domain_interface()])
+        out["v"] = np.empty_like(inputs["v"][self.grid.x3d_domain_interface()])
+        safe_assign_array(out["u"], inputs["u"]
+                          [self.grid.y3d_domain_interface()])
+        safe_assign_array(out["v"], inputs["v"]
+                          [self.grid.x3d_domain_interface()])
         out["ua"] = state.ua[self.grid.slice_dict(ds)]
         out["va"] = state.va[self.grid.slice_dict(ds)]
         return out

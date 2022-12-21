@@ -425,7 +425,6 @@ class FrozenStencil(SDFGConvertible):
                 **self._stencil_run_kwargs,
                 exec_info=self._timing_collector.exec_info,
             )
-            self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
         if self.comm is not None:
             differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
             if len(differences) > 0:
@@ -433,11 +432,6 @@ class FrozenStencil(SDFGConvertible):
                     f"rank {self.comm.Get_rank()} has differences {differences} "
                     f"after calling {self._func_name}"
                 )
-
-    def _mark_cuda_fields_written(self, fields: Mapping[str, cp.ndarray]):
-        if self.stencil_config.is_gpu_backend:
-            for write_field in self._written_fields:
-                fields[write_field]._set_device_modified()
 
     @classmethod
     def _compute_field_origins(

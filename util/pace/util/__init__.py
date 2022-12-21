@@ -70,5 +70,5 @@ from .time import FMS_TO_CFTIME_TYPE, datetime64_to_datetime
 from .units import UnitsError, ensure_equal_units, units_are_equal
 
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))

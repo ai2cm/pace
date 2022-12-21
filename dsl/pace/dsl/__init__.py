@@ -21,4 +21,4 @@ if MPI is not None:
         "GT_CACHE_DIR_NAME", f".gt_cache_{MPI.COMM_WORLD.Get_rank():06}"
     )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

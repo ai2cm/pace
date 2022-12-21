@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 NQ = 8  # state.nq_tot - spec.namelist.dnats
 
 
-def pt_adjust(
+def pt_to_potential_density_pt(
     pkz: FloatField, dp_initial: FloatField, q_con: FloatField, pt: FloatField
 ):
     """
@@ -239,8 +239,8 @@ class DynamicalCore:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._pt_adjust_stencil = stencil_factory.from_origin_domain(
-            pt_adjust,
+        self._pt_to_potential_density_pt = stencil_factory.from_origin_domain(
+            pt_to_potential_density_pt,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
@@ -475,7 +475,7 @@ class DynamicalCore:
         else:
             if __debug__:
                 log_on_rank_0("Adjust pt")
-            self._pt_adjust_stencil(
+            self._pt_to_potential_density_pt(
                 state.pkz,
                 self._dp_initial,
                 state.q_con,
