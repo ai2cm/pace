@@ -14,6 +14,7 @@ The model can be run on a laptop using Python-based backend or on thousands of h
    docker
    testing
    util/index
+   physics/index
 
 
 Indices and tables

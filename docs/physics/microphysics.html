@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Installation &mdash; Pace  documentation</title>
+  <title>Microphysics &mdash; Pace  documentation</title>
   
 
   
@@ -41,9 +41,7 @@
 
     
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="State" href="state.html" />
-    <link rel="prev" title="pace-util" href="index.html" /> 
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -89,27 +87,14 @@
             
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../fv3.html">FV3</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../docker.html">Docker</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="index.html">pace-util</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#stable-release">Stable release</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#from-sources">From sources</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="state.html">State</a></li>
-<li class="toctree-l2"><a class="reference internal" href="communication.html">Communication</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utilities.html">Utilities</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html">API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="history.html">Changelog</a></li>
-<li class="toctree-l2"><a class="reference internal" href="index.html#indices-and-tables">Indices and tables</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../physics/index.html">pace-physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../util/index.html">pace-util</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">pace-physics</a></li>
 </ul>
 
             
@@ -158,15 +143,13 @@
     
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
-          <li><a href="index.html">pace-util</a> &raquo;</li>
-        
-      <li>Installation</li>
+      <li>Microphysics</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="../_sources/util/installation.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/physics/microphysics.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -179,28 +162,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="stable-release">
-<h2>Stable release<a class="headerlink" href="#stable-release" title="Permalink to this headline">¶</a></h2>
-<p>There is no stable release. This is alpha research software: use at your own risk!</p>
-</div>
-<div class="section" id="from-sources">
-<h2>From sources<a class="headerlink" href="#from-sources" title="Permalink to this headline">¶</a></h2>
-<p>The sources for pace-util can be downloaded from the <a class="reference external" href="https://github.com/VulcanClimateModeling/pace-util">Github repo</a>.
-To develop pace-util, you can clone the public repository:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git clone git://github.com/ai2cm/pace
-</pre></div>
-</div>
-<p>Once you have a copy of the source, you can install it in develop mode from the Pace top level directory with:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip install -r ./pace-util/requirements.txt -c ./constraints.txt -e pace-util
-</pre></div>
-</div>
-<p>The <cite>-e</cite> flag will set up the directory so that python uses the local folder including
-any modifications, instead of copying the sources to an installation directory. This
-is very useful for development. The <cite>-r requirements.txt</cite> will install extra packages
-useful for test, lint &amp; other development requirements.</p>
-<p>The <cite>-c ./constraints.txt</cite> is optional, but will ensure the package versions you use are ones we have tested against.</p>
+  <div class="section" id="microphysics">
+<span id="id1"></span><h1>Microphysics<a class="headerlink" href="#microphysics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>GFDL cloud microphysics scheme has been integrated and tested in Pace.
+See documentation in <a class="reference external" href="https://dtcenter.ucar.edu/GMTB/v5.0.0/sci_doc/GFDL_cloud.html">CCPP</a> for more details on the microphysics scheme.</p>
+<a class="reference internal image-reference" href="physics/gfdl_cloud_mp_diagram.png"><img alt="Alternative text" src="physics/gfdl_cloud_mp_diagram.png" style="width: 600px;" /></a>
 </div>
 </div>
 
@@ -209,10 +177,6 @@ useful for test, lint &amp; other development requirements.</p>
            
           </div>
           <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="state.html" class="btn btn-neutral float-right" title="State" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="index.html" class="btn btn-neutral float-left" title="pace-util" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-    </div>
 
   <hr/>
 

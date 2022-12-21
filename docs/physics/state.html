@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>State &mdash; Pace  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API" href="api.html" />
+    <link rel="prev" title="pace-physics" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Pace
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fv3.html">FV3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../docker.html">Docker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../util/index.html">pace-util</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">pace-physics</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">State</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#containers">Containers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pace</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">pace-physics</a> &raquo;</li>
+        
+      <li>State</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/physics/state.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="state">
+<h1>State<a class="headerlink" href="#state" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="containers">
+<h2>Containers<a class="headerlink" href="#containers" title="Permalink to this headline">¶</a></h2>
+<p>Variables used in physics are packedged using a container type called <a class="reference internal" href="api.html#pace.physics.PhysicsState" title="pace.physics.PhysicsState"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.physics.PhysicsState</span></code></a>.
+This contains variables copied from the dynamical core for calculating physics tendencies.
+It also contains sub-container for the individual physics schemes. Currently, it only contains <code class="xref py py-class docutils literal notranslate"><span class="pre">pace.physics.MicrophysicsState</span></code>.</p>
+<p>You can initialize a zero-filled PhysicsState and MicrophysicsState from other Pace objects as follows:</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pace.util</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="go">    ...  CubedSphereCommunicator,</span>
+<span class="go">    ...  CubedSpherePartitioner,</span>
+<span class="go">    ...  Quantity,</span>
+<span class="go">    ...  QuantityFactory,</span>
+<span class="go">    ...  SubtileGridSizer,</span>
+<span class="go">    ...  TilePartitioner,</span>
+<span class="go">    ...  NullComm,</span>
+<span class="go">    ... )</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pace.physics</span> <span class="kn">import</span> <span class="n">PhysicsState</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">layout</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">partitioner</span> <span class="o">=</span> <span class="n">CubedSpherePartitioner</span><span class="p">(</span><span class="n">TilePartitioner</span><span class="p">(</span><span class="n">layout</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">communicator</span> <span class="o">=</span> <span class="n">CubedSphereCommunicator</span><span class="p">(</span><span class="n">NullComm</span><span class="p">(</span><span class="n">rank</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_ranks</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span> <span class="n">partitioner</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sizer</span> <span class="o">=</span> <span class="n">SubtileGridSizer</span><span class="o">.</span><span class="n">from_tile_params</span><span class="p">(</span>
+<span class="gp">... </span>   <span class="n">nx_tile</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">ny_tile</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">nz</span><span class="o">=</span><span class="mi">79</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">n_halo</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">extra_dim_lengths</span><span class="o">=</span><span class="p">{},</span>
+<span class="gp">... </span>   <span class="n">layout</span><span class="o">=</span><span class="n">layout</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">tile_partitioner</span><span class="o">=</span><span class="n">partitioner</span><span class="o">.</span><span class="n">tile</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">tile_rank</span><span class="o">=</span><span class="n">communicator</span><span class="o">.</span><span class="n">tile</span><span class="o">.</span><span class="n">rank</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">quantity_factory</span> <span class="o">=</span> <span class="n">QuantityFactory</span><span class="o">.</span><span class="n">from_backend</span><span class="p">(</span><span class="n">sizer</span><span class="o">=</span><span class="n">sizer</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;numpy&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">physics_state</span> <span class="o">=</span> <span class="n">PhysicsState</span><span class="o">.</span><span class="n">init_zeros</span><span class="p">(</span>
+<span class="gp">... </span> <span class="n">quantity_factory</span><span class="o">=</span><span class="n">quantity_factory</span><span class="p">,</span> <span class="n">active_packages</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;microphysics&quot;</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">microphysics_state</span> <span class="o">=</span> <span class="n">physics_state</span><span class="o">.</span><span class="n">microphysics</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="api.html" class="btn btn-neutral float-right" title="API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="pace-physics" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022, AI2 Climate Modeling Team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

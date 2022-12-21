@@ -1,0 +1,783 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>API &mdash; Pace  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="State" href="state.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Pace
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fv3.html">FV3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../docker.html">Docker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../util/index.html">pace-util</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">pace-physics</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="state.html">State</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pace</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">pace-physics</a> &raquo;</li>
+        
+      <li>API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/physics/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-pace.physics">
+<span id="api"></span><h1>API<a class="headerlink" href="#module-pace.physics" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="pace.physics.Microphysics">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">pace.physics.</span></span><span class="sig-name descname"><span class="pre">Microphysics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stencil_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pace.dsl.stencil.StencilFactory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.QuantityFactory" title="pace.util.initialization.allocator.QuantityFactory"><span class="pre">pace.util.initialization.allocator.QuantityFactory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pace.util.grid.helper.GridData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namelist</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pace.physics.PhysicsConfig" title="pace.physics._config.PhysicsConfig"><span class="pre">pace.physics._config.PhysicsConfig</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.Microphysics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.Microphysics.gfdl_cloud_microphys_init">
+<span class="sig-name descname"><span class="pre">gfdl_cloud_microphys_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt_atmos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.Microphysics.gfdl_cloud_microphys_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.Microphysics.setupm">
+<span class="sig-name descname"><span class="pre">setupm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt_atmos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.Microphysics.setupm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pace.physics.Physics">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">pace.physics.</span></span><span class="sig-name descname"><span class="pre">Physics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stencil_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pace.dsl.stencil.StencilFactory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.QuantityFactory" title="pace.util.initialization.allocator.QuantityFactory"><span class="pre">pace.util.initialization.allocator.QuantityFactory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pace.util.grid.helper.GridData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namelist</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pace.physics.PhysicsConfig" title="pace.physics._config.PhysicsConfig"><span class="pre">pace.physics._config.PhysicsConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_packages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">typing.Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">microphysics</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.Physics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">pace.physics.</span></span><span class="sig-name descname"><span class="pre">PhysicsConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt_atmos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hydrostatic</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npx</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npz</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nwat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_qa</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_cracw</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_paut</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_pgacs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_psaci</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ccn_l</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">300.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ccn_o</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">const_vg</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">const_vi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">const_vr</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">const_vs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vs_fac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vg_fac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vi_fac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vr_fac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">de_ice</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_imlt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">600.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_i2s</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_g2v</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1200.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_v2g</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">21600.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ql_mlt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qs_mlt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_sub</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">184.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qi_gen</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.82e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qi_lim</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qi0_max</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rad_snow</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rad_rain</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dw_ocean</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dw_land</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_l2v</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">300.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c2l_ord</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_sedi_heat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_sedi_w</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_sat_adj</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc_crt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">5e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_negative</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">irain_f</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mp_time</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">225.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prog_ccn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qi0_crt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">8e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qs0_crt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rh_inc</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rh_inr</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rthresh</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sedi_transport</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_ppm</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vg_max</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">16.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vi_max</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vr_max</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">16.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vs_max</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_slope_ice</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_slope_liq</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tice</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">273.16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alin</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">842.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clin</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">4.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namelist_override</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">NoneType</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.PhysicsConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.alin">
+<span class="sig-name descname"><span class="pre">alin</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">842.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.alin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.c2l_ord">
+<span class="sig-name descname"><span class="pre">c2l_ord</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">4</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.c2l_ord" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.c_cracw">
+<span class="sig-name descname"><span class="pre">c_cracw</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.8</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.c_cracw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.c_paut">
+<span class="sig-name descname"><span class="pre">c_paut</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.5</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.c_paut" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.c_pgacs">
+<span class="sig-name descname"><span class="pre">c_pgacs</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.01</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.c_pgacs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.c_psaci">
+<span class="sig-name descname"><span class="pre">c_psaci</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.05</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.c_psaci" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.ccn_l">
+<span class="sig-name descname"><span class="pre">ccn_l</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">300.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.ccn_l" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.ccn_o">
+<span class="sig-name descname"><span class="pre">ccn_o</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">100.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.ccn_o" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.clin">
+<span class="sig-name descname"><span class="pre">clin</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">4.8</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.clin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.const_vg">
+<span class="sig-name descname"><span class="pre">const_vg</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.const_vg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.const_vi">
+<span class="sig-name descname"><span class="pre">const_vi</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.const_vi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.const_vr">
+<span class="sig-name descname"><span class="pre">const_vr</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.const_vr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.const_vs">
+<span class="sig-name descname"><span class="pre">const_vs</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.const_vs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.de_ice">
+<span class="sig-name descname"><span class="pre">de_ice</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.de_ice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.do_qa">
+<span class="sig-name descname"><span class="pre">do_qa</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.do_qa" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.do_sedi_heat">
+<span class="sig-name descname"><span class="pre">do_sedi_heat</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.do_sedi_heat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.do_sedi_w">
+<span class="sig-name descname"><span class="pre">do_sedi_w</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.do_sedi_w" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.dt_atmos">
+<span class="sig-name descname"><span class="pre">dt_atmos</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.dt_atmos" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.dw_land">
+<span class="sig-name descname"><span class="pre">dw_land</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.15</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.dw_land" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.dw_ocean">
+<span class="sig-name descname"><span class="pre">dw_ocean</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.1</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.dw_ocean" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.fast_sat_adj">
+<span class="sig-name descname"><span class="pre">fast_sat_adj</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.fast_sat_adj" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.fix_negative">
+<span class="sig-name descname"><span class="pre">fix_negative</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.fix_negative" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.from_f90nml">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_f90nml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f90_namelist</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">f90nml.namelist.Namelist</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pace.physics.PhysicsConfig" title="pace.physics._config.PhysicsConfig"><span class="pre">pace.physics._config.PhysicsConfig</span></a></span></span><a class="headerlink" href="#pace.physics.PhysicsConfig.from_f90nml" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.from_namelist">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_namelist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">namelist</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Namelist" title="pace.util.namelist.Namelist"><span class="pre">pace.util.namelist.Namelist</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pace.physics.PhysicsConfig" title="pace.physics._config.PhysicsConfig"><span class="pre">pace.physics._config.PhysicsConfig</span></a></span></span><a class="headerlink" href="#pace.physics.PhysicsConfig.from_namelist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.hydrostatic">
+<span class="sig-name descname"><span class="pre">hydrostatic</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.hydrostatic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.irain_f">
+<span class="sig-name descname"><span class="pre">irain_f</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.irain_f" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.layout">
+<span class="sig-name descname"><span class="pre">layout</span></span><em class="property"><span class="pre">:</span> <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">(1,</span> <span class="pre">1)</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.layout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.mp_time">
+<span class="sig-name descname"><span class="pre">mp_time</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">225.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.mp_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.namelist_override">
+<span class="sig-name descname"><span class="pre">namelist_override</span></span><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.namelist_override" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.npx">
+<span class="sig-name descname"><span class="pre">npx</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.npx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.npy">
+<span class="sig-name descname"><span class="pre">npy</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.npy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.npz">
+<span class="sig-name descname"><span class="pre">npz</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.npz" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.nwat">
+<span class="sig-name descname"><span class="pre">nwat</span></span><em class="property"><span class="pre">:</span> <span class="pre">int</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.nwat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.prog_ccn">
+<span class="sig-name descname"><span class="pre">prog_ccn</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.prog_ccn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qc_crt">
+<span class="sig-name descname"><span class="pre">qc_crt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">5e-08</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qc_crt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qi0_crt">
+<span class="sig-name descname"><span class="pre">qi0_crt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">8e-05</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qi0_crt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qi0_max">
+<span class="sig-name descname"><span class="pre">qi0_max</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.0001</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qi0_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qi_gen">
+<span class="sig-name descname"><span class="pre">qi_gen</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.82e-06</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qi_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qi_lim">
+<span class="sig-name descname"><span class="pre">qi_lim</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qi_lim" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.ql_mlt">
+<span class="sig-name descname"><span class="pre">ql_mlt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.002</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.ql_mlt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qs0_crt">
+<span class="sig-name descname"><span class="pre">qs0_crt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.003</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qs0_crt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.qs_mlt">
+<span class="sig-name descname"><span class="pre">qs_mlt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1e-06</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.qs_mlt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.rad_rain">
+<span class="sig-name descname"><span class="pre">rad_rain</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.rad_rain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.rad_snow">
+<span class="sig-name descname"><span class="pre">rad_snow</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.rad_snow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.rh_inc">
+<span class="sig-name descname"><span class="pre">rh_inc</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.2</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.rh_inc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.rh_inr">
+<span class="sig-name descname"><span class="pre">rh_inr</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">0.3</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.rh_inr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.rthresh">
+<span class="sig-name descname"><span class="pre">rthresh</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1e-05</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.rthresh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.sedi_transport">
+<span class="sig-name descname"><span class="pre">sedi_transport</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.sedi_transport" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.t_sub">
+<span class="sig-name descname"><span class="pre">t_sub</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">184.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.t_sub" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tau_g2v">
+<span class="sig-name descname"><span class="pre">tau_g2v</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1200.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tau_g2v" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tau_i2s">
+<span class="sig-name descname"><span class="pre">tau_i2s</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1000.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tau_i2s" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tau_imlt">
+<span class="sig-name descname"><span class="pre">tau_imlt</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">600.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tau_imlt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tau_l2v">
+<span class="sig-name descname"><span class="pre">tau_l2v</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">300.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tau_l2v" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tau_v2g">
+<span class="sig-name descname"><span class="pre">tau_v2g</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">21600.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tau_v2g" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.tice">
+<span class="sig-name descname"><span class="pre">tice</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">273.16</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.tice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.use_ppm">
+<span class="sig-name descname"><span class="pre">use_ppm</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">False</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.use_ppm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vg_fac">
+<span class="sig-name descname"><span class="pre">vg_fac</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vg_fac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vg_max">
+<span class="sig-name descname"><span class="pre">vg_max</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">16.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vg_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vi_fac">
+<span class="sig-name descname"><span class="pre">vi_fac</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vi_fac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vi_max">
+<span class="sig-name descname"><span class="pre">vi_max</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vi_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vr_fac">
+<span class="sig-name descname"><span class="pre">vr_fac</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vr_fac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vr_max">
+<span class="sig-name descname"><span class="pre">vr_max</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">16.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vr_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vs_fac">
+<span class="sig-name descname"><span class="pre">vs_fac</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vs_fac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.vs_max">
+<span class="sig-name descname"><span class="pre">vs_max</span></span><em class="property"><span class="pre">:</span> <span class="pre">float</span></em><em class="property"> <span class="pre">=</span> <span class="pre">2.0</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.vs_max" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.z_slope_ice">
+<span class="sig-name descname"><span class="pre">z_slope_ice</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.z_slope_ice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsConfig.z_slope_liq">
+<span class="sig-name descname"><span class="pre">z_slope_liq</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><em class="property"> <span class="pre">=</span> <span class="pre">True</span></em><a class="headerlink" href="#pace.physics.PhysicsConfig.z_slope_liq" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">pace.physics.</span></span><span class="sig-name descname"><span class="pre">PhysicsState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qvapor</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qliquid</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qice</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qrain</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qsnow</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qgraupel</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qo3mr</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qsgs_tke</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qcld</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">delp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">delz</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ua</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">va</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">omga</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_specific_humidity</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_qliquid</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_qice</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_qrain</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_qsnow</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_qgraupel</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_cloud_fraction</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_pt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_ua</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">physics_updated_va</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">delprsi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">phii</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">phil</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dz</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">wmp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prsi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prsik</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">land</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dataclasses.InitVar</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantityFactory</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_packages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dataclasses.InitVar</span><span class="p"><span class="pre">[</span></span><span class="pre">typing.List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pace.physics.PhysicsState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.active_packages">
+<span class="sig-name descname"><span class="pre">active_packages</span></span><em class="property"><span class="pre">:</span> <span class="pre">dataclasses.InitVar</span><span class="p"><span class="pre">[</span></span><span class="pre">typing.List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pace.physics.PhysicsState.active_packages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.delp">
+<span class="sig-name descname"><span class="pre">delp</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.delp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.delprsi">
+<span class="sig-name descname"><span class="pre">delprsi</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.delprsi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.delz">
+<span class="sig-name descname"><span class="pre">delz</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.delz" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.dz">
+<span class="sig-name descname"><span class="pre">dz</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.dz" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.init_from_storages">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">init_from_storages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.GridSizer" title="pace.util.initialization.sizer.GridSizer"><span class="pre">pace.util.initialization.sizer.GridSizer</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_factory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../util/api.html#pace.util.QuantityFactory" title="pace.util.initialization.allocator.QuantityFactory"><span class="pre">pace.util.initialization.allocator.QuantityFactory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_packages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pace.physics.PhysicsState" title="pace.physics.physics_state.PhysicsState"><span class="pre">pace.physics.physics_state.PhysicsState</span></a></span></span><a class="headerlink" href="#pace.physics.PhysicsState.init_from_storages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.init_zeros">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">init_zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quantity_factory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_packages</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pace.physics.PhysicsState" title="pace.physics.physics_state.PhysicsState"><span class="pre">pace.physics.physics_state.PhysicsState</span></a></span></span><a class="headerlink" href="#pace.physics.PhysicsState.init_zeros" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.land">
+<span class="sig-name descname"><span class="pre">land</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.land" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.omga">
+<span class="sig-name descname"><span class="pre">omga</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.omga" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.phii">
+<span class="sig-name descname"><span class="pre">phii</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.phii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.phil">
+<span class="sig-name descname"><span class="pre">phil</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.phil" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_cloud_fraction">
+<span class="sig-name descname"><span class="pre">physics_updated_cloud_fraction</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_cloud_fraction" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_pt">
+<span class="sig-name descname"><span class="pre">physics_updated_pt</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_pt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_qgraupel">
+<span class="sig-name descname"><span class="pre">physics_updated_qgraupel</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_qgraupel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_qice">
+<span class="sig-name descname"><span class="pre">physics_updated_qice</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_qice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_qliquid">
+<span class="sig-name descname"><span class="pre">physics_updated_qliquid</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_qliquid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_qrain">
+<span class="sig-name descname"><span class="pre">physics_updated_qrain</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_qrain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_qsnow">
+<span class="sig-name descname"><span class="pre">physics_updated_qsnow</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_qsnow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_specific_humidity">
+<span class="sig-name descname"><span class="pre">physics_updated_specific_humidity</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_specific_humidity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_ua">
+<span class="sig-name descname"><span class="pre">physics_updated_ua</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_ua" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.physics_updated_va">
+<span class="sig-name descname"><span class="pre">physics_updated_va</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.physics_updated_va" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.prsi">
+<span class="sig-name descname"><span class="pre">prsi</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.prsi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.prsik">
+<span class="sig-name descname"><span class="pre">prsik</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.prsik" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.pt">
+<span class="sig-name descname"><span class="pre">pt</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.pt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qcld">
+<span class="sig-name descname"><span class="pre">qcld</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qcld" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qgraupel">
+<span class="sig-name descname"><span class="pre">qgraupel</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qgraupel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qice">
+<span class="sig-name descname"><span class="pre">qice</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qice" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qliquid">
+<span class="sig-name descname"><span class="pre">qliquid</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qliquid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qo3mr">
+<span class="sig-name descname"><span class="pre">qo3mr</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qo3mr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qrain">
+<span class="sig-name descname"><span class="pre">qrain</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qrain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qsgs_tke">
+<span class="sig-name descname"><span class="pre">qsgs_tke</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qsgs_tke" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qsnow">
+<span class="sig-name descname"><span class="pre">qsnow</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qsnow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.quantity_factory">
+<span class="sig-name descname"><span class="pre">quantity_factory</span></span><em class="property"><span class="pre">:</span> <span class="pre">dataclasses.InitVar</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantityFactory</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pace.physics.PhysicsState.quantity_factory" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.qvapor">
+<span class="sig-name descname"><span class="pre">qvapor</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.qvapor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.ua">
+<span class="sig-name descname"><span class="pre">ua</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.ua" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.va">
+<span class="sig-name descname"><span class="pre">va</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.va" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.w">
+<span class="sig-name descname"><span class="pre">w</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.w" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.wmp">
+<span class="sig-name descname"><span class="pre">wmp</span></span><em class="property"><span class="pre">:</span> <a class="reference internal" href="../util/api.html#pace.util.Quantity" title="pace.util.quantity.Quantity"><span class="pre">pace.util.quantity.Quantity</span></a></em><a class="headerlink" href="#pace.physics.PhysicsState.wmp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pace.physics.PhysicsState.xr_dataset">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">xr_dataset</span></span><a class="headerlink" href="#pace.physics.PhysicsState.xr_dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="state.html" class="btn btn-neutral float-left" title="State" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022, AI2 Climate Modeling Team.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
