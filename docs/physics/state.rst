@@ -1,5 +1,3 @@
-.. _physicsstate:
-
 =====
 State
 =====
