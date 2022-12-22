@@ -1082,7 +1082,7 @@ def plot_grid(
     lon = check_get_data_from_quantity(lon)
     lat = check_get_data_from_quantity(lat)
 
-    field = np.zeros(lon.data.shape)[:, :-1, :-1]
+    field = np.zeros(lon.shape)[:, :-1, :-1]
 
     fig = plt.figure(figsize=(12, 6))
     fig.patch.set_facecolor("white")
