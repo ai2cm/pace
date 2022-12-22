@@ -28,7 +28,7 @@ Savepoint data are used in two ways:
     For example, checkpointers have been written to:
 
     #. compare the model state to a reference state (:py:class:`pace.util.ValidationCheckpointer`)
-    #. calibrate the threshold for each variable given a perturbed state
+    #. calibrate the threshold for each variable given a perturbed state (:py:class:`pace.util.ThresholdCalibrationCheckpointer`)
 
     Additional checkpoint behaviors could be implemented, for example to save reference test data directly from Python.
     Thresholds are set automatically using a :py:class:`pace.util.ThresholdCalibrationCheckpointer` for each variable based on a round-off error perturbed initial state.
