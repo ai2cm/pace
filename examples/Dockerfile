@@ -35,8 +35,11 @@ RUN python3 -m pip install --upgrade pip wheel
 
 COPY . /pace
 
+# 2022.12.22 Added non-editable installs as a workaround for pace module not found, when gt4py was updated to v1.0.
+# See https://github.com/ai2cm/pace/issues/419 for more details.
 RUN cd /pace && \
-    pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+    pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt && \
+    pip install ./driver ./dsl ./fv3core ./physics ./stencils ./util -c /pace/constraints.txt
 
 RUN cd / && \
     git clone https://github.com/ai2cm/fv3net
@@ -50,6 +53,7 @@ RUN python3 -m pip install \
     matplotlib==3.5.2 \
     ipyparallel==8.4.1 \
     jupyterlab==3.4.4 \
+    shapely==1.8.5 \
     cartopy==0.18.0 \
     jupyterlab_code_formatter==1.5.2 \
     isort==5.10.1 \
