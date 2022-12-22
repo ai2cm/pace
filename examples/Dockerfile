@@ -35,6 +35,8 @@ RUN python3 -m pip install --upgrade pip wheel
 
 COPY . /pace
 
+# 2022.12.22 Added non-editable installs as a workaround for pace module not found, when gt4py was updated to v1.0.
+# See https://github.com/ai2cm/pace/issues/419 for more details.
 RUN cd /pace && \
     pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt && \
     pip install ./driver ./dsl ./fv3core ./physics ./stencils ./util -c /pace/constraints.txt
