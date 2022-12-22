@@ -1,7 +1,7 @@
 from typing import Optional, Sequence, Tuple
 
-from gt4py import gtscript
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+from gt4py.cartesian import gtscript
+from gt4py.cartesian.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField

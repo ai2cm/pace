@@ -1,12 +1,11 @@
 import unittest.mock
 
-from gt4py.gtscript import PARALLEL, computation, interval
-
 # will need to update this import when gt4py is updated
-from gtc.passes.oir_optimizations.horizontal_execution_merging import (
+from gt4py.cartesian.gtc.passes.oir_optimizations.horizontal_execution_merging import (
     HorizontalExecutionMerging,
 )
-from gtc.passes.oir_pipeline import DefaultPipeline
+from gt4py.cartesian.gtc.passes.oir_pipeline import DefaultPipeline
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import (
@@ -39,7 +38,9 @@ def test_skip_passes_becomes_oir_pipeline():
         east_edge=False,
     )
     factory = StencilFactory(config=config, grid_indexing=grid_indexing)
-    with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:
+    with unittest.mock.patch(
+        "gt4py.cartesian.gtscript.stencil"
+    ) as mock_stencil_builder:
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -49,7 +50,9 @@ def test_skip_passes_becomes_oir_pipeline():
     )
     assert HorizontalExecutionMerging not in pipeline.skip
     assert HorizontalExecutionMerging in pipeline.steps
-    with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:
+    with unittest.mock.patch(
+        "gt4py.cartesian.gtscript.stencil"
+    ) as mock_stencil_builder:
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

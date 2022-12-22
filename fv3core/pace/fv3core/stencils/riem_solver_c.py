@@ -1,6 +1,13 @@
 import typing
 
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
+from gt4py.cartesian.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    interval,
+    log,
+)
 
 import pace.util
 import pace.util.constants as constants

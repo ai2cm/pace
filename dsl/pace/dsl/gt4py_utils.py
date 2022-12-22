@@ -395,7 +395,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def is_gpu_backend(backend: str) -> bool:
-    return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
+    return gt4py.cartesian.backend.from_name(backend).storage_info["device"] == "gpu"
 
 
 def zeros(shape, dtype=Float, *, backend: str):

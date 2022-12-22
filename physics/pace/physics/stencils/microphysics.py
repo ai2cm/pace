@@ -2,7 +2,14 @@ import copy
 import typing
 
 import numpy as np
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
+from gt4py.cartesian.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    interval,
+    sqrt,
+)
 
 import pace.physics.functions.microphysics_funcs as functions
 import pace.util
