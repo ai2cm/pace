@@ -317,14 +317,14 @@ class PhysicsState:
 
     @classmethod
     def init_zeros(cls, quantity_factory, active_packages: List[str]) -> "PhysicsState":
-        initial_storages = {}
+        initial_arrays = {}
         for _field in fields(cls):
             if "dims" in _field.metadata.keys():
-                initial_storages[_field.name] = quantity_factory.zeros(
+                initial_arrays[_field.name] = quantity_factory.zeros(
                     _field.metadata["dims"], _field.metadata["units"], dtype=float
-                ).storage
+                ).data
         return cls(
-            **initial_storages,
+            **initial_arrays,
             quantity_factory=quantity_factory,
             active_packages=active_packages,
         )

@@ -2356,10 +2356,10 @@ class MetricTerms:
         return edge_vect_e_2d, edge_vect_w_2d
 
     def _reduce_global_area_minmaxes(self):
-        min_area = self._np.min(self.area.storage[3:-4, 3:-4])[()]
-        max_area = self._np.max(self.area.storage[3:-4, 3:-4])[()]
-        min_area_c = self._np.min(self.area_c.storage[3:-4, 3:-4])[()]
-        max_area_c = self._np.max(self.area_c.storage[3:-4, 3:-4])[()]
+        min_area = self._np.min(self.area.data[3:-4, 3:-4])[()]
+        max_area = self._np.max(self.area.data[3:-4, 3:-4])[()]
+        min_area_c = self._np.min(self.area_c.data[3:-4, 3:-4])[()]
+        max_area_c = self._np.max(self.area_c.data[3:-4, 3:-4])[()]
         self._da_min = float(self._comm.comm.allreduce(min_area, min))
         self._da_max = float(self._comm.comm.allreduce(max_area, max))
         self._da_min_c = float(self._comm.comm.allreduce(min_area_c, min))

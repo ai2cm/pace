@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, exp, interval, log
+from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log
 
 import pace.util.constants as constants
 from pace.dsl.typing import FloatField

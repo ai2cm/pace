@@ -1,7 +1,15 @@
 import math
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, floor, interval, log
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
+    __INLINED,
+    PARALLEL,
+    computation,
+    exp,
+    floor,
+    interval,
+    log,
+)
 
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory

@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from gt4py.gtscript import (
+from gt4py.cartesian.gtscript import (
     __INLINED,
     BACKWARD,
     FORWARD,

@@ -3,16 +3,21 @@ import contextlib
 import dataclasses
 from typing import Dict, List, Mapping, Union
 
-import gt4py.storage
 import numpy as np
 
 from ..quantity import Quantity
 from .base import Checkpointer
 
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+
 SavepointName = str
 VariableName = str
-ArrayLike = Union[Quantity, gt4py.storage.Storage, np.ndarray]
+ArrayLike = Union[Quantity, np.ndarray]
 
 
 class InsufficientTrialsError(Exception):

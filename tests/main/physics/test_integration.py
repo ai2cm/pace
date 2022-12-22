@@ -11,6 +11,12 @@ from pace.dsl.stencil_config import CompilationConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
+
 def setup_physics():
     backend = "numpy"
     layout = (1, 1)
@@ -74,8 +80,8 @@ def setup_physics():
     for field in fields(pace.physics.PhysicsState):
         array = getattr(physics_state, field.name)
         # check that it's a storage this way, because Field is not a class
-        if hasattr(array, "data"):
-            array.data[:] = random.uniform(-1, 1, size=array.data.shape)
+        if isinstance(array, (np.ndarray, cp.ndarray)):
+            array[:] = random.uniform(-1, 1, size=array.data.shape)
     return physics, physics_state
 
 

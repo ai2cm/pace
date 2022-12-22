@@ -28,3 +28,8 @@ try:
     import gt4py
 except ImportError:
     gt4py = None
+
+try:
+    import dace
+except ImportError:
+    dace = None

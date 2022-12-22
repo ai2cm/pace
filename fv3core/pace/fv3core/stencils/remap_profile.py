@@ -1,7 +1,14 @@
 from typing import Sequence
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
+    __INLINED,
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    interval,
+)
 
 import pace.util
 from pace.dsl.dace.orchestration import orchestrate

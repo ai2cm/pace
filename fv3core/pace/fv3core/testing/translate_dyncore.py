@@ -146,10 +146,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
         )
         for name, value in inputs.items():
             if hasattr(state, name) and isinstance(state[name], pace.util.Quantity):
-                # storage can have buffer points at the end, so value.shape
-                # is often not equal to state[name].storage.shape
+                # the ndarray can have buffer points at the end, so value.shape
+                # is often not equal to state[name].shape
                 selection = tuple(slice(0, end) for end in value.shape)
-                state[name].storage[selection] = value
+                state[name].data[selection] = value
             else:
                 setattr(state, name, value)
         phis: pace.util.Quantity = self.grid.quantity_factory.empty(
@@ -168,10 +168,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
             stretched_grid=self.grid.stretched_grid,
             config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
             phis=phis,
-            wsd=wsd.storage,
+            wsd=wsd.data,
             state=state,
         )
-        acoustic_dynamics.cappa.storage[:] = inputs["cappa"][:]
+        acoustic_dynamics.cappa.data[:] = inputs["cappa"][:]
 
         acoustic_dynamics(state, timestep=inputs["mdt"], n_map=state.n_map)
         # the "inputs" dict is not used to return, we construct a new dict based
@@ -179,9 +179,9 @@ class TranslateDynCore(ParallelTranslate2PyState):
         storages_only = {}
         for name, value in vars(state).items():
             if isinstance(value, pace.util.Quantity):
-                storages_only[name] = value.storage
+                storages_only[name] = value.data
             else:
                 storages_only[name] = value
-        storages_only["wsd"] = wsd.storage
-        storages_only["cappa"] = acoustic_dynamics.cappa.storage
+        storages_only["wsd"] = wsd.data
+        storages_only["cappa"] = acoustic_dynamics.cappa.data
         return self._base.slice_output(storages_only)

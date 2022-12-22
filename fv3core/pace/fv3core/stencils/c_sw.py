@@ -1,4 +1,4 @@
-from gt4py.gtscript import (
+from gt4py.cartesian.gtscript import (
     PARALLEL,
     compile_assert,
     computation,

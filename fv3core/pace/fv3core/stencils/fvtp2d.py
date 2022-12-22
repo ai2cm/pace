@@ -1,7 +1,7 @@
 from typing import Optional
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.stencils.corners as corners
 import pace.util

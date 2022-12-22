@@ -1,5 +1,5 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 from pace.dsl.typing import FloatField, FloatFieldIJ
 

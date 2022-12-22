@@ -30,7 +30,6 @@ commands:
             . venv/bin/activate
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
-            python3 -m gt4py.gt_src_manager install
       - save_cache:
           key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
@@ -406,6 +405,7 @@ jobs:
           command: git submodule update --init
       - setup_environment_mpi
       - run:
+          no_output_timeout: 20m #update to gt4py v1 mysteriously lead to long print time. Can't be reproduced outside of circleci
           name: run tests
           command: |
             . venv/bin/activate
