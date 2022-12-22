@@ -2,8 +2,6 @@
 Testing
 =======
 
-This page will include instructions on how to run our tests and manage test data.
-
 Savepoint tests are run automatically on every commit to the main branch.
 Savepoint data are generated from `fv3gfs-fortran`_ and can also be downloaded:
 
