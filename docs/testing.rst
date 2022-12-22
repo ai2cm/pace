@@ -29,7 +29,7 @@ Savepoint data are used in two ways:
     #. calibrate the threshold for each variable given a perturbed state
 
     Additional checkpoint behaviors could be implemented, for example to save reference test data directly from Python.
-    Thresholds are set automatically for each variable based on a round-off error perturbed initial state.
+    Thresholds are set automatically using a :py:class:`pace.util.ThresholdCalibrationCheckpointer` for each variable based on a round-off error perturbed initial state.
     E.g., we run the model multiple times with a perturbed initial state and record the largest differences at each checkpoint for each variable.
     The threshold is then set to the largest difference plus a small tolerance.
     Currently, only checkpoint tests within the dynamical core are tested.
