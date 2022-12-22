@@ -39,8 +39,17 @@ In the long run we suggest increasing the number of checkpoints and adding new c
     Currently, only checkpoint tests within the dynamical core are tested.
     There are two outstanding PRs to include driver and physics checkpoint tests.
 
+-----------
+Limitations
+-----------
 While individual translate test can be run on all backends, checkpointer tests do not work for orchestrated DaCe backend.
+This is a limitation due to DaCe not accepting keyword arguments or a list of :py:class:`pace.util.Quantity`, causing the checkpointer calls to be overly complicated.
+A possible workaround is to follow the HaloUpdater example to wrap the variables at init time and called during DaCe callbacks.
+A better solution would be to have DaCe accept a list of :py:class:`pace.util.Quantity`.
 
+--------
+Examples
+--------
 Translate tests for the dynamical core can be run as follows:
 
 .. code-block:: console
