@@ -94,7 +94,11 @@
 <li class="toctree-l1"><a class="reference internal" href="fv3.html">FV3</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docker.html">Docker</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Testing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Testing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#limitations">Limitations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="util/index.html">pace-util</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics/index.html">pace-physics</a></li>
 </ul>
@@ -166,7 +170,62 @@
             
   <div class="section" id="testing">
 <h1>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h1>
-<p>This page will include instructions on how to run our tests and manage test data.</p>
+<p>Savepoint tests are run automatically on every commit to the main branch.
+Savepoint data are generated from <a class="reference external" href="https://github.com/ai2cm/fv3gfs-fortran/tree/master/tests/serialized_test_data_generation">fv3gfs-fortran</a> and can also be downloaded:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make get_test_data
+<span class="gp">$ </span><span class="c1"># if you do not have access to the Google Cloud Storage bucket, use FTP:</span>
+<span class="gp">$ </span>make <span class="nv">USE_FTP</span><span class="o">=</span>yes get_test_data
+</pre></div>
+</div>
+<p>Savepoint data are used in the “translate” tests and in checkpointer tests.
+Developers should be aware that the “translate” tests are an older, initial design of the test infrastructure which has grown organically and may be difficult to understand or modify, but currently covers smaller parts of the code not tested independently by the checkpointer tests.
+In the long run we suggest increasing the number of checkpoints and adding new checkpointer tests, and eventually removing the translate tests, which are considered deprecated.</p>
+<ol class="arabic">
+<li><p>Individual translate tests</p>
+<blockquote>
+<div><p>These test at the module level such as <cite>c_sw</cite> and <cite>d_sw</cite>, and the translate logic is shared among dynamical core and physics.
+Larger tests also exist such as <cite>translate_fvdynamics</cite> which tests a full acoustic time step.
+Manual thresholds are set for each savepoint test. Curerntly, maximum threshold is applied to all variables within the test.
+Additionally, a near-zero value can be specified for a variable to ignore values that are very close to zero.</p>
+</div></blockquote>
+</li>
+<li><p>Checkpointer tests</p>
+<blockquote>
+<div><p>This tests the full model run where checkpoints are inserted throughout the model.
+See <code class="docutils literal notranslate"><span class="pre">tests/savepoint/test_checkpoints.py</span></code> for an example.
+Checkpointers are given model state along with a label, and may implement any behavior they wish.
+For example, checkpointers have been written to:</p>
+<ol class="arabic simple">
+<li><p>compare the model state to a reference state (<a class="reference internal" href="util/api.html#pace.util.ValidationCheckpointer" title="pace.util.ValidationCheckpointer"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ValidationCheckpointer</span></code></a>)</p></li>
+<li><p>calibrate the threshold for each variable given a perturbed state (<a class="reference internal" href="util/api.html#pace.util.ThresholdCalibrationCheckpointer" title="pace.util.ThresholdCalibrationCheckpointer"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ThresholdCalibrationCheckpointer</span></code></a>)</p></li>
+</ol>
+<p>Additional checkpoint behaviors could be implemented, for example to save reference test data directly from Python.
+Thresholds are set automatically using a <a class="reference internal" href="util/api.html#pace.util.ThresholdCalibrationCheckpointer" title="pace.util.ThresholdCalibrationCheckpointer"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.ThresholdCalibrationCheckpointer</span></code></a> for each variable based on a round-off error perturbed initial state.
+We run the model multiple times with a perturbed initial state and record the largest differences at each checkpoint for each variable.
+The threshold is then set to the largest difference multiplied by a scaling factor.
+Currently, only checkpoint tests within the dynamical core are tested.
+There are two outstanding PRs to include driver and physics checkpoint tests.</p>
+</div></blockquote>
+</li>
+</ol>
+<div class="section" id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
+<p>While individual translate test can be run on all backends, checkpointer tests do not work for orchestrated DaCe backend.
+This is a limitation due to DaCe not accepting keyword arguments or a list of <a class="reference internal" href="util/api.html#pace.util.Quantity" title="pace.util.Quantity"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.Quantity</span></code></a>, causing the checkpointer calls to be overly complicated.
+A possible workaround is to follow the HaloUpdater example to wrap the variables at init time and called during DaCe callbacks.
+A better solution would be to have DaCe accept a list of <a class="reference internal" href="util/api.html#pace.util.Quantity" title="pace.util.Quantity"><code class="xref py py-class docutils literal notranslate"><span class="pre">pace.util.Quantity</span></code></a>.</p>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Translate tests for the dynamical core can be run as follows:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make savepoint_tests
+</pre></div>
+</div>
+<p>We suggest reading the Makefile for a full list of translate test targets. Checkpointer tests can be run as follows:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make test_savepoint
+</pre></div>
+</div>
+</div>
 </div>
 
 
