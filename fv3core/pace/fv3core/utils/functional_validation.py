@@ -54,9 +54,9 @@ def get_set_nan_func(
             data_subset = subset(data)
             data_subset[:] = subset(safe)
         except TypeError:
-            safe = copy.deepcopy(data.storage)
-            data.storage[:] = np.nan
-            data_subset = subset(data.storage)
+            safe = copy.deepcopy(data.data)
+            data.data[:] = np.nan
+            data_subset = subset(data.data)
             data_subset[:] = subset(safe)
 
     return set_nans

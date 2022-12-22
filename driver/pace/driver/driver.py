@@ -17,6 +17,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace import fv3core
+from pace.driver.safety_checks import SafetyChecker
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -30,6 +31,7 @@ from .comm import CreatesCommSelector
 from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
+from .performance.collector import PerformanceCollector
 from .state import DriverState
 
 
@@ -122,6 +124,7 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
+    safety_check_frequency: Optional[int] = None
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -393,8 +396,15 @@ class Driver:
         self.performance_collector = self.config.performance_config.build(self.comm)
         self.profiler = self.config.performance_config.build_profiler()
         with self.performance_collector.total_timer.clock("initialization"):
+            comm_timer = (
+                self.performance_collector.timestep_timer
+                if self.config.performance_config.collect_communication
+                else None
+            )
             communicator = CubedSphereCommunicator.from_layout(
-                comm=self.comm, layout=self.config.layout
+                comm=self.comm,
+                layout=self.config.layout,
+                timer=comm_timer,
             )
             self._update_driver_config_with_communicator(communicator)
 
@@ -441,11 +451,13 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
+            logger.info("setting up grid started")
             (damping_coefficients, driver_grid_data, grid_data,) = self.config.get_grid(
                 quantity_factory=self.quantity_factory,
                 communicator=communicator,
             )
-
+            logger.info("setting up grid done")
+            logger.info("setting up state started")
             self.state = self.config.get_driver_state(
                 quantity_factory=self.quantity_factory,
                 communicator=communicator,
@@ -453,8 +465,10 @@ class Driver:
                 driver_grid_data=driver_grid_data,
                 grid_data=grid_data,
             )
+            logger.info("setting up state done")
 
             self._start_time = self.config.initialization.start_time
+            logger.info("setting up dycore object started")
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
@@ -466,7 +480,9 @@ class Driver:
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
             )
+            logger.info("setting up dycore object done")
 
+            logger.info("setting up physics object started")
             if not config.dycore_only and not config.disable_step_physics:
                 self.physics = pace.physics.Physics(
                     stencil_factory=self.stencil_factory,
@@ -502,19 +518,27 @@ class Driver:
                 # Make sure those are set to None to raise any issues
                 self.dycore_to_physics = None
                 self.end_of_step_update = None
+            logger.info("setting up physics object done")
+            logger.info("setting up diagnostics factory started")
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 communicator=communicator
             )
+            logger.info("setting up diagnostics factory done")
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
-        )
-        self.diagnostics.store_grid(
-            grid_data=self.state.grid_data,
         )
         if config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
+        logger.info("setting up safety checkers started")
+        self.safety_checker = SafetyChecker()
+        SafetyChecker.register_variable("ua", -200, 200, compute_domain_only=True)
+        SafetyChecker.register_variable("va", -200, 200, compute_domain_only=True)
+        SafetyChecker.register_variable("delp", -1.0, 4000, compute_domain_only=True)
+        SafetyChecker.register_variable("pt", 100, 380, compute_domain_only=True)
+        logger.info("setting up safety checkers done")
+        logger.info("initialization of the object done")
 
     def _update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
@@ -552,9 +576,24 @@ class Driver:
         """
         if __debug__:
             logger.info(f"Finished stepping {step}")
+        self.performance_collector.collect_performance()
         self.time += self.config.timestep
         if ((step + 1) % self.config.output_frequency) == 0:
+            logger.info(f"diagnostics for step {self.time} started")
+            self.performance_collector.write_out_rank_0(
+                self.config.stencil_config.compilation_config.backend,
+                self.config.stencil_config.dace_config.is_dace_orchestrated(),
+                self.config.dt_atmos,
+                "Ongoing",
+            )
             self.diagnostics.store(time=self.time, state=self.state)
+            logger.info(f"diagnostics for step {self.time} finished")
+        if (
+            self.config.safety_check_frequency
+            and ((step + 1) % self.config.safety_check_frequency) == 0
+        ):
+            self.safety_checker.check_state(self.state.dycore_state)
+            logger.info(f"checking state for for step {step+1} finished")
         self.config.restart_config.write_intermediate_if_enabled(
             state=self.state,
             step=step,
@@ -563,7 +602,6 @@ class Driver:
             driver_config=self.config,
             restart_path=f"RESTART_{step}",
         )
-        self.performance_collector.collect_performance()
 
     def _critical_path_step_all(
         self,
@@ -595,9 +633,9 @@ class Driver:
                     self.end_of_step_update(
                         dycore_state=self.state.dycore_state,
                         phy_state=self.state.physics_state,
-                        u_dt=self.state.tendency_state.u_dt.storage,
-                        v_dt=self.state.tendency_state.v_dt.storage,
-                        pt_dt=self.state.tendency_state.pt_dt.storage,
+                        u_dt=self.state.tendency_state.u_dt,
+                        v_dt=self.state.tendency_state.v_dt,
+                        pt_dt=self.state.tendency_state.pt_dt,
                         dt=float(dt),
                     )
             self._end_of_step_actions(step)
@@ -606,11 +644,14 @@ class Driver:
         logger.info("integrating driver forward in time")
         with self.performance_collector.total_timer.clock("total"):
             self.profiler.enable()
+            PerformanceCollector.mark_cuda_profiler("Begin integration")
+            PerformanceCollector.start_cuda_profiler()
             self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_collector.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
+            PerformanceCollector.stop_cuda_profiler()
             self.profiler.dump_stats(
                 f"{self.config.performance_config.experiment_name}_\
                 {self.comm.Get_rank()}.prof"
@@ -626,6 +667,20 @@ class Driver:
     @dace_inhibitor
     def cleanup(self):
         logger.info("cleaning up driver")
+        self.performance_collector.write_out_rank_0(
+            self.config.stencil_config.compilation_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
+            self.config.dt_atmos,
+            "Finished",
+        )
+        if (
+            self.comm.Get_size()
+            >= self.config.performance_config.json_all_rank_threshold
+        ):
+            self._write_performance_json_output()
+        self.diagnostics.store_grid(
+            grid_data=self.state.grid_data,
+        )
         self.diagnostics.cleanup()
         self.config.restart_config.write_final_if_enabled(
             state=self.state,
@@ -634,7 +689,6 @@ class Driver:
             driver_config=self.config,
             restart_path="RESTART",
         )
-        self._write_performance_json_output()
         self.comm_config.cleanup(self.comm)
 
 

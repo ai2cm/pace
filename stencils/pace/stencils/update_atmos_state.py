@@ -1,7 +1,7 @@
 import typing
 from typing import Optional
 
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util

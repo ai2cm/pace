@@ -24,6 +24,8 @@ EXCLUDED_CONFIGS: List[str] = [
     # filepath that are not in git
     "baroclinic_c12_from_serialbox.yaml",
     "baroclinic_c12_orch_cpu.yaml",
+    "tropical_read_restart_fortran.yml",
+    "tropicalcyclone_c128.yaml",
 ]
 
 JENKINS_CONFIGS_DIR = os.path.join(dirname, "../../../.jenkins/driver_configs/")

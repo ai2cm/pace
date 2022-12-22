@@ -1,5 +1,5 @@
-from gt4py import gtscript
-from gt4py.gtscript import exp, log, sqrt
+from gt4py.cartesian import gtscript
+from gt4py.cartesian.gtscript import exp, log, sqrt
 
 import pace.util.constants as constants
 
@@ -878,7 +878,8 @@ def subgrid_z_proc(
 
                     # Use the "liquid-frozen water temperature" (tin)
                     # to compute saturated specific humidity
-                    tin = tz - (lcpk * q_cond + icpk * q_sol)  # Minimum temperature
+                    # Minimum temperature
+                    tin = tz - (lcpk * q_cond + icpk * q_sol)
 
                     # Determine saturated specific humidity
                     """
@@ -1084,7 +1085,8 @@ def icloud_main(
                 )
                 sink = min(qsz, min(dts * (psmlt + pracs), tc / icpk))
                 qsz = qsz - sink
-                tmp = min(sink, dim(qs_mlt, qlz))  # Maximum ql due to snow melt
+                # Maximum ql due to snow melt
+                tmp = min(sink, dim(qs_mlt, qlz))
                 qlz = qlz + tmp
                 qrz = qrz + sink - tmp
                 q_liq = q_liq + sink

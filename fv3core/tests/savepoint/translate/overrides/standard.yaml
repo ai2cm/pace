@@ -116,6 +116,7 @@ FVSubgridZ:
     max_error: 1e-8
   - backend: dace:gpu
     max_error: 1e-8
+    skip_test: true # Register overflow lead to CUDA 401
   - backend: cuda
     max_error: 1e-8
 

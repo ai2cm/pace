@@ -2,22 +2,10 @@ from typing import Callable, Optional, Sequence
 
 import numpy as np
 
-from pace.util.halo_data_transformer import QuantityHaloSpec
-
 from .._optional_imports import gt4py
-from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
-from ..quantity import Quantity
+from ..constants import SPATIAL_DIMS
+from ..quantity import Quantity, QuantityHaloSpec
 from .sizer import GridSizer
-
-
-def _wrap_storage_call(function, backend):
-    def wrapped(shape, dtype=float, **kwargs):
-        kwargs["managed_memory"] = True
-        kwargs.setdefault("default_origin", [0] * len(shape))
-        return function(backend, shape=shape, dtype=dtype, **kwargs)
-
-    wrapped.__name__ = function.__name__
-    return wrapped
 
 
 class StorageNumpy:
@@ -28,9 +16,16 @@ class StorageNumpy:
         Args:
             backend: gt4py backend
         """
-        self.empty = _wrap_storage_call(gt4py.storage.empty, backend)
-        self.zeros = _wrap_storage_call(gt4py.storage.zeros, backend)
-        self.ones = _wrap_storage_call(gt4py.storage.ones, backend)
+        self.backend = backend
+
+    def empty(self, *args, **kwargs) -> np.ndarray:
+        return gt4py.storage.empty(*args, backend=self.backend, **kwargs)
+
+    def ones(self, *args, **kwargs) -> np.ndarray:
+        return gt4py.storage.ones(*args, backend=self.backend, **kwargs)
+
+    def zeros(self, *args, **kwargs) -> np.ndarray:
+        return gt4py.storage.zeros(*args, backend=self.backend, **kwargs)
 
 
 class QuantityFactory:
@@ -54,6 +49,12 @@ class QuantityFactory:
         """
         numpy = StorageNumpy(backend)
         return cls(sizer, numpy)
+
+    def _backend(self) -> Optional[str]:
+        try:
+            return self._numpy.backend
+        except AttributeError:
+            return None
 
     def empty(
         self,
@@ -105,20 +106,28 @@ class QuantityFactory:
         origin = self.sizer.get_origin(dims)
         extent = self.sizer.get_extent(dims)
         shape = self.sizer.get_shape(dims)
-        mask = tuple(
-            [
-                any(dim in coord_dims for dim in dims)
-                for coord_dims in [X_DIMS, Y_DIMS, Z_DIMS]
-            ]
-        )
-        extra_dims = [i for i in dims if i not in SPATIAL_DIMS]
-        if len(extra_dims) > 0 or not dims:
-            mask = None
+        dimensions = [
+            axis
+            if any(dim in axis_dims for axis_dims in SPATIAL_DIMS)
+            else str(shape[index])
+            for index, (dim, axis) in enumerate(
+                zip(dims, ("I", "J", "K", *([None] * (len(dims) - 3))))
+            )
+        ]
         try:
-            data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
+            data = allocator(
+                shape, dtype=dtype, aligned_index=origin, dimensions=dimensions
+            )
         except TypeError:
             data = allocator(shape, dtype=dtype)
-        return Quantity(data, dims=dims, units=units, origin=origin, extent=extent)
+        return Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+            gt4py_backend=self._backend(),
+        )
 
     def get_quantity_halo_spec(
         self, dims: Sequence[str], n_halo: Optional[int] = None, dtype: type = float
@@ -143,16 +152,4 @@ class QuantityFactory:
         if n_halo is None:
             n_halo = self.sizer.n_halo
 
-        spec = QuantityHaloSpec(
-            n_halo,
-            temp_quantity.data.strides,
-            temp_quantity.data.itemsize,
-            temp_quantity.data.shape,
-            temp_quantity.metadata.origin,
-            temp_quantity.metadata.extent,
-            temp_quantity.metadata.dims,
-            temp_quantity.np,
-            temp_quantity.metadata.dtype,
-        )
-
-        return spec
+        return temp_quantity.halo_spec(n_halo)

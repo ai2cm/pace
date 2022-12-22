@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pace.fv3core.stencils.moist_cv as moist_cv
 from pace.dsl.stencil import StencilFactory
@@ -14,8 +14,6 @@ def moist_pt(
     qice: FloatField,
     qgraupel: FloatField,
     q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
     pt: FloatField,
     cappa: FloatField,
     delp: FloatField,
@@ -31,8 +29,6 @@ def moist_pt(
             qice,
             qgraupel,
             q_con,
-            gz,
-            cvm,
             pt,
             cappa,
             delp,
@@ -66,8 +62,6 @@ class MoistPT:
         qice: FloatField,
         qgraupel: FloatField,
         q_con: FloatField,
-        gz: FloatField,
-        cvm: FloatField,
         pt: FloatField,
         cappa: FloatField,
         delp: FloatField,
@@ -82,8 +76,6 @@ class MoistPT:
             qice,
             qgraupel,
             q_con,
-            gz,
-            cvm,
             pt,
             cappa,
             delp,
@@ -104,8 +96,6 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
             "qrain": {"serialname": "qrain_js"},
             "qsnow": {"serialname": "qsnow_js"},
             "qgraupel": {"serialname": "qgraupel_js"},
-            "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
-            "cvm": {"kstart": grid.is_, "axis": 0},
             "delp": {},
             "delz": {},
             "q_con": {},
@@ -119,23 +109,6 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
 
         self.in_vars["parameters"] = ["r_vir"]
         self.out_vars = {
-            "gz": {
-                "serialname": "gz1d",
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.js,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
-            "cvm": {
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.js,
-                "kstart": grid.npz - 1,
-                "kend": grid.npz - 1,
-            },
             "pt": {},
             "cappa": {},
             "q_con": {},

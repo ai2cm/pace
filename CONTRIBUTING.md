@@ -113,7 +113,7 @@ Turns into
 - Internal functions that are likely to be inlined into a larger stencil do not need this if it will just be removed in the near-term.
 
 ### GT4Py stencils
-We interface to `gt4py.gtscript.stencil` through pace.dsl.stencil, specifically the FrozenStencil, that allows us to minimize runtime overhead in calling stencils.
+We interface to `gt4py.cartesian.gtscript.stencil` through pace.dsl.stencil, specifically the FrozenStencil, that allows us to minimize runtime overhead in calling stencils.
 
 
 ```python

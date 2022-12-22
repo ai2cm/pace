@@ -9,9 +9,9 @@ try:
 except ImportError:
     gt4py = None
 try:
-    import cupy
+    import cupy as cp
 except ImportError:
-    cupy = None
+    cp = None
 
 
 @pytest.fixture
@@ -69,13 +69,13 @@ def quantity(data, origin, extent, dims, units):
 
 def test_numpy(quantity, backend):
     if "cupy" in backend:
-        assert quantity.np is cupy
+        assert quantity.np is cp
     else:
         assert quantity.np is np
 
 
 @pytest.mark.skipif(gt4py is None, reason="requires gt4py")
-def test_modifying_numpy_storage_modifies_view():
+def test_modifying_numpy_data_modifies_view():
     shape = (6, 6)
     data = np.zeros(shape, dtype=float)
     quantity = pace.util.Quantity(
@@ -87,80 +87,27 @@ def test_modifying_numpy_storage_modifies_view():
         gt4py_backend="numpy",
     )
     assert np.all(quantity.data == 0)
-    quantity.storage[0, 0] = 1
+    quantity.data[0, 0] = 1
     quantity.data[2, 2] = 5
-    quantity.storage[4, 4] = 3
+    quantity.data[4, 4] = 3
     assert quantity.view[0, 0] == 1
     assert quantity.view[2, 2] == 5
     assert quantity.view[4, 4] == 3
     assert quantity.data[0, 0] == 1
-    assert quantity.storage[2, 2] == 5
+    assert quantity.data[2, 2] == 5
     assert quantity.data[4, 4] == 3
 
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
-def test_storage_exists(quantity, backend):
+def test_data_exists(quantity, backend):
     if "numpy" in backend:
-        assert isinstance(quantity.storage, gt4py.storage.storage.CPUStorage)
+        assert isinstance(quantity.data, np.ndarray)
     else:
-        assert isinstance(quantity.storage, gt4py.storage.storage.GPUStorage)
+        assert isinstance(quantity.data, cp.ndarray)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
-def test_storage_does_not_exist(quantity, backend):
-    with pytest.raises(TypeError):
-        quantity.storage
-
-
-def test_data_is_not_storage(quantity, backend):
-    if gt4py is not None:
-        assert not isinstance(quantity.data, gt4py.storage.storage.Storage)
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
-def test_backend_is_accurate(quantity):
-    assert quantity.gt4py_backend == quantity.storage.backend
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
-def test_modifying_data_modifies_storage(quantity):
-    quantity.storage[:] = 5
-    assert quantity.np.all(quantity.data[:] == 5)
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
-def test_modifying_storage_modifies_data(quantity):
-    storage = quantity.storage
-    quantity.data[:] = 5
-    assert quantity.np.all(quantity.np.asarray(storage) == 5)
-    assert quantity.data.data == quantity.storage.data.data
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy"], indirect=True)
-def test_modifying_storage_modifies_data_when_initialized_from_storage(quantity):
-    storage = quantity.storage
-    quantity = pace.util.Quantity(
-        storage,
-        dims=quantity.dims,
-        units=quantity.units,
-        origin=quantity.origin,
-        extent=quantity.extent,
-    )
-    quantity.data[:] = 5
-    assert quantity.np.all(quantity.np.asarray(storage) == 5)
-    assert quantity.data.data == quantity.storage.data.data
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
-def test_modifying_storage_modifies_data_after_transpose(quantity):
-    quantity = quantity.transpose(quantity.dims[::-1])
-    storage = quantity.storage
-    quantity.data[:] = 5
-    assert quantity.np.all(quantity.np.asarray(storage) == 5)
-
-
-@pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
-def test_accessing_storage_does_not_break_view(
+def test_accessing_data_does_not_break_view(
     data, origin, extent, dims, units, gt4py_backend
 ):
     quantity = pace.util.Quantity(
@@ -171,7 +118,7 @@ def test_accessing_storage_does_not_break_view(
         units=units,
         gt4py_backend=gt4py_backend,
     )
-    quantity.storage[origin] = -1.0
+    quantity.data[origin] = -1.0
     assert quantity.data[origin] == quantity.view[tuple(0 for _ in origin)]
 
 
@@ -189,37 +136,4 @@ def test_numpy_data_becomes_cupy_with_gpu_backend(
         units=units,
         gt4py_backend=gt4py_backend,
     )
-    assert isinstance(quantity.data, cupy.ndarray)
-    assert isinstance(quantity.storage, gt4py.storage.storage.GPUStorage)
-
-
-@pytest.mark.parametrize("backend", ["gt4py_numpy"], indirect=True)
-def test_cannot_use_cpu_storage_with_gpu_backend(
-    data, origin, extent, dims, units, gt4py_backend
-):
-    assert isinstance(data, gt4py.storage.storage.CPUStorage)
-    with pytest.raises(TypeError):
-        pace.util.Quantity(
-            data,
-            origin=origin,
-            extent=extent,
-            dims=dims,
-            units=units,
-            gt4py_backend=gt4py_backend,
-        )
-
-
-@pytest.mark.parametrize("backend", ["gt4py_cupy"], indirect=True)
-def test_cannot_use_gpu_storage_with_cpu_backend(
-    data, origin, extent, dims, units, gt4py_backend
-):
-    assert isinstance(data, gt4py.storage.storage.GPUStorage)
-    with pytest.raises(TypeError):
-        pace.util.Quantity(
-            data,
-            origin=origin,
-            extent=extent,
-            dims=dims,
-            units=units,
-            gt4py_backend=gt4py_backend,
-        )
+    assert isinstance(quantity.data, cp.ndarray)

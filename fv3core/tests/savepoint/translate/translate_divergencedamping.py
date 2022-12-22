@@ -18,20 +18,19 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
             "u": {},
             "v": {},
             "va": {},
-            "v_contra_dxc": {"serialname": "vort"},
+            "damped_rel_vort_bgrid": {"serialname": "vort"},
             "ua": {},
             "divg_d": {},
             "vc": {},
             "uc": {},
             "delpc": {},
             "ke": {},
-            "wk": {},
+            "rel_vort_agrid": {"serialname": "wk"},
             "nord_col": {},
             "d2_bg": {},
         }
         self.in_vars["parameters"] = ["dt"]
         self.out_vars = {
-            "v_contra_dxc": {"serialname": "vort"},
             "ke": {"iend": grid.ied + 1, "jend": grid.jed + 1},
             "delpc": {},
         }
@@ -64,9 +63,6 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
             d2_bg,
         )
         self.divdamp(**inputs)
-        inputs["v_contra_dxc"] = self.subset_output(
-            "v_contra_dxc", inputs["v_contra_dxc"]
-        )
         return inputs
 
     def subset_output(self, varname: str, output):

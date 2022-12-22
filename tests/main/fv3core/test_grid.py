@@ -2,7 +2,7 @@ from typing import Sequence
 
 import numpy as np
 import pytest
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
 import pace.dsl.stencil
 from pace.dsl.typing import Index3D

@@ -23,11 +23,8 @@ from pace.util import (
     _boundary_utils,
 )
 from pace.util.buffer import Buffer
-from pace.util.halo_data_transformer import (
-    HaloDataTransformer,
-    HaloExchangeSpec,
-    QuantityHaloSpec,
-)
+from pace.util.halo_data_transformer import HaloDataTransformer, HaloExchangeSpec
+from pace.util.quantity import QuantityHaloSpec
 from pace.util.rotate import rotate_scalar_data, rotate_vector_data
 
 

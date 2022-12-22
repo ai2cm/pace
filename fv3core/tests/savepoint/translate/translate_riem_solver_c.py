@@ -1,6 +1,6 @@
 import pace.dsl
 import pace.util
-from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
+from pace.fv3core.stencils.riem_solver_c import NonhydrostaticVerticalSolverCGrid
 from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
@@ -12,7 +12,7 @@ class TranslateRiem_Solver_C(TranslateDycoreFortranData2Py):
         stencil_factory: pace.dsl.StencilFactory,
     ):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = RiemannSolverC(  # type: ignore
+        self.compute_func = NonhydrostaticVerticalSolverCGrid(  # type: ignore
             stencil_factory,
             quantity_factory=self.grid.quantity_factory,
             p_fac=namelist.p_fac,

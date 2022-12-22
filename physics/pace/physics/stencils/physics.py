@@ -1,8 +1,16 @@
 import typing
 from typing import List
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    interval,
+    log,
+)
 from typing_extensions import Literal
 
 import pace.dsl.gt4py_utils as utils

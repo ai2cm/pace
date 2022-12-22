@@ -1,7 +1,7 @@
 from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_nounroll
-from gt4py.gtscript import (
+from gt4py.cartesian.gtscript import (
     __INLINED,
     BACKWARD,
     FORWARD,
@@ -32,8 +32,8 @@ from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from pace.fv3core.stencils.del2cubed import HyperdiffusionDamping
 from pace.fv3core.stencils.pk3_halo import PK3Halo
-from pace.fv3core.stencils.riem_solver3 import RiemannSolver3
-from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
+from pace.fv3core.stencils.riem_solver3 import NonhydrostaticVerticalSolver
+from pace.fv3core.stencils.riem_solver_c import NonhydrostaticVerticalSolverCGrid
 from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,
@@ -151,8 +151,8 @@ def p_grad_c_stencil(
     """
     from __externals__ import hydrostatic
 
-    # TODO: reference derivation in SJ Lin 1997 paper,
-    # FV3 documentation section 6.6 (?)
+    # derivation in Lin 1997 https://doi.org/10.1002/qj.49712354214
+    # FV3 documentation Section 6.6
 
     with computation(PARALLEL), interval(...):
         if __INLINED(hydrostatic):
@@ -469,12 +469,12 @@ class AcousticDynamics:
                 hord_tm=config.hord_tm,
                 column_namelist=column_namelist,
             )
-            self.riem_solver3 = RiemannSolver3(
+            self.vertical_solver = NonhydrostaticVerticalSolver(
                 stencil_factory,
                 quantity_factory=quantity_factory,
                 config=config.riemann,
             )
-            self.riem_solver_c = RiemannSolverC(
+            self.vertical_solver_cgrid = NonhydrostaticVerticalSolverCGrid(
                 stencil_factory, quantity_factory=quantity_factory, p_fac=config.p_fac
             )
             origin, domain = grid_indexing.get_origin_domain(
@@ -572,8 +572,8 @@ class AcousticDynamics:
                 tau=config.tau,
                 hydrostatic=config.hydrostatic,
             )
-        self._compute_pkz_tempadjust = stencil_factory.from_origin_domain(
-            temperature_adjust.compute_pkz_tempadjust,
+        self._apply_diffusive_heating = stencil_factory.from_origin_domain(
+            temperature_adjust.apply_diffusive_heating,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.restrict_vertical(
                 nk=self._nk_heat_dissipation
@@ -674,7 +674,6 @@ class AcousticDynamics:
                 mfyd=state.mfyd,
             )
 
-    # TODO: type hint state when it is possible to do so, when it is a static type
     def __call__(
         self,
         state: DycoreState,
@@ -690,9 +689,6 @@ class AcousticDynamics:
         dt_acoustic_substep = timestep / self.config.n_split
         dt2 = 0.5 * dt_acoustic_substep
         n_split = self.config.n_split
-        # TODO: When the namelist values are set to 0, use these instead:
-        # m_split = 1. + abs(dt_atmos)/real(k_split*n_split*abs(p_split))
-        # n_split = nint( real(n0split)/real(k_split*abs(p_split)) * stretch_fac + 0.5 )
         # NOTE: In Fortran model the halo update starts happens in fv_dynamics, not here
         self._halo_updaters.q_con__cappa.start()
         self._halo_updaters.delp__pt.start()
@@ -801,7 +797,7 @@ class AcousticDynamics:
                 #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
                 # DaCe has already a fix on their side and it awaits release
                 # issue
-                self.riem_solver_c(
+                self.vertical_solver_cgrid(
                     dt2,
                     self.cappa,
                     self._ptop,
@@ -882,7 +878,7 @@ class AcousticDynamics:
                     ws=self._wsd,
                     dt=dt_acoustic_substep,
                 )
-                self.riem_solver3(
+                self.vertical_solver(
                     remap_step,
                     dt_acoustic_substep,
                     self.cappa,
@@ -971,13 +967,11 @@ class AcousticDynamics:
                 # TODO: it looks like state.pkz is being used as a temporary here,
                 # and overwritten at the start of remapping. See if we can make it
                 # an internal temporary of this stencil.
-                # this is really just applying the heating, rename it appropriately
-                self._compute_pkz_tempadjust(
+                self._apply_diffusive_heating(
                     state.delp,
                     state.delz,
                     self.cappa,
                     self._heat_source,
                     state.pt,
-                    state.pkz,
                     delt_time_factor,
                 )

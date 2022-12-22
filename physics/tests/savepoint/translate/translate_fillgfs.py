@@ -3,6 +3,7 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_atmos_state import fill_gfs_delp
+from pace.util.utils import safe_assign_array
 
 
 class TranslateFillGFS(TranslatePhysicsFortranData2Py):
@@ -29,7 +30,9 @@ class TranslateFillGFS(TranslatePhysicsFortranData2Py):
         inputs["q_min"] = 1.0e-9
         shape = self.grid_indexing.domain_full(add=(1, 1, 1))
         delp = np.zeros(shape)
-        delp[:, :, :-1] = inputs["pe"][:, :, 1:] - inputs["pe"][:, :, :-1]
+        safe_assign_array(
+            delp[:, :, :-1], inputs["pe"][:, :, 1:] - inputs["pe"][:, :, :-1]
+        )
         delp = utils.make_storage_data(
             delp,
             origin=self.grid_indexing.origin_full(),

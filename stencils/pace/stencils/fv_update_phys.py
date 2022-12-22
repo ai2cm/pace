@@ -1,7 +1,7 @@
 import typing
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import pace.util
 import pace.util.constants as constants

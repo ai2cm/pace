@@ -11,7 +11,7 @@ def splittable_region_expansion(sdfg: dace.SDFG, verbose: bool = False):
     Set certain StencilComputation library nodes to expand to a different
     schedule if they contain small splittable regions.
     """
-    from gtc.dace.nodes import StencilComputation
+    from gt4py.cartesian.gtc.dace.nodes import StencilComputation
 
     for node, _ in sdfg.all_nodes_recursive():
         if isinstance(node, StencilComputation):

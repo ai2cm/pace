@@ -79,9 +79,9 @@ def get_selective_class(
                         array[:] = np.nan
                         array[validation_slice] = validation_data
                     except TypeError:
-                        validation_data = np.copy(array.storage[validation_slice])
-                        array.storage[:] = np.nan
-                        array.storage[validation_slice] = validation_data
+                        validation_data = np.copy(array.data[validation_slice])
+                        array.data[:] = np.nan
+                        array.data[validation_slice] = validation_data
 
         def __getattr__(self, name):
             # if SelectivelyValidated doesn't have an attribute, this is called

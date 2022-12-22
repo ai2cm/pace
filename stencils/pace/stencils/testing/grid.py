@@ -1,5 +1,5 @@
 # type: ignore
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -480,6 +480,44 @@ class Grid:
     def grid_data(self) -> "GridData":
         if self._grid_data is not None:
             return self._grid_data
+
+        # The translate code pads ndarray axes with zeros in certain cases,
+        # in particular the vertical axis. Since we're deprecating those tests,
+        # we simply "fix" those arrays here.
+        clipped_data: Dict[str, pace.util.Quantity] = {}
+        for name in (
+            "ee1",
+            "ee2",
+            "es1",
+            "ew2",
+            "edge_w",
+            "edge_e",
+            "edge_s",
+            "edge_n",
+        ):
+            grid_defs = getattr(GridDefinitions, name, None)
+            assert grid_defs is not None
+
+            dims = grid_defs.dims
+            units = grid_defs.units
+
+            data = getattr(self, name)
+            assert data is not None
+
+            quantity = self.quantity_factory.empty(dims=dims, units=units)
+            if len(quantity.shape) == 3:
+                quantity.data[:] = data[:, :, : quantity.shape[2]]
+            elif len(quantity.shape) == 2:
+                quantity.data[:] = data[:, : quantity.shape[1]]
+            elif len(quantity.shape) == 1:
+                quantity.data[:] = data[: quantity.shape[0]]
+            else:
+                raise NotImplementedError(
+                    "The data filtering is not implemented for a quantity of this shape"
+                )
+
+            clipped_data[name] = quantity
+
         horizontal = HorizontalGridData(
             lon=self.quantity_factory.from_array(
                 data=self.bgrid1,
@@ -581,26 +619,10 @@ class Grid:
                 dims=GridDefinitions.rdya.dims,
                 units=GridDefinitions.rdya.units,
             ),
-            ee1=self.quantity_factory.from_array(
-                data=self.ee1,
-                dims=GridDefinitions.ee1.dims,
-                units=GridDefinitions.ee1.units,
-            ),
-            ee2=self.quantity_factory.from_array(
-                data=self.ee2,
-                dims=GridDefinitions.ee2.dims,
-                units=GridDefinitions.ee2.units,
-            ),
-            es1=self.quantity_factory.from_array(
-                data=self.es1,
-                dims=GridDefinitions.es1.dims,
-                units=GridDefinitions.es1.units,
-            ),
-            ew2=self.quantity_factory.from_array(
-                data=self.ew2,
-                dims=GridDefinitions.ew2.dims,
-                units=GridDefinitions.ew2.units,
-            ),
+            ee1=clipped_data["ee1"],
+            ee2=clipped_data["ee2"],
+            es1=clipped_data["es1"],
+            ew2=clipped_data["ew2"],
             a11=self.quantity_factory.from_array(
                 data=self.a11,
                 dims=GridDefinitions.a11.dims,
@@ -621,26 +643,10 @@ class Grid:
                 dims=GridDefinitions.a22.dims,
                 units=GridDefinitions.a22.units,
             ),
-            edge_w=self.quantity_factory.from_array(
-                data=self.edge_w,
-                dims=GridDefinitions.edge_w.dims,
-                units=GridDefinitions.edge_w.units,
-            ),
-            edge_e=self.quantity_factory.from_array(
-                data=self.edge_e,
-                dims=GridDefinitions.edge_e.dims,
-                units=GridDefinitions.edge_e.units,
-            ),
-            edge_s=self.quantity_factory.from_array(
-                data=self.edge_s,
-                dims=GridDefinitions.edge_s.dims,
-                units=GridDefinitions.edge_s.units,
-            ),
-            edge_n=self.quantity_factory.from_array(
-                data=self.edge_n,
-                dims=GridDefinitions.edge_n.dims,
-                units=GridDefinitions.edge_n.units,
-            ),
+            edge_w=clipped_data["edge_w"],
+            edge_e=clipped_data["edge_e"],
+            edge_n=clipped_data["edge_n"],
+            edge_s=clipped_data["edge_s"],
         )
         vertical = VerticalGridData(
             ak=self.quantity_factory.from_array(

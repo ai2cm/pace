@@ -1,5 +1,5 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util
 import pace.util.constants as constants
@@ -385,8 +385,6 @@ class AdjustNegativeTracerMixingRatio:
         qcld,
         pt,
         delp,
-        delz,
-        peln,
     ):
         """
         Args:
@@ -399,8 +397,6 @@ class AdjustNegativeTracerMixingRatio:
             qcld (inout):
             pt (inout):
             delp (in):
-            delz (unused):
-            peln (unused):
         """
         # TODO: remove delz and peln from args
         self._fix_neg_water(
