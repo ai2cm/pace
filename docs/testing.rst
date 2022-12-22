@@ -11,7 +11,9 @@ Savepoint data are generated from `fv3gfs-fortran`_ and can also be downloaded:
     $ # if you do not have access to the Google Cloud Storage bucket, use FTP:
     $ make USE_FTP=yes get_test_data
 
-Savepoint data are used in two ways:
+Savepoint data are used in the "translate" tests and in checkpointer tests.
+Developers should be aware that the "translate" tests are an older, initial design of the test infrastructure which has grown organically and may be difficult to understand or modify, but currently covers smaller parts of the code not tested independently by the checkpointer tests.
+In the long run we suggest increasing the number of checkpoints and adding new checkpointer tests, and eventually removing the translate tests, which are considered deprecated.
 
 #. Individual translate tests
 
