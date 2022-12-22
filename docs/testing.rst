@@ -41,7 +41,7 @@ In the long run we suggest increasing the number of checkpoints and adding new c
 
 While individual translate test can be run on all backends, checkpointer tests do not work for orchestrated DaCe backend.
 
-Translate tests can be run as follows:
+Translate tests for the dynamical core can be run as follows:
 
 .. code-block:: console
 
