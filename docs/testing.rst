@@ -23,6 +23,7 @@ Savepoint data are used in two ways:
 #. Checkpointer tests
 
     This tests the full model run where checkpoints are inserted throughout the model.
+    See ``tests/savepoint/test_checkpoints.py`` for an example.
     During these checkpoints, it is possible to
 
     #. compare the model state to a reference state
