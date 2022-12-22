@@ -24,7 +24,8 @@ Savepoint data are used in two ways:
 
     This tests the full model run where checkpoints are inserted throughout the model.
     See ``tests/savepoint/test_checkpoints.py`` for an example.
-    During these checkpoints, it is possible to
+    Checkpointers are given model state along with a label, and may implement any behavior they wish.
+    For example, checkpointers have been written to:
 
     #. compare the model state to a reference state
     #. calibrate the threshold for each variable given a perturbed state
