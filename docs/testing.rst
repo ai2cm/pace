@@ -15,7 +15,7 @@ Savepoint data are used in two ways:
 
 #. Individual translate tests
 
-    This tests at the module level such as `c_sw` and `d_sw`, and the translate logic is shared among dynamical core and physics.
+    These test at the module level such as `c_sw` and `d_sw`, and the translate logic is shared among dynamical core and physics.
     Larger tests also exist such as `translate_fvdynamics` which tests a full acoustic time step.
     Manual thresholds are set for each savepoint test. Curerntly, maximum threshold is applied to all variables within the test.
     Additionally, a near-zero value can be specified for a variable to ignore values that are very close to zero.
