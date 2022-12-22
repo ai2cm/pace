@@ -5,7 +5,7 @@ from setuptools import find_namespace_packages, setup
 
 setup_requirements: List[str] = []
 
-requirements = ["gt4py", "pace-util"]
+requirements = ["gt4py", "pace-util", "pace-dsl"]
 
 test_requirements: List[str] = []
 

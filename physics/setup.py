@@ -13,6 +13,8 @@ requirements = [
     "gt4py",
     "numpy",
     "pace-util>=0.4.3",
+    "pace-stencils",
+    "pace-dsl",
     "xarray",
 ]
 
