@@ -27,7 +27,7 @@ Savepoint data are used in two ways:
     Checkpointers are given model state along with a label, and may implement any behavior they wish.
     For example, checkpointers have been written to:
 
-    #. compare the model state to a reference state
+    #. compare the model state to a reference state (:py:class:`pace.util.ValidationCheckpointer`)
     #. calibrate the threshold for each variable given a perturbed state
 
     Additional checkpoint behaviors could be implemented, for example to save reference test data directly from Python.
