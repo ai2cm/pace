@@ -938,6 +938,7 @@ def build_tracer_advection(
 
     fvtp_2d = FiniteVolumeTransport(
         stencil_configuration["stencil_factory"],
+        stencil_configuration["quantity_factory"],
         stencil_configuration["grid_data"],
         stencil_configuration["damping_coefficients"],
         fvt_dict["grid_type"],
@@ -946,6 +947,7 @@ def build_tracer_advection(
 
     tracer_advection = TracerAdvection(
         stencil_configuration["stencil_factory"],
+        stencil_configuration["quantity_factory"],
         fvtp_2d,
         stencil_configuration["grid_data"],
         stencil_configuration["communicator"],
@@ -1011,7 +1013,6 @@ def run_advection_step_with_reset(
     tracer_advection_data_initial: Dict[str, Quantity],
     tracer_advection_data: Dict[str, Quantity],
     tracer_advection: TracerAdvection,
-    timestep,
 ) -> Dict[str, Quantity]:
     """
     Use: tracer_advection_data =
@@ -1044,7 +1045,6 @@ def run_advection_step_with_reset(
         tracer_advection_data["mfyd"],
         tracer_advection_data["crx"],
         tracer_advection_data["cry"],
-        timestep,
     )
 
     tracer_advection_data["delp"] = cp.deepcopy(tracer_advection_data_initial["delp"])
