@@ -11,6 +11,19 @@ from pace.stencils.testing.translate_physics import (
     ParallelPhysicsTranslate2Py,
     transform_dwind_serialized_data,
 )
+from pace.util.utils import safe_assign_array
+
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 
 @dataclasses.dataclass()
@@ -197,9 +210,9 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         state.v = v_quantity
         self._base.compute_func(
             state,
-            tendencies["u_dt"].storage,
-            tendencies["v_dt"].storage,
-            tendencies["t_dt"].storage,
+            tendencies["u_dt"],
+            tendencies["v_dt"],
+            tendencies["t_dt"],
             dt=float(self.namelist.dt_atmos),
         )
         out = {}
@@ -211,12 +224,13 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         out["qsnow"] = state.qsnow[self.grid.slice_dict(ds)]
         out["qgraupel"] = state.qgraupel[self.grid.slice_dict(ds)]
         out["pt"] = state.pt[self.grid.slice_dict(ds)]
-        state.u.storage.synchronize()
-        state.v.storage.synchronize()
-        state.ua.synchronize()
-        state.va.synchronize()
-        out["u"] = np.asarray(state.u.storage)[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(state.v.storage)[self.grid.x3d_domain_interface()]
+        utils.device_sync(backend=self.stencil_factory.backend)
+        # This alloc then copy pattern is requried to deal transparently with
+        # arrays on different device
+        out["u"] = np.empty_like(inputs["u"][self.grid.y3d_domain_interface()])
+        out["v"] = np.empty_like(inputs["v"][self.grid.x3d_domain_interface()])
+        safe_assign_array(out["u"], inputs["u"][self.grid.y3d_domain_interface()])
+        safe_assign_array(out["v"], inputs["v"][self.grid.x3d_domain_interface()])
         out["ua"] = state.ua[self.grid.slice_dict(ds)]
         out["va"] = state.va[self.grid.slice_dict(ds)]
         return out

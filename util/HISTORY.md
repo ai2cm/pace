@@ -4,7 +4,8 @@ History
 latest
 ------
 
-
+v0.10.0
+-------
 
 Major changes:
 - Added the following attributes/methods to Communicator: `tile`, `halo_update`, `boundaries`, `start_halo_update`, `vector_halo_update`, `start_vector_halo_update`, `synchronize_vector_interfaces`, `start_synchronize_vector_interfaces`, `get_scalar_halo_updater`, and `get_vector_halo_updater`
@@ -23,6 +24,7 @@ Minor changes:
 - fixed a bug in `pace.util.grid` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
 - Added .cleanup() method to ZarrMonitor, used only for API compatibility with NetCDFMonitor and does nothing
 - ZarrMonitor.partitioner may now be any Partitioner and not just a CubedSpherePartitioner
+- Quantity no longer has a `storage` attribute - the ndarray is directly accessible through the `data` attribute.
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.

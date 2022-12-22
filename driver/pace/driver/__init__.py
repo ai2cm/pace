@@ -15,4 +15,4 @@ from .registry import Registry
 from .state import DriverState, TendencyState
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

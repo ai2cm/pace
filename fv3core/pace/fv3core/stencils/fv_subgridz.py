@@ -1,8 +1,14 @@
 # mypy: ignore-errors
 import collections
 
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
+    __INLINED,
+    BACKWARD,
+    PARALLEL,
+    computation,
+    interval,
+)
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
@@ -858,7 +864,7 @@ class DryConvectiveAdjustment:
             v_dt: y-wind tendency for the dry convective windspeed adjustment
             timestep:  time to progress forward in seconds
         """
-        if state.pe.data[self._is, self._js, 0] < 2.0:
+        if state.pe[self._is, self._js, 0] < 2.0:
             t_min = T1_MIN
         else:
             t_min = T2_MIN

@@ -27,7 +27,7 @@ cat << EOF > run.daint.slurm
 #SBATCH --output=driver.out
 #SBATCH --time=00:45:00
 #SBATCH --gres=gpu:1
-#SBATCH --account=s1053
+#SBATCH --account=go31
 #SBATCH --partition=normal
 ########################################################
 set -x

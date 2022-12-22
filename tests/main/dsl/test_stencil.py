@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, Field, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, Field, computation, interval
 from gt4py.storage import empty, ones
 
 import pace.dsl
@@ -11,15 +11,13 @@ def _make_storage(
     stencil_config: pace.dsl.StencilConfig,
     *,
     dtype=float,
-    mask=None,
-    default_origin=(0, 0, 0),
+    aligned_index=(0, 0, 0),
 ):
     return func(
         backend=stencil_config.compilation_config.backend,
         shape=grid_indexing.domain,
         dtype=dtype,
-        mask=mask,
-        default_origin=default_origin,
+        aligned_index=aligned_index,
     )
 
 

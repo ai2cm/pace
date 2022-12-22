@@ -543,6 +543,14 @@ class GridData:
         self._vertical_data.bk = value
 
     @property
+    def ks(self):
+        return self._vertical_data.ks
+
+    @ks.setter
+    def ks(self, value):
+        self._vertical_data.ks = value
+
+    @property
     def ptop(self):
         """pressure at top of atmosphere (Pa)"""
         return self._vertical_data.ptop

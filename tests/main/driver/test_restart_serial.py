@@ -2,7 +2,6 @@ import os
 import shutil
 from datetime import datetime
 
-import gt4py
 import numpy as np
 import xarray as xr
 import yaml
@@ -114,7 +113,7 @@ def test_restart_save_to_disk():
         for var in driver_state.physics_state.__dict__.keys():
             if isinstance(
                 driver_state.physics_state.__dict__[var],
-                gt4py.storage.storage.CPUStorage,
+                np.ndarray,
             ):
                 np.testing.assert_allclose(
                     driver_state.physics_state.__dict__[var].data,

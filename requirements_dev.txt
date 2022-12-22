@@ -15,7 +15,7 @@ dace>=0.14
 f90nml>=1.1.0
 numpy>=1.15
 -e external/gt4py
--e util
+-e util[dace]
 -e stencils
 -e dsl
 -e physics

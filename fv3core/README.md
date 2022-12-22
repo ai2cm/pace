@@ -433,6 +433,7 @@ For Translate objects
     - `self.max_error` overrides the parent classes relative error threshold. This should only be changed when the reasons for non-bit reproducibility are understood.
     - `self.max_shape` sets the size of the gt4py storage created for testing
     - `self.ignore_near_zero_errors[<varname>] = True`: This is an option to let some fields pass with higher relative error if the absolute error is very small
+    - `self.skip_test`: This is an option to jump over the test case, to be used in the override file for temporary deactivation of tests.
 
 For `ParallelTranslate` objects:
   - Inputs and outputs are defined at the class level, and these include metadata such as the "name" (e.g. understandable name for the symbol), dimensions, units and n_halo(numb er of halo lines)
@@ -450,3 +451,7 @@ TEST_ARGS="-v -s --pdb" RUN_FLAGS="--rm -it" make tests
 ```
 
 This can be done with any pytest target, such as `make savepoint_tests` and `make savepoint_tests_mpi`.
+
+### GEOS API
+
+The `GeosDycoreWrapper` class provides an API to run the dynamical core in a Python component of a GEOS model run. A `GeosDycoreWrapper` object is initialized with a namelist, communicator, and backend, which creates the communicators, partitioners, dycore state, and dycore object required to run the Pace dycore. A wrapper object takes numpy arrays of `u, v, w, delz, pt, delp, q, ps, pe, pk, peln, pkz, phis, q_con, omga, ua, va, uc, vc, mfxd, mfyd, cxd, cyd,` and `diss_estd` and returns a dictionary containing numpy arrays of those same variables. Wrapper objects contain a `timer` attrubite that tracks the amount of time moving input data to the dycore state, running the dynamical core, and retrieving the data from the state.

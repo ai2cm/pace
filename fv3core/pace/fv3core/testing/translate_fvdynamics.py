@@ -213,7 +213,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
     outputs = inputs.copy()
 
-    for name in ("bdt", "ak", "bk", "ptop"):
+    for name in ("bdt", "ak", "bk", "ptop", "ua"):
         outputs.pop(name)
 
     def __init__(
@@ -278,6 +278,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self._base.out_vars.update(fv_dynamics_vars)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
+        self._base.out_vars.pop("ua")
 
         self.max_error = 1e-5
 
@@ -345,7 +346,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         storages = {}
         for name, properties in self.outputs.items():
             if isinstance(state[name], pace.util.Quantity):
-                storages[name] = state[name].storage
+                storages[name] = state[name].data
             elif len(self.outputs[name]["dims"]) > 0:
                 storages[name] = state[name]  # assume it's a storage
             else:

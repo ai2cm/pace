@@ -3,7 +3,7 @@ import enum
 import hashlib
 from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Sequence, Tuple
 
-from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
+from gt4py.cartesian.gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import is_gpu_backend

@@ -36,16 +36,26 @@ from pace.dsl.dace.utils import (
 from pace.util.mpi import MPI
 
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+
 def dace_inhibitor(func: Callable):
     """Triggers callback generation wrapping `func` while doing DaCe parsing."""
     return func
 
 
 def _upload_to_device(host_data: List[Any]):
-    """Make sure any data that are still a gt4py.storage gets uploaded to device"""
-    for data in host_data:
-        if isinstance(data, gt4py.storage.Storage):
-            data.host_to_device()
+    """Make sure any ndarrays gets uploaded to the device
+
+    This will raise an assertion if cupy is not installed.
+    """
+    assert cp is not None
+    for i, data in enumerate(host_data):
+        if isinstance(data, cp.ndarray):
+            host_data[i] = cp.asarray(data)
 
 
 def _download_results_from_dace(
@@ -54,11 +64,6 @@ def _download_results_from_dace(
     """Move all data from DaCe memory space to GT4Py"""
     gt4py_results = None
     if dace_result is not None:
-        for arg in args:
-            if isinstance(arg, gt4py.storage.Storage) and hasattr(
-                arg, "_set_device_modified"
-            ):
-                arg._set_device_modified()
         if config.is_gpu_backend():
             gt4py_results = [
                 gt4py.storage.from_array(
@@ -111,7 +116,8 @@ def _to_gpu(sdfg: dace.SDFG):
 
 def _run_sdfg(daceprog: DaceProgram, config: DaceConfig, args, kwargs):
     """Execute a compiled SDFG - do not check for compilation"""
-    _upload_to_device(list(args) + list(kwargs.values()))
+    if config.is_gpu_backend():
+        _upload_to_device(list(args) + list(kwargs.values()))
     res = daceprog(*args, **kwargs)
     return _download_results_from_dace(config, res, list(args) + list(kwargs.values()))
 
@@ -129,14 +135,14 @@ def _build_sdfg(
         if config.is_gpu_backend():
             _to_gpu(sdfg)
             make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.GPU)
+
+            # Upload args to device
+            _upload_to_device(list(args) + list(kwargs.values()))
         else:
             for sd, _aname, arr in sdfg.arrays_recursive():
                 if arr.shape == (1,):
                     arr.storage = DaceStorageType.Register
             make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.CPU)
-
-        # Upload args to device
-        _upload_to_device(list(args) + list(kwargs.values()))
 
         # Build non-constants & non-transients from the sdfg_kwargs
         sdfg_kwargs = daceprog._create_sdfg_args(sdfg, args, kwargs)

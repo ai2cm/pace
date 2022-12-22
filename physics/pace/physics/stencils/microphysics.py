@@ -2,7 +2,14 @@ import copy
 import typing
 
 import numpy as np
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
+from gt4py.cartesian.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    interval,
+    sqrt,
+)
 
 import pace.physics.functions.microphysics_funcs as functions
 import pace.util
@@ -1974,7 +1981,7 @@ class Microphysics:
         self._c_praut = make_quantity()
         self._m1_sol = make_quantity()
 
-        self.gfdl_cloud_microphys_init(namelist.dt_atmos, self._m1_sol.np)
+        self.gfdl_cloud_microphys_init(namelist.dt_atmos)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
@@ -2070,14 +2077,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self, dt_atmos: float, numpy_module):
-        self.setupm(dt_atmos, numpy_module)
+    def gfdl_cloud_microphys_init(self, dt_atmos: float):
+        self.setupm(dt_atmos)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self, dt_atmos: float, numpy_module):
+    def setupm(self, dt_atmos: float):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2091,7 +2098,7 @@ class Microphysics:
         rnzg = 4.0e6
 
         # Density parameters
-        acc = numpy_module.array([5.0, 2.0, 0.5])
+        acc = np.array([5.0, 2.0, 0.5])
 
         pie = 4.0 * np.arctan(1.0)
 
@@ -2200,7 +2207,18 @@ class Microphysics:
         self._csacr = csacr
         self._cgacr = cgacr
         self._cgacs = cgacs
-        self._acco = acco
+        self._acco00 = acco[0, 0]
+        self._acco01 = acco[0, 1]
+        self._acco02 = acco[0, 2]
+        self._acco03 = acco[0, 3]
+        self._acco10 = acco[1, 0]
+        self._acco11 = acco[1, 1]
+        self._acco12 = acco[1, 2]
+        self._acco13 = acco[1, 3]
+        self._acco20 = acco[2, 0]
+        self._acco21 = acco[2, 1]
+        self._acco22 = acco[2, 2]
+        self._acco23 = acco[2, 3]
         self._csacw = csacw
         self._csaci = csaci
         self._cgacw = cgacw
@@ -2427,18 +2445,18 @@ class Microphysics:
                 self._csacr,
                 self._cgacr,
                 self._cgacs,
-                self._acco[0, 0],
-                self._acco[0, 1],
-                self._acco[0, 2],
-                self._acco[0, 3],
-                self._acco[1, 0],
-                self._acco[1, 1],
-                self._acco[1, 2],
-                self._acco[1, 3],
-                self._acco[2, 0],
-                self._acco[2, 1],
-                self._acco[2, 2],
-                self._acco[2, 3],
+                self._acco00,
+                self._acco01,
+                self._acco02,
+                self._acco03,
+                self._acco10,
+                self._acco11,
+                self._acco12,
+                self._acco13,
+                self._acco20,
+                self._acco21,
+                self._acco22,
+                self._acco23,
                 self._csacw,
                 self._csaci,
                 self._cgacw,

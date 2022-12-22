@@ -1,10 +1,10 @@
 import contextlib
 import unittest.mock
 
-import gt4py.gtscript
+import gt4py.cartesian.gtscript
 import numpy as np
 import pytest
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pace.util
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
@@ -33,12 +33,12 @@ def get_stencil_config(
 
 @contextlib.contextmanager
 def mock_gtscript_stencil(mock):
-    original_stencil = gt4py.gtscript.stencil
+    original_stencil = gt4py.cartesian.gtscript.stencil
     try:
-        gt4py.gtscript.stencil = mock
+        gt4py.cartesian.gtscript.stencil = mock
         yield
     finally:
-        gt4py.gtscript.stencil = original_stencil
+        gt4py.cartesian.gtscript.stencil = original_stencil
 
 
 class MockFieldInfo:
@@ -315,7 +315,7 @@ def test_convert_quantities_to_storage_one_arg_quantity():
     kwargs = {}
     _convert_quantities_to_storage(args, kwargs)
     assert len(args) == 1
-    assert args[0] == quantity.storage
+    assert args[0] == quantity.data
     assert len(kwargs) == 0
 
 
@@ -326,7 +326,7 @@ def test_convert_quantities_to_storage_one_kwarg_quantity():
     _convert_quantities_to_storage(args, kwargs)
     assert len(args) == 0
     assert len(kwargs) == 1
-    assert kwargs["val"] == quantity.storage
+    assert kwargs["val"] == quantity.data
 
 
 def test_convert_quantities_to_storage_one_arg_nonquantity():

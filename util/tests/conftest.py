@@ -1,8 +1,6 @@
 import numpy as np
 import pytest
 
-import pace.util
-
 
 try:
     import gt4py
@@ -51,9 +49,10 @@ def numpy(backend):
     elif backend == "cupy":
         return cupy
     elif backend == "gt4py_numpy":
-        return pace.util.testing.gt4py_numpy
+        # TODO: Deprecate these "backends".
+        return np
     elif backend == "gt4py_cupy":
-        return pace.util.testing.gt4py_cupy
+        return cupy
     else:
         raise NotImplementedError()
 

@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pace.dsl
 import pace.fv3core.stencils.d_sw as d_sw
@@ -249,7 +249,7 @@ class TranslateWdivergence(TranslateDycoreFortranData2Py):
         self.out_vars = {"q": {"serialname": "w"}}
         self.stencil_factory = stencil_factory
         self.compute_func = self.stencil_factory.from_origin_domain(  # type: ignore
-            d_sw.flux_adjust,
+            d_sw.apply_fluxes,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )

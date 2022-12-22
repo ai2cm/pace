@@ -1,5 +1,5 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import (
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import (
     __INLINED,
     BACKWARD,
     FORWARD,
@@ -79,11 +79,11 @@ def ray_fast_wind_compute(
             rf = compute_rff_vals(pfull, dt, rf_cutoff, tau * SDAY, ptop)
     with computation(FORWARD):
         with interval(0, 1):
-            if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
+            if pfull < rf_cutoff_nudge:
                 p_ref = delta_p_ref
         with interval(1, None):
             p_ref = p_ref[0, 0, -1]
-            if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
+            if pfull < rf_cutoff_nudge:
                 p_ref += delta_p_ref
     with computation(BACKWARD), interval(0, -1):
         if pfull < rf_cutoff_nudge:
@@ -109,7 +109,7 @@ def ray_fast_wind_compute(
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, :]):
-            if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
+            if pfull < rf_cutoff_nudge:
                 u += dmdir / p_ref
     # ray_fast_wind(v)
     with computation(FORWARD):
@@ -131,7 +131,7 @@ def ray_fast_wind_compute(
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, : local_je + 1]):
-            if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
+            if pfull < rf_cutoff_nudge:
                 v += dmdir / p_ref
     # ray_fast_w
     with computation(PARALLEL), interval(...):

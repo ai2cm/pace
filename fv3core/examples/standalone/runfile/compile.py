@@ -6,7 +6,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 
 import f90nml
-import gt4py.config
+import gt4py.cartesian.config
 
 import pace.dsl.stencil  # noqa: F401
 from pace.fv3core._config import DynamicalCoreConfig
@@ -63,7 +63,9 @@ if __name__ == "__main__":
         size = 1
     sub_tiles = dycore_config.layout[0] * dycore_config.layout[1]
     iterations = math.ceil(sub_tiles / size)
-    gt4py.config.cache_settings["root_path"] = os.environ.get("GT_CACHE_DIR_NAME", ".")
+    gt4py.cartesian.config.cache_settings["root_path"] = os.environ.get(
+        "GT_CACHE_DIR_NAME", "."
+    )
     for iteration in range(iterations):
         top_tile_rank = global_rank + size * iteration
         if top_tile_rank < sub_tiles:
@@ -72,7 +74,7 @@ if __name__ == "__main__":
                 total_ranks=6 * sub_tiles,
                 fill_value=0.0,
             )
-            gt4py.config.cache_settings["dir_name"] = os.environ.get(
+            gt4py.cartesian.config.cache_settings["dir_name"] = os.environ.get(
                 "GT_CACHE_ROOT", f".gt_cache_{mpi_comm.Get_rank():06}"
             )
             dycore, dycore_args, stencil_factory = setup_dycore(
@@ -91,7 +93,7 @@ if __name__ == "__main__":
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
     if comm is not None:
         comm.Barrier()
-    root_path = gt4py.config.cache_settings["root_path"]
+    root_path = gt4py.cartesian.config.cache_settings["root_path"]
     for iter in range(iterations):
         top_tile_rank = global_rank + size * iter
         if top_tile_rank < sub_tiles:

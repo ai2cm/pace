@@ -1,0 +1,97 @@
+dycore_only: true
+disable_step_physics: true
+stencil_config:
+  compilation_config:
+    backend: numpy
+    rebuild: false
+    validate_args: true
+    format_source: false
+    device_sync: false
+initialization:
+  type: tropicalcyclone
+performance_config:
+  performance_mode: true
+  experiment_name: c128_tropical
+grid_config:
+  config:
+    stretch_factor: 3.0
+    lon_target: 172.5
+    lat_target: 17.5
+    ks: 0
+  type: generated
+nx_tile: 128
+nz: 79
+dt_atmos: 60
+minutes: 2
+layout:
+  - 1
+  - 1
+diagnostics_config:
+  path: "output.zarr"
+  names:
+    - u
+    - v
+    - ua
+    - va
+    - pt
+    - delp
+    - delz
+    - qvapor
+    - ps
+  output_initial_state: true
+dycore_config:
+  a_imp: 1.0
+  beta: 0.
+  consv_te: 0.
+  d2_bg: 0.
+  d2_bg_k1: 0.2
+  d2_bg_k2: 0.15
+  d4_bg: 0.14
+  d_con: 1.0
+  d_ext: 0.0
+  dddmp: 0.5
+  delt_max: 0.002
+  do_sat_adj: false
+  do_vort_damp: true
+  fill: false
+  hord_dp: 6
+  hord_mt: 6
+  hord_tm: 6
+  hord_tr: 8
+  hord_vt: 6
+  hydrostatic: false
+  k_split: 2
+  ke_bg: 0.
+  kord_mt: 9
+  kord_tm: -9
+  kord_tr: 9
+  kord_wz: 9
+  n_split: 3
+  nord: 3
+  nwat: 6
+  p_fac: 0.1
+  rf_cutoff: 5000.
+  rf_fast: true
+  tau: 5.
+  vtdm4: 0.06
+  z_tracer: true
+  do_qa: true
+  tau_i2s: 1000.
+  tau_g2v: 900.
+  ql_gen: 0.001
+  ql_mlt: 0.001
+  qs_mlt: 0.000001
+  qi_lim: 1.0
+  dw_ocean: 0.1
+  dw_land: 0.16
+  icloud_f: 0
+  tau_l2v: 225.
+  tau_v2l: 150.
+  fv_sg_adj: 600
+  n_sponge: 48
+  p_ref: 101500.
+
+physics_config:
+  hydrostatic: false
+  nwat: 6
+  do_qa: true

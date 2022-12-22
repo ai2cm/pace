@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -80,7 +81,7 @@ class _ChunkedNetCDFWriter:
             data_vars = {"time": (["time"], self._times)}
             for name, chunked in self._chunked.items():
                 data_vars[name] = xr.DataArray(
-                    to_numpy(chunked.data.view[:]),
+                    chunked.data.view[:],
                     dims=chunked.data.dims,
                     attrs=chunked.data.attrs,
                 ).expand_dims({"tile": [self._tile]}, axis=1)
@@ -92,8 +93,9 @@ class _ChunkedNetCDFWriter:
                     chunk=chunk_index, tile=self._tile
                 )
             )
-            with self._fs.open(chunk_path, "wb") as f:
-                ds.to_netcdf(f)
+            if os.path.exists(chunk_path):
+                os.remove(chunk_path)
+            ds.to_netcdf(chunk_path, format="NETCDF4", engine="netcdf4")
 
         self._chunked = None
         self._times.clear()
@@ -104,7 +106,7 @@ class NetCDFMonitor:
     sympl.Monitor-style object for storing model state dictionaries netCDF files.
     """
 
-    _CONSTANT_FILENAME = "constants.nc"
+    _CONSTANT_FILENAME = "constants"
 
     def __init__(
         self,
@@ -161,39 +163,40 @@ class NetCDFMonitor:
                     set(state.keys()), self._expected_vars
                 )
             )
-        state = self._communicator.tile.gather_state(state)
+        state = self._communicator.tile.gather_state(state, transfer_type=np.float32)
         if state is not None:  # we are on root rank
             self._writer.append(state)
 
     def store_constant(self, state: Dict[str, Quantity]) -> None:
-        state = self._communicator.gather_state(state)
+        state = self._communicator.gather_state(state, transfer_type=np.float32)
         if state is not None:  # we are on root rank
             constants_filename = str(
                 Path(self._path) / NetCDFMonitor._CONSTANT_FILENAME
             )
-            if self._fs.exists(constants_filename):
-                with self._fs.open(constants_filename, "rb") as f:
-                    ds = xr.open_dataset(f)
+            for name, quantity in state.items():
+                path_for_grid = constants_filename + "_" + name + ".nc"
+
+                if self._fs.exists(path_for_grid):
+                    ds = xr.open_dataset(path_for_grid)
                     ds = ds.load()
-                for name, quantity in state.items():
                     ds[name] = xr.DataArray(
-                        to_numpy(quantity.view[:]),
+                        quantity.view[:],
                         dims=quantity.dims,
                         attrs=quantity.attrs,
                     )
-            else:
-                ds = xr.Dataset(
-                    data_vars={
-                        name: xr.DataArray(
-                            to_numpy(value.view[:]),
-                            dims=value.dims,
-                            attrs=value.attrs,
-                        )
-                        for name, value in state.items()
-                    }
-                )
-            with self._fs.open(constants_filename, "wb") as f:
-                ds.to_netcdf(f)
+                else:
+                    ds = xr.Dataset(
+                        data_vars={
+                            name: xr.DataArray(
+                                quantity.view[:],
+                                dims=quantity.dims,
+                                attrs=quantity.attrs,
+                            )
+                        }
+                    )
+                if os.path.exists(path_for_grid):
+                    os.remove(path_for_grid)
+                ds.to_netcdf(path_for_grid, format="NETCDF4", engine="netcdf4")
 
     def cleanup(self):
         self._writer.flush()

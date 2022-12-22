@@ -8,6 +8,7 @@
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
+Full Sphinx documentation can be found at [https://ai2cm.github.io/pace/](https://ai2cm.github.io/pace/).
 
 **WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
 ## Quickstart - bare metal
@@ -93,6 +94,10 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
+
+## ML emulation
+
+An example of integration of an ML model replacing the microphysics parametrization is available on the `feature/microphysics-emulator` branch.
 
 [circleci-shield]: https://dl.circleci.com/status-badge/img/gh/ai2cm/pace/tree/main.svg?style=svg
 [circleci-url]: https://dl.circleci.com/status-badge/redirect/gh/ai2cm/pace/tree/main

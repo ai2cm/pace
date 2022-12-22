@@ -1,5 +1,5 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util
 import pace.util.constants as constants
@@ -106,8 +106,6 @@ def update_dz_c(
     # xfx/yfx are now ut/vt interpolated to layer interfaces
     with computation(PARALLEL), interval(...):
         fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
-        # TODO: check if below gz is ok, or if we need gz_y to pass this
-        # probably okay with gz, only compute domain
         gz = (gz * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
             area + xfx - xfx[1, 0, 0] + yfx - yfx[0, 1, 0]
         )
@@ -189,9 +187,6 @@ class UpdateGeopotentialHeightOnCGrid:
         # TODO: is this advecting gz, and if so can we name it that?
         # Can we reduce duplication of advection logic with other stencils?
 
-        # TODO: use a tmp variable inside the update_dz_c stencil instead of
-        # _gz_x and _gz_y stencil to skip the copies and corner-fill stencils
-        # once regions bug is fixed
         self._double_copy_stencil(gz, self._gz_x, self._gz_y)
 
         # TODO(eddied): We pass the same fields 2x to avoid GTC validation errors

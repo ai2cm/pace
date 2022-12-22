@@ -52,6 +52,7 @@ class ParallelTranslate:
         self._rank_grids = rank_grids
         self.ignore_near_zero_errors = {}
         self.namelist = namelist
+        self.skip_test = False
 
     def state_list_from_inputs_list(self, inputs_list: List[dict]) -> list:
         state_list = []
@@ -143,7 +144,7 @@ class ParallelTranslateBaseSlicing(ParallelTranslate):
         for name, properties in self.outputs.items():
             standard_name = properties.get("name", name)
             if isinstance(state[standard_name], fv3util.Quantity):
-                storages[name] = state[standard_name].storage
+                storages[name] = state[standard_name].data
             elif len(self.outputs[name]["dims"]) > 0:
                 storages[name] = state[standard_name]  # assume it's a storage
             else:
@@ -236,7 +237,7 @@ class ParallelTranslate2Py(ParallelTranslate):
         result.update(quantity_result)
         for name, data in result.items():
             if isinstance(data, fv3util.Quantity):
-                result[name] = data.storage
+                result[name] = data.data
         result.update(self._base.slice_output(result))
         return result
 

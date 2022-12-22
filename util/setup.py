@@ -41,6 +41,7 @@ setup(
     extras_require={
         "netcdf": ["xarray>=0.15.1", "scipy>=1.3.1"],
         "zarr": ["zarr>=2.3.2", "xarray>=0.15.1", "scipy>=1.3.1"],
+        "dace": ["dace>=0.14"],
     },
     name="pace-util",
     license="BSD license",
@@ -48,6 +49,6 @@ setup(
     packages=find_namespace_packages(include=["pace.*"]),
     include_package_data=True,
     url="https://github.com/ai2cm/pace",
-    version="0.9.0",
+    version="0.10.0",
     zip_safe=False,
 )

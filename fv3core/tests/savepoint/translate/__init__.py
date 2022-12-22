@@ -63,13 +63,6 @@ from .translate_init_case import (
     TranslatePVarAuxiliaryPressureVars,
 )
 from .translate_last_step import TranslateLastStep
-from .translate_map1_ppm_2d import (
-    TranslateMap1_PPM_2d,
-    TranslateMap1_PPM_2d_2,
-    TranslateMap1_PPM_2d_3,
-)
-from .translate_map_scalar_2d import TranslateMapScalar_2d
-from .translate_mapn_tracer_2d import TranslateMapN_Tracer_2d
 from .translate_moistcvpluspkz_2d import TranslateMoistCVPlusPkz_2d
 from .translate_moistcvpluspt_2d import TranslateMoistCVPlusPt_2d
 from .translate_neg_adj3 import TranslateNeg_Adj3
@@ -81,7 +74,6 @@ from .translate_pressureadjustedtemperature_nonhydrostatic import (
 )
 from .translate_qsinit import TranslateQSInit
 from .translate_ray_fast import TranslateRay_Fast
-from .translate_remap_profile_2d import TranslateCS_Profile_2d, TranslateCS_Profile_2d_2
 from .translate_remapping import TranslateRemapping
 from .translate_riem_solver3 import TranslateRiem_Solver3
 from .translate_riem_solver_c import TranslateRiem_Solver_C

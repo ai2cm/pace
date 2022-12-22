@@ -1,4 +1,4 @@
-from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
+from gt4py.cartesian.gtscript import FORWARD, computation, horizontal, interval, region
 
 import pace.util
 from pace.dsl.stencil import StencilFactory
@@ -55,7 +55,6 @@ class PK3Halo:
             origin=origin,
             domain=domain,
         )
-        shape_2D = grid_indexing.domain_full(add=(1, 1, 1))[0:2]
         self._pe_tmp = quantity_factory.zeros([X_DIM, Y_DIM], units="unknown")
 
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):

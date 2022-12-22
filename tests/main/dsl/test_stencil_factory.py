@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+from gt4py.cartesian.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.util
 from pace.dsl.dace.dace_config import DaceConfig

@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pace.dsl
 import pace.fv3core.stencils.xtp_u as xtp_u
