@@ -47,7 +47,7 @@ Translate tests can be run as follows:
 
     $ make savepoint_tests
 
-Checkpointer tests can be run as follows:
+We suggest reading the Makefile for a full list of translate test targets. Checkpointer tests can be run as follows:
 
 .. code-block:: console
 
