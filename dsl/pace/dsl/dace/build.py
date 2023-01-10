@@ -124,7 +124,7 @@ def get_sdfg_path(
         return sdfg_file_path
 
     # Case of loading a precompiled .so - lookup using GT_CACHE
-    from gt4py import config as gt_config
+    from gt4py.cartesian import config as gt_config
 
     if config.rank_size > 1:
         rank = config.my_rank
