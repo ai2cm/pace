@@ -8,7 +8,7 @@
 
 > ⚠️ **READ-ONLY REPOSITORY** ⚠️
 >
-> Original development was executed under AI2 patronnage. Maintenance and further developpment has been taken over by NOAA-GFDL and can be reached  [here](https://github.com/NOAA-GFDL/pace).
+> Original development until `v0.2` was executed under AI2 patronnage. Maintenance and further developpment has been taken over by NOAA-GFDL and can be reached  [here](https://github.com/NOAA-GFDL/pace).
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
