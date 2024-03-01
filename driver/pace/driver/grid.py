@@ -1,16 +1,18 @@
 import abc
 import dataclasses
 import logging
+import os
 from typing import ClassVar, Optional, Tuple
 
 import f90nml
+import xarray as xr
 
 import pace.driver
 import pace.dsl
 import pace.physics
 import pace.stencils
 import pace.util.grid
-from pace.stencils.testing import TranslateGrid
+from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.util import CubedSphereCommunicator, QuantityFactory
 from pace.util.grid import (
     DampingCoefficients,
@@ -139,6 +141,7 @@ class SerialboxGridConfig(GridInitializer):
     """
 
     path: str
+    netcdf: bool = True
 
     @property
     def _f90_namelist(self) -> f90nml.Namelist:
@@ -163,10 +166,21 @@ class SerialboxGridConfig(GridInitializer):
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
     ) -> pace.stencils.testing.grid.Grid:  # type: ignore
-        ser = self._serializer(communicator)
-        grid = TranslateGrid.new_from_serialized_data(
-            ser, communicator.rank, self._namelist.layout, backend
-        ).python_grid()
+        if self.netcdf:
+            ds_grid: xr.Dataset = xr.open_dataset(
+                os.path.join(self.path, "Grid-Info.nc")
+            ).isel(savepoint=0)
+            grid = TranslateGrid(
+                dataset_to_dict(ds_grid.isel(rank=communicator.rank)),
+                rank=communicator.rank,
+                layout=self._namelist.layout,
+                backend=backend,
+            ).python_grid()
+        else:
+            ser = self._serializer(communicator)
+            grid = TranslateGrid.new_from_serialized_data(
+                ser, communicator.rank, self._namelist.layout, backend
+            ).python_grid()
         return grid
 
     def get_grid(
