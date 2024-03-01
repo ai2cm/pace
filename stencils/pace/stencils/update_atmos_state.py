@@ -1,3 +1,4 @@
+import typing
 from typing import Optional
 
 from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
@@ -9,6 +10,7 @@ from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
+from pace.stencils.testing.translate import reshape_pace_variable_to_fortran_format
 from pace.util.grid import DriverGridData, GridData
 
 
@@ -159,15 +161,10 @@ class DycoreToPhysics:
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["dycore_state", "physics_state", "tendency_state"],
         )
-
-        self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
+        self._copy_dycore_to_physics = stencil_factory.from_origin_domain(
             copy_dycore_to_physics,
-            compute_dims=[
-                pace.util.X_INTERFACE_DIM,
-                pace.util.Y_INTERFACE_DIM,
-                pace.util.Z_INTERFACE_DIM,
-            ],
-            compute_halos=(0, 0),
+            origin=stencil_factory.grid_indexing.origin_full(),
+            domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._do_dry_convective_adjustment = do_dry_convective_adjust
         self._dycore_only = dycore_only
@@ -249,7 +246,12 @@ class UpdateAtmosphereState:
         dycore_only: bool,
         apply_tendencies: bool,
         tendency_state,
+        checkpointer: typing.Optional[pace.util.Checkpointer] = None,
     ):
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -258,7 +260,7 @@ class UpdateAtmosphereState:
                 "phy_state",
             ],
         )
-
+        self.grid_indexing = stencil_factory.grid_indexing
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
@@ -287,6 +289,7 @@ class UpdateAtmosphereState:
             state,
             tendency_state.u_dt,
             tendency_state.v_dt,
+            checkpointer=checkpointer,
         )
         self._dycore_only = dycore_only
         # apply_tendencies when we have run physics or fv_subgridz
@@ -313,6 +316,19 @@ class UpdateAtmosphereState:
             self._fill_GFS_delp(
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
+            if self._call_checkpointer:
+                self._checkpointer(
+                    "PhysUpdateTracers-In",
+                    u_dt=u_dt,
+                    v_dt=v_dt,
+                    t_dt=pt_dt,
+                    pt_t1=reshape_pace_variable_to_fortran_format(
+                        phy_state.physics_updated_pt, self.grid_indexing
+                    ),
+                    pt_t0=reshape_pace_variable_to_fortran_format(
+                        phy_state.pt, self.grid_indexing
+                    ),
+                )
             self._prepare_tendencies_and_update_tracers(
                 u_dt,
                 v_dt,
@@ -339,6 +355,13 @@ class UpdateAtmosphereState:
                 dycore_state.delp,
                 self._rdt,
             )
+            if self._call_checkpointer:
+                self._checkpointer(
+                    "PhysUpdateTracers-Out",
+                    u_dt=u_dt,
+                    v_dt=v_dt,
+                    t_dt=pt_dt,
+                )
         if self._apply_tendencies:
             self._apply_physics_to_dycore(
                 dycore_state,
@@ -347,3 +370,18 @@ class UpdateAtmosphereState:
                 pt_dt,
                 dt=dt,
             )
+            if self._call_checkpointer:
+                self._checkpointer(
+                    "FVUpdatePhys-Out",
+                    qvapor=dycore_state.qvapor,
+                    qliquid=dycore_state.qliquid,
+                    qrain=dycore_state.qrain,
+                    qsnow=dycore_state.qsnow,
+                    qice=dycore_state.qice,
+                    qgraupel=dycore_state.qgraupel,
+                    pt=dycore_state.pt,
+                    ua=dycore_state.ua,
+                    va=dycore_state.va,
+                    u=dycore_state.u,
+                    v=dycore_state.v,
+                )

@@ -550,6 +550,36 @@ class LagrangianToEulerian:
             mdt (in) : Remap time step
             bdt (in): Timestep
         """
+
+        if self._call_checkpointer:
+            self._checkpointer(
+                "Remapping-In",
+                pt=pt,
+                delp=delp,
+                delz=delz,
+                peln=peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=u,
+                v=v,
+                w=w,
+                ua=ua,
+                va=va,
+                cappa=cappa,
+                pkz=pkz,
+                pk=pk,
+                pe=pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                phis=hs,
+                te_2d=te0_2d,
+                ps=ps,
+                wsd=wsd,
+                omga=omga,
+                ak=ak,
+                bk=bk,
+                dp1=dp1,
+            )
         # TODO: remove unused arguments (and commented code that references them)
         # TODO: can we trim ps or make it a temporary
         # TODO: pe is copied into pe1 and pe2 for vectorization reasons in the Fortran,
@@ -693,3 +723,26 @@ class LagrangianToEulerian:
         else:
             # converts virtual temperature back to virtual potential temperature
             self._basic_adjust_divide_stencil(pkz, pt)
+
+        if self._call_checkpointer:
+            self._checkpointer(
+                "Remapping-Out",
+                pt=pt,
+                delp=delp,
+                delz=delz,
+                peln=peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                u=u,
+                v=v,
+                w=w,
+                cappa=cappa,
+                pkz=pkz,
+                pk=pk,
+                pe=pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                te_2d=te0_2d,
+                omga=omga,
+                dp1=dp1,
+            )

@@ -1,5 +1,5 @@
 import math
-from typing import Dict
+from typing import Dict, Optional
 
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, horizontal, interval, region
@@ -189,6 +189,10 @@ class TracerAdvection:
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["tracers"],
         )
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
@@ -285,6 +289,7 @@ class TracerAdvection:
             x_courant (inout): accumulated courant number in x-direction
             y_courant (inout): accumulated courant number in y-direction
         """
+        self._checkpoint_input(tracers, dp1, mfxd, mfyd, cxd, cyd)
         # DaCe parsing issue
         # if len(tracers) != self._tracer_count:
         #     raise ValueError(
@@ -390,3 +395,4 @@ class TracerAdvection:
                 # we can't use variable assignment to avoid a data copy
                 # because of current dace limitations
                 self._swap_dp(dp1, dp2)
+        self._checkpoint_output(tracers, dp1, mfxd, mfyd, cxd, cyd)
