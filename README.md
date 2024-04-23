@@ -6,11 +6,14 @@
 
 # Pace
 
+> ⚠️ **READ-ONLY REPOSITORY** ⚠️
+>
+> Original development until `v0.2` was executed under AI2 patronage. Maintenance and further development has been taken over by NOAA-GFDL and can be reached  [here](https://github.com/NOAA-GFDL/pace).
+
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
 Full Sphinx documentation can be found at [https://ai2cm.github.io/pace/](https://ai2cm.github.io/pace/).
 
-**WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
 ## Quickstart - bare metal
 
 ### Build
@@ -27,10 +30,13 @@ export BOOST_ROOT=BOOST/ROOT/boost_1_79_0
 ```
 
 When cloning Pace you will need to update the repository's submodules as well:
+
 ```shell
 git clone --recursive https://github.com/ai2cm/pace.git
 ```
+
 or if you have already cloned the repository:
+
 ```
 git submodule update --init --recursive
 ```
@@ -43,6 +49,7 @@ source venv_name/bin/activate
 ```
 
 Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
+
 ```shell
 pip3 install -r requirements_dev.txt -c constraints.txt
 ```
@@ -52,6 +59,7 @@ Shell scripts to install Pace on specific machines such as Gaea can be found in 
 ### Run
 
 With the environment activated, you can run an example baroclinic test case with the following command:
+
 ```shell
 mpirun -n 6 python3 -m pace.driver.run driver/examples/configs/baroclinic_c12.yaml
 
@@ -62,19 +70,23 @@ mpirun -n 6 --oversubscribe python3 -m pace.driver.run driver/examples/configs/b
 After the run completes, you will see an output direcotry `output.zarr`. An example to visualize the output is provided in `driver/examples/plot_output.py`. See the [driver example](driver/examples/README.md) section for more details.
 
 ## Quickstart - Docker
+
 ### Build
 
 While it is possible to install and build pace bare-metal, we can ensure all system libraries are installed with the correct versions by using a Docker container to test and develop pace.
 
 First, you will need to update the git submodules so that any dependencies are cloned and at the correct version:
+
 ```shell
 git submodule update --init --recursive
 ```
 
 Then build the `pace` docker image at the top level.
+
 ```shell
 make build
 ```
+
 ### Run
 
 ```shell
@@ -93,7 +105,6 @@ The top-level directory contains the main components of pace such as the dynamic
 This git repository is laid out as a mono-repo, containing multiple independent projects. Because of this, it is important not to introduce unintended dependencies between projects. The graph below indicates a project depends on another by an arrow pointing from the parent project to its dependency. For example, the tests for fv3core should be able to run with only files contained under the fv3core and util projects, and should not access any files in the driver or physics packages. Only the top-level tests in Pace are allowed to read all files.
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
-
 
 ## ML emulation
 
