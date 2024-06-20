@@ -24,9 +24,11 @@ from pace.dsl.stencil_config import CompilationConfig, RunMode
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.util.checkpointer import Checkpointer
 from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
+from .checkpointer import CheckpointerInitializerSelector, NullCheckpointerInit
 from .comm import CreatesCommSelector
 from .grid import GeneratedGridConfig, GridInitializerSelector
 from .initialization import InitializerSelector
@@ -83,6 +85,7 @@ class DriverConfig:
             initial state of the model before timestepping
         output_frequency: number of model timesteps between diagnostic timesteps,
             defaults to every timestep
+        checkpointer: specifies the type of checkpointer to use
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -124,6 +127,11 @@ class DriverConfig:
     pair_debug: bool = False
     output_initial_state: bool = False
     output_frequency: int = 1
+    checkpointer_config: CheckpointerInitializerSelector = dataclasses.field(
+        default_factory=lambda: CheckpointerInitializerSelector(
+            type="null", config=NullCheckpointerInit()
+        )
+    )
     safety_check_frequency: Optional[int] = None
 
     @functools.cached_property
@@ -229,6 +237,9 @@ class DriverConfig:
             grid_data=grid_data,
         )
 
+    def get_checkpointer(self, rank: int) -> Checkpointer:
+        return self.checkpointer_config.get_checkpointer(rank)
+
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         if isinstance(kwargs["dycore_config"], dict):
@@ -274,7 +285,14 @@ class DriverConfig:
             kwargs["grid_config"] = GridInitializerSelector.from_dict(
                 kwargs["grid_config"]
             )
-
+        if "checkpointer_config" in kwargs:
+            kwargs["checkpointer_config"] = CheckpointerInitializerSelector.from_dict(
+                kwargs["checkpointer_config"]
+            )
+        else:
+            kwargs["checkpointer_config"] = CheckpointerInitializerSelector(
+                type="null", config=NullCheckpointerInit()
+            )
         if (
             isinstance(kwargs["stencil_config"], dict)
             and "dace_config" in kwargs["stencil_config"].keys()
@@ -467,6 +485,7 @@ class Driver:
             )
             logger.info("setting up state done")
 
+            self.checkpointer = self.config.get_checkpointer(rank=communicator.rank)
             self._start_time = self.config.initialization.start_time
             logger.info("setting up dycore object started")
             self.dycore = fv3core.DynamicalCore(
@@ -479,6 +498,7 @@ class Driver:
                 timestep=self.config.timestep,
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
+                checkpointer=self.checkpointer,
             )
             logger.info("setting up dycore object done")
 
@@ -513,6 +533,7 @@ class Driver:
                     dycore_only=self.config.dycore_only,
                     apply_tendencies=self.config.apply_tendencies,
                     tendency_state=self.state.tendency_state,
+                    checkpointer=self.checkpointer,
                 )
             else:
                 # Make sure those are set to None to raise any issues
