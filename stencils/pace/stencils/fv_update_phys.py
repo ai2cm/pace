@@ -1,3 +1,5 @@
+import typing
+
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
@@ -10,7 +12,7 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
-from pace.util import X_DIM, Y_DIM
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM
 from pace.util.grid import DriverGridData, GridData
 
 
@@ -92,7 +94,12 @@ class ApplyPhysicsToDycore:
         state: fv3core.DycoreState,
         u_dt: pace.util.Quantity,
         v_dt: pace.util.Quantity,
+        checkpointer: typing.Optional[pace.util.Checkpointer] = None,
     ):
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
@@ -154,6 +161,31 @@ class ApplyPhysicsToDycore:
         t_dt,
         dt: float,
     ):
+        if self._call_checkpointer:
+            self._checkpointer(
+                "FVUpdatePhys-In",
+                u_dt=u_dt,
+                v_dt=v_dt,
+                t_dt=t_dt,
+                ua=state.ua,
+                va=state.va,
+                u=state.u,
+                v=state.v,
+                qvapor=state.qvapor,
+                qliquid=state.qliquid,
+                qice=state.qice,
+                qrain=state.qrain,
+                qsnow=state.qsnow,
+                qgraupel=state.qgraupel,
+                peln=state.peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data,
+                delp=state.delp,
+                pt=state.pt,
+                ps=state.ps,
+                pe=state.pe.transpose([X_DIM, Z_INTERFACE_DIM, Y_DIM]),
+                pk=state.pk,
+            )
         self._moist_cv(
             state.qvapor,
             state.qliquid,
